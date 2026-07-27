@@ -40,22 +40,16 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install goreleaser
-        run: |
-          echo " Installing goreleaser..."
-          curl -fsSL https://goreleaser.com/static/key.gpg \
-            | sudo gpg --dearmor -o /usr/share/keyrings/goreleaser.gpg
-          echo "deb [signed-by=/usr/share/keyrings/goreleaser.gpg] https://repo.goreleaser.com/apt/ /" \
-            | sudo tee /etc/apt/sources.list.d/goreleaser.list >/dev/null
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq goreleaser
-          goreleaser --version
-
       # ---------- 第一阶段：goreleaser 打包 + 发布 GitHub Release ----------
+      # 使用官方 goreleaser-action，它会自动安装指定版本的 goreleaser 并执行。
+      # 比手工通过 APT 仓库安装更可靠（APT 源的 key URL 曾失效返回 404）。
       - name: Run goreleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: latest
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: goreleaser release --clean
 
       # ---------- 第二阶段：导入 GPG key 用于 APT 仓库签名 ----------
       - name: Import GPG signing key
