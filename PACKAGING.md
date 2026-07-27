@@ -177,15 +177,22 @@ gpg --default-key YOUR-KEY-ID --clearsign -o dists/stable/InRelease dists/stable
 
 ---
 
-## 五、将仓库发布到远程（HTTP 服务器）
+## 五、将仓库发布到 GitHub Pages（推荐）
 
-将整个 `repo/` 目录上传到任意静态 HTTP 服务器即可，例如：
+本项目默认通过 **GitHub Pages** 托管 APT 仓库，过程由 GitHub Actions 自动完成（详见第十节）。仓库最终地址为：
 
-```bash
-rsync -avz --delete repo/ user@your-server:/var/www/go-cipher-cli/apt/
+```
+https://kulaiyin.github.io/go-cipher-cli/apt
 ```
 
-确保远程目录可通过 `https://your-server/apt/` 访问。
+如果你希望自己手工发布到任意静态 HTTP 服务器（如 nginx、对象存储），把 `repo/` 目录的内容（`dists/`、`pool/`、`repo.gpg.key`）整体上传即可：
+
+```bash
+rsync -avz --delete repo/dists repo/pool repo/repo.gpg.key \
+  user@your-server:/var/www/go-cipher-cli/apt/
+```
+
+确保远程目录可通过 `https://your-server/go-cipher-cli/apt/` 访问。
 
 ---
 
@@ -195,10 +202,11 @@ rsync -avz --delete repo/ user@your-server:/var/www/go-cipher-cli/apt/
 
 ```bash
 # 信任发布者 GPG 公钥（首次）
-curl -fsSL https://your-server/apt/repo.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/go-cipher-cli.gpg
+curl -fsSL https://kulaiyin.github.io/go-cipher-cli/apt/repo.gpg.key \
+  | sudo gpg --dearmor -o /usr/share/keyrings/go-cipher-cli.gpg
 
 # 添加源
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/go-cipher-cli.gpg] https://your-server/apt stable main" \
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/go-cipher-cli.gpg] https://kulaiyin.github.io/go-cipher-cli/apt stable main" \
   | sudo tee /etc/apt/sources.list.d/go-cipher-cli.list
 ```
 
@@ -218,9 +226,48 @@ go-cipher-cli run
 
 ---
 
-## 七、常见问题
+## 七、CI 签名密钥配置（GitHub Actions）
+
+CI 在 push tag 时会自动对 APT 仓库签名，私钥通过 **GitHub Repository Secret** 注入，私钥本身永不进入代码库。首次发布前需完成一次性配置。
+
+### 7.1 生成或复用 GPG key
+
+本地生成（如已有可复用）：
+
+```bash
+gpg --gen-key
+# 记下 Key ID，例如 9E38A2B39666B218
+```
+
+### 7.2 导出私钥并 base64 编码
+
+```bash
+gpg --armor --export-secret-keys 9E38A2B39666B218 | base64 -w0
+```
+
+`base64 -w0` 输出单行，避免 Secret 里出现换行导致导入失败。
+
+### 7.3 配置 GitHub Secret
+
+1. 浏览器打开 `https://github.com/kulaiyin/go-cipher-cli/settings/secrets/actions`
+2. 点击 `New repository secret`
+3. **Name**：`GPG_SIGNING_KEY`
+4. **Value**：粘贴上一步的 base64 输出
+5. 保存
+
+同时确保 `repo/conf/distributions` 里的 `SignWith:` 与该 Key ID 一致（当前为 `9E38A2B39666B218`）。CI 的 `publish_repo.sh` 会自动读取这个值并用导入的私钥签名。
+
+### 7.4 安全须知
+
+- 私钥泄露后任何人都能伪造你的仓库签名。请只在 GitHub Secret 中存储，**绝不**写入任何文件或日志。
+- 轮换密钥：生成新 key → 更新 `SignWith` → 更新 Secret `GPG_SIGNING_KEY` → 重新触发发布 → 通知客户端重新导入公钥。
+
+---
+
+## 八、常见问题
 
 - **`goreleaser: command not found`**：执行 `scripts/package.sh` 会自动尝试通过 `npm` 安装；或手动 `go install github.com/goreleaser/goreleaser@latest`。
 - **`reprepro: command not found`**：改用本文档 4.4 节的 `apt-ftparchive` 回退方案。
 - **签名失败 / `InRelease` 报错**：先用 `gpg --gen-key` 生成密钥，并把仓库配置中的 `YOUR-KEY-ID` 替换为真实 Key ID。
 - **客户端 `NO_PUBKEY` 报错**：未正确导入发布者公钥，请按 6.1 节导入。
+- **CI 中签名失败**：检查 Secret `GPG_SIGNING_KEY` 是否配置、是否为 `base64 -w0` 单行格式，以及 `SignWith` 是否一致。

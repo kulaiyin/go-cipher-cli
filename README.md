@@ -36,15 +36,15 @@ go build -o go-cipher-cli ./main.go
 
 ### 通过 APT 安装（Debian/Ubuntu）
 
-详见 [PACKAGING.md](PACKAGING.md)。
+详见 [安装文档](https://kulaiyin.github.io/go-cipher-cli/guide/installation) 或 [PACKAGING.md](PACKAGING.md)。
 
 ```bash
 # 1. 导入仓库 GPG 公钥
-curl -fsSL https://your-server/apt/repo.gpg.key | sudo gpg --dearmor \
+curl -fsSL https://kulaiyin.github.io/go-cipher-cli/apt/repo.gpg.key | sudo gpg --dearmor \
   -o /usr/share/keyrings/go-cipher-cli.gpg
 
 # 2. 添加源
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/go-cipher-cli.gpg] https://your-server/apt stable main" \
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/go-cipher-cli.gpg] https://kulaiyin.github.io/go-cipher-cli/apt stable main" \
   | sudo tee /etc/apt/sources.list.d/go-cipher-cli.list
 
 # 3. 安装

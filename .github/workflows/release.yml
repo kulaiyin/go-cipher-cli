@@ -1,0 +1,121 @@
+name: Release
+
+# 推送 v* 格式的 tag 时触发全自动发布：
+#   编译 -> 生成 .deb -> GitHub Release -> APT 仓库元数据 -> GPG 签名
+#   -> 构建 VitePress 文档 -> 部署到 GitHub Pages (gh-pages 分支)
+on:
+  push:
+    tags:
+      - 'v*'
+  # 允许手动触发，便于调试（用时会使用当前 tag 或默认 v0.0.0）
+  workflow_dispatch:
+
+permissions:
+  contents: write   # goreleaser 创建 Release / 上传资产需要
+  pages: write      # 部署 Pages 需要
+  id-token: write   # Pages OIDC 部署需要
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # goreleaser 需要完整 git 历史
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Set up Node (用于 VitePress)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install goreleaser
+        run: |
+          echo " Installing goreleaser..."
+          curl -fsSL https://goreleaser.com/static/key.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/goreleaser.gpg
+          echo "deb [signed-by=/usr/share/keyrings/goreleaser.gpg] https://repo.goreleaser.com/apt/ /" \
+            | sudo tee /etc/apt/sources.list.d/goreleaser.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq goreleaser
+          goreleaser --version
+
+      # ---------- 第一阶段：goreleaser 打包 + 发布 GitHub Release ----------
+      - name: Run goreleaser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: goreleaser release --clean
+
+      # ---------- 第二阶段：导入 GPG key 用于 APT 仓库签名 ----------
+      - name: Import GPG signing key
+        env:
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+        run: |
+          if [ -z "$GPG_SIGNING_KEY" ]; then
+            echo "::warning::GPG_SIGNING_KEY 未配置，APT 仓库将不签名，客户端需用 [trusted=yes]"
+            exit 0
+          fi
+          echo "$GPG_SIGNING_KEY" | base64 -d | gpg --import --batch
+          echo "GPG keys imported:"
+          gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print "  key id: " $5}'
+
+      # ---------- 第三阶段：生成 APT 仓库元数据 ----------
+      - name: Build APT repository metadata
+        run: |
+          # publish_repo.sh 会自动从 repo/conf/distributions 的 SignWith 行读取 key id，
+          # 并用上一步导入的私钥签名。无需在此显式设置 GPG_KEY。
+          bash scripts/publish_repo.sh
+
+      # 导出公钥到 repo/repo.gpg.key，客户端需要它
+      - name: Export GPG public key
+        run: |
+          KEY_ID=$(awk -F': ' '/^SignWith:/ {print $2}' repo/conf/distributions | tr -d ' ')
+          if [ -n "$KEY_ID" ] && [ "$KEY_ID" != "YOUR-KEY-ID" ]; then
+            gpg --armor --export "$KEY_ID" > repo/repo.gpg.key
+            echo "Exported public key for $KEY_ID to repo/repo.gpg.key"
+          else
+            echo "::warning::No valid SignWith key, skipping public key export"
+          fi
+
+      # ---------- 第四阶段：构建 VitePress 文档 ----------
+      - name: Build VitePress docs
+        run: |
+          npm ci
+          npm run docs:build
+
+      # ---------- 第五阶段：聚合部署内容 ----------
+      # 文档站放根路径，APT 仓库放 apt/ 子路径，合并到一个目录后推送 gh-pages
+      - name: Assemble Pages content
+        run: |
+          set -e
+          DEPLOY_DIR=$(mktemp -d)
+          echo "DEPLOY_DIR=$DEPLOY_DIR" >> "$GITHUB_ENV"
+          # 文档站
+          cp -r docs/.vitepress/dist/. "$DEPLOY_DIR/"
+          # APT 仓库（conf/ 不发布，客户端不需要）
+          mkdir -p "$DEPLOY_DIR/apt"
+          cp -r repo/dists repo/pool repo/repo.gpg.key "$DEPLOY_DIR/apt/" 2>/dev/null || true
+          echo "=== Deploy tree ==="
+          find "$DEPLOY_DIR" -maxdepth 3 -type f | sort | head -30
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ env.DEPLOY_DIR }}
+          publish_branch: gh-pages
+          force_orphan: true   # 每次发布只保留最新快照，避免 gh-pages 历史膨胀
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'Deploy ${{ github.ref_name }} to GitHub Pages'

@@ -20,13 +20,23 @@ builds:
 nfpms:
   - id: deb
     package_name: go-cipher-cli
-    maintainer: "Your Name <you@example.com>"
+    maintainer: "kulaiyin <kly0214@163.com>"
     description: |
       A Go CLI tool for configuration, logging, interactive prompts, and progress.
-    homepage: https://github.com/your-github-user/your-repo
+    homepage: https://github.com/kulaiyin/go-cipher-cli
     license: MIT
     section: utils
     priority: optional
     formats:
       - deb
+
+# 发布到 GitHub Release：CI 在 push tag 时用 GITHUB_TOKEN 自动创建 Release
+# 并上传 .deb / tar.gz / checksums.txt。
+release:
+  github:
+    owner: kulaiyin
+    name: go-cipher-cli
+  draft: false
+  prerelease: auto
+  name_template: "{{ .Tag }}"
 

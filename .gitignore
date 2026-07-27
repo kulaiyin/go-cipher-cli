@@ -7,6 +7,13 @@
 /repo/pool/
 /repo/*.gpg.key
 
+# VitePress 文档构建产物
+/docs/.vitepress/dist/
+/docs/.vitepress/cache/
+
+# Node 依赖
+/node_modules/
+
 # goreleaser 本地快照
 *.snapshot
 
@@ -20,3 +27,6 @@ coverage.txt
 .vscode/
 *.swp
 .DS_Store
+
+# 开发助手/会话临时文件（不进版本库）
+.zcode/

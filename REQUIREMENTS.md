@@ -47,6 +47,15 @@
    - 推荐使用 `reprepro` 或 `aptly` 生成 APT 仓库元数据
    - 仓库应包含 `dists/`、`pool/`、`Release`、`InRelease` 等结构
    - 客户端通过添加源并执行 `apt update` 后安装
+8. 通过 GitHub Pages 托管发布物
+   - 将 APT 仓库（`dists/`、`pool/`、`Release`、`InRelease`、GPG 公钥）作为静态文件托管在 GitHub Pages
+   - 客户端通过 `https://<owner>.github.io/<repo>/apt` 作为 APT 源地址安装
+9. 文档网站
+   - 使用 `VitePress` 构建中文文档网站，说明如何部署及使用
+   - 文档网站与 APT 仓库共同托管在同一个 GitHub Pages 站点（文档在根路径，APT 仓库在 `/apt` 子路径）
+10. CI/CD 自动化
+   - 使用 GitHub Actions，在推送 `v*` tag 时自动执行：编译 → 生成 `.deb` → 生成 APT 仓库元数据 → GPG 签名 → 构建 VitePress → 部署到 GitHub Pages
+   - GPG 签名私钥通过 GitHub Repository Secret 注入，不进入代码库
 
 ## 当前实现状态
 - 已创建项目基础结构：`main.go`、`cmd/root.go`、`cmd/run.go`、`cmd/version.go`
@@ -54,10 +63,12 @@
 - 已集成 `cobra`、`viper`、`zap`、`survey`、`mpb`
 - 已编写中文 `PACKAGING.md`，说明如何构建 `.deb` 和发布远程 APT 仓库
 - 已添加 `.goreleaser.yml` 用于生成 Debian 包
+- 已初始化 git 仓库并推送至 GitHub，打好 `v0.1.0` tag
+- 已新增 `VitePress` 中文文档站（`docs/` 目录）
+- 已新增 GitHub Actions 工作流（`.github/workflows/release.yml`），push tag 时自动构建 `.deb`、APT 仓库元数据、VitePress 文档，并部署到 GitHub Pages
 
 ## 未来可扩展点
 
 - 支持非交互式命令参数，如 `--action` 和 `--target`
 - 增加更多子命令，例如 `encrypt`/`decrypt`/`config`
-- 添加 GitHub Actions CI/CD 自动构建和发布
 - 增加更完善的配置项和日志输出选项
