@@ -1,0 +1,409 @@
+{
+  "hkdfExpand": [
+    {
+      "name": "simple",
+      "prk": "abcd",
+      "info": "argon2id-salt",
+      "length": 64,
+      "infoBytesHex": "6172676f6e3269642d73616c74",
+      "out": "8e356747723ff2e370793bada74588f422154d1e1425874fe779458cd183771fabf9b1e2cf15c60f6a5fe38922bd8e478e3f1c2a8c0039233696e060b94645ba"
+    },
+    {
+      "name": "final-key",
+      "prk": "deadbeef",
+      "info": "aes-256-gcm-final-key",
+      "length": 32,
+      "infoBytesHex": "6165732d3235362d67636d2d66696e616c2d6b6579",
+      "out": "5bf2632f01aeaaf51f7532d9a2ccc6071a4a317a642dbea3e3b628f249b739dd"
+    },
+    {
+      "name": "iv",
+      "prk": "0123",
+      "info": "aes-gcm-iv",
+      "length": 12,
+      "infoBytesHex": "6165732d67636d2d6976",
+      "out": "c8de3c603470689644471197"
+    }
+  ],
+  "hmacSha3_512": [
+    {
+      "data": "hello",
+      "key": "world",
+      "out": "f5c97e07491d0a9a2a8b00a2771e35e20f164d9b227aa74db65246589d4f21dcd38be4672b29aefc5e3f084ca13c58bfe03e183de8722be2c386dc8b7d9c54bf"
+    },
+    {
+      "data": "salt_text_here",
+      "key": "0123456789abcdef0123456789abcdef",
+      "out": "5f0fa1486b03762906430294efc2567a701f8be176d9c6bcadf1a8a41f481b36f9386dec60d9ab0444a1cb60270d42f0c7b46707d45b1c2652267a9d9a1ab6dd"
+    },
+    {
+      "data": "000102030405060708090a0b",
+      "key": "fedback",
+      "out": "afda4c37f163e7905ee70fa6649eeb3e21b87ba98bbff2062dcd259db31fee528895af4385e2cb5f73a36e1180fe2fd99d0a64301dfa6003405defaebe8c67cc"
+    }
+  ],
+  "argon2id": [
+    {
+      "password": "weakpass",
+      "saltHex": "030a11181f262d343b424950575e656c",
+      "iterations": 3,
+      "memorySize": 32768,
+      "parallelism": 2,
+      "hashLength": 64,
+      "outHex": "1fb31cbe94675c158fc26bcb2e93ad42658351404e663446d0275e99c7be372c6b1b9a5dabc5eabb5b087fe143be7ce120a3a9560b00b8faad0222cbf07997f8"
+    },
+    {
+      "password": "P@ssw0rd!",
+      "saltHex": "030a11181f262d343b424950575e656c",
+      "iterations": 3,
+      "memorySize": 32768,
+      "parallelism": 2,
+      "hashLength": 64,
+      "outHex": "b33fc9389a61166ec2c7704d04c94fcc6d14b1bad2c5371520fc104aa47c012e298044c52064c653c906dc98befd9445a788131341f3487b837fa5779ecfea97"
+    },
+    {
+      "password": "a",
+      "saltHex": "030a11181f262d343b424950575e656c",
+      "iterations": 3,
+      "memorySize": 32768,
+      "parallelism": 2,
+      "hashLength": 64,
+      "outHex": "f0d478177d27fd2d40f50ebb9f8737296752abec9cae68fa2017e275756025b7f465df6153dc35cd65750778d7d7ac008c5fd343d45e43b83cdbe7b2ef1eaec6"
+    }
+  ],
+  "argon2id64mb": {
+    "password": "030a11181f262d343b424950575e656c",
+    "saltHex": "030a11181f262d343b424950575e656c",
+    "iterations": 3,
+    "memorySize": 65536,
+    "parallelism": 4,
+    "hashLength": 8,
+    "outHex": "4e13e281b6cb284b"
+  },
+  "generateAesGcmKey": {
+    "salt": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
+    "passwords": [
+      "weakpass",
+      "Str0ng!Pass#2"
+    ],
+    "salt_text": "d294f72ca0fc81736847693f45057b5749da07ef1714ca617ad5736caa386fc1:ee76f6e173d84fe789a43a1042d535a423f2c06eaf971f4b1b3556ceea202aac",
+    "salt_prk": "1175a606c40a632f5c518b2443197d2a92e31228b9f6c9896e60bb364fef140aafedd0386f3feb4e3eb585d91cfc619ac5582c31ed9b493e8acf62a7cb20679d",
+    "s1": "b3783335acaf9931f244e23094fca60cba26b6033692b602c1d9d15a84d5bcc5b3113498ff745f2f11dc647be14210a6ec0586155d078d4b376bc2660112bbcb",
+    "s2": "bf93dee66fabc083ea051f97365ba9adaf95e0ab6eff1dd129d5ce2c910e314475cab4a47650cc45696d5255d59394e5ccac4e6f3e8060d963941c04290b8ce4",
+    "s3": "400625de684d95339d401be021e86c24123083f2c49de15621d4083b0ca61728aaa21d7370a978911d47708d27ea38ed5115476ece1af141b245e7a89d275bd0",
+    "sdata": "68f5e8dfa8e69157c4d6d968bead6265ea297e14979e5284894480100e740beca46f861d040bc6df5e52bb5170990769ded38889edf4c167d3f9d624030a7099",
+    "processedPasswords": [
+      "77d77dd7dd78f1f7dbdfbe7def7dbddf5f5de76d9ff37eb6e9d75fdfadf46fa79def5f1bdbad1dddcf75f7a7f5ebbdb8db9d1cf1c77ae9f69b75be7b71aedc77ce1e7bd7bcddbd9d6bdf7a71d75eef5f7ae76f756dc6dfeb7ebbef47bb77cdbc",
+      "e74e9f7f4f1bf3bf3bedd6bb6f4f7de9fe7def877be786bd71be9ef79d9af1ce7c6dcd3bd3d75f7de7b8d776b67f869e7fa7f5db9eb8ebdedcf78e79ef5dde75c7bdeda79cdfcf5def76fd73d69a7daeb4f77efae7adf5d3cd3bf776b977877c"
+    ],
+    "argon2RawHex": [
+      "d9d919148ffb37597329319d522f83626ddf3630b6ed718b260d3c9196f16724250c8cd66fabdb57ca7cd84ee9e83b2da996cdde71965291bcbf636770e7d828",
+      "506ff08b87877da7b0996f5974d754a9cb6e952a8c58bc0709dffee413a2f4aef6f12564697c9455713edce97aec389d73b9c9aafa6093765631080793a5d4d8"
+    ],
+    "usr_strong_key": "77d77dd7dd78f1f7dbdfbe7def7dbddf5f5de76d9ff37eb6e9d75fdfadf46fa79def5f1bdbad1dddcf75f7a7f5ebbdb8db9d1cf1c77ae9f69b75be7b71aedc77ce1e7bd7bcddbd9d6bdf7a71d75eef5f7ae76f756dc6dfeb7ebbef47bb77cdbc:e74e9f7f4f1bf3bf3bedd6bb6f4f7de9fe7def877be786bd71be9ef79d9af1ce7c6dcd3bd3d75f7de7b8d776b67f869e7fa7f5db9eb8ebdedcf78e79ef5dde75c7bdeda79cdfcf5def76fd73d69a7daeb4f77efae7adf5d3cd3bf776b977877c",
+    "prk_dek": "62712591c9087a6c5ad6c491865cadcf0a3bc4596541afd88745d15582168ec06d08f25ee7b532146e64fbb672cff927c8af600568dfb8d3266b4052d51e355e",
+    "aes_dek": "308d923e270b4f686ab39db7e14fccb3db4dcc8b5fb5366b39769efaba6774b4"
+  },
+  "gcmEncryptFixedIV": {
+    "iv": "000102030405060708090a0b",
+    "plaintext": "The quick brown fox jumps over the lazy dog",
+    "plaintextHex": "54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67",
+    "aes_dek_hex": "308d923e270b4f686ab39db7e14fccb3db4dcc8b5fb5366b39769efaba6774b4",
+    "sdata_hex": "68f5e8dfa8e69157c4d6d968bead6265ea297e14979e5284894480100e740beca46f861d040bc6df5e52bb5170990769ded38889edf4c167d3f9d624030a7099",
+    "iv_used": "f47bfa4f7d142e48f3b340ce",
+    "data_prk": "36e2294ad5c379a4b25d8854c5187af9000cfcaee1b2b192e765ae547118fd6f288f998b027c6c6c90d51a328d5eaa528a256fced42929cc52d8e5a9fa29edca",
+    "result": "000102030405060708090a0b4d38a7ed4d42739ae2bdcad2924c88a569864f89b9d8425dd3bf675cdf15f4cbf7324e730a4d4fe6a8db8c3e352a73807da2dfb27b4e03650e0138"
+  },
+  "fusePasswords": {
+    "basic": [
+      {
+        "salt": "a76fdc37b135f1c3",
+        "passwords": [
+          "123456789",
+          "shanghai",
+          "@"
+        ],
+        "out": "a4s373h6a9^6ca2f1i5n8d1gfc7h@1b3573"
+      },
+      {
+        "salt": "cb1045ee07414e4e",
+        "passwords": [
+          "123456789",
+          "shanghai",
+          "@"
+        ],
+        "out": "0b5@ee73841asghhe4c1912074.564ie4an"
+      },
+      {
+        "salt": "b5f6044f2129c682",
+        "passwords": [
+          "123456789",
+          "shanghai",
+          "@"
+        ],
+        "out": "b4s253h6a9f&8a266i5n801gc47h@12\"29f4"
+      },
+      {
+        "salt": "857c1eea3013d365",
+        "passwords": [
+          "123456789",
+          "shanghai",
+          "@"
+        ],
+        "out": "9{8152773c84a3ahase(6#e510in1g3h53d6@"
+      },
+      {
+        "salt": "e98310c3be31e633",
+        "passwords": [
+          "123456789",
+          "shanghai",
+          "@"
+        ],
+        "out": "e4s393h6a983a236i5(n811ge07h@eb313c"
+      },
+      {
+        "salt": "d4520ed6e31706f0",
+        "passwords": [
+          "123456789",
+          "shanghai",
+          "@"
+        ],
+        "out": "24e@d673817asghh&00d5912e34560i6fan"
+      }
+    ],
+    "chinese": [
+      {
+        "salt": "a76fdc37b135f1c3",
+        "passwords": [
+          "123456789",
+          "shanghai上海",
+          "@"
+        ],
+        "out": "上4a3s376h9海ca261a5^f8i1nfd7g@cbh51337"
+      },
+      {
+        "salt": "cb1045ee07414e4e",
+        "passwords": [
+          "123456789",
+          "shanghai上海",
+          "@"
+        ],
+        "out": "0.b5@ee73841海4ie4he4c191207456asgh上an"
+      },
+      {
+        "salt": "b5f6044f2129c682",
+        "passwords": [
+          "123456789",
+          "shanghai上海",
+          "@"
+        ],
+        "out": "上4b2s356h9海8a\"2f6a568i1nc07g&@42h9142f"
+      },
+      {
+        "salt": "857c1eea3013d365",
+        "passwords": [
+          "123456789",
+          "shanghai上海",
+          "@"
+        ],
+        "out": "98#152773c841a3a海h{ase上6e50in1g3h5(3d6@"
+      },
+      {
+        "salt": "e98310c3be31e633",
+        "passwords": [
+          "123456789",
+          "shanghai上海",
+          "@"
+        ],
+        "out": "上4e3s396h9海3a286a538i1ne17g@0bh1(ec33"
+      },
+      {
+        "salt": "d4520ed6e31706f0",
+        "passwords": [
+          "123456789",
+          "shanghai上海",
+          "@"
+        ],
+        "out": "24e@d673817海0i6fh00d5912e3456a&sgh上an"
+      }
+    ]
+  },
+  "normalizePassword": [
+    {
+      "in": "  test password  ",
+      "out": "testpassword"
+    },
+    {
+      "in": "café",
+      "out": "café"
+    },
+    {
+      "in": "café",
+      "out": "café"
+    },
+    {
+      "in": "",
+      "out": ""
+    },
+    {
+      "in": "   ",
+      "out": ""
+    }
+  ],
+  "sha256": [
+    {
+      "in": "hello",
+      "out": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+    },
+    {
+      "in": "",
+      "out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "in": "weakpass",
+      "out": "ee76f6e173d84fe789a43a1042d535a423f2c06eaf971f4b1b3556ceea202aac"
+    },
+    {
+      "in": "Str0ng!Pass#2",
+      "out": "d294f72ca0fc81736847693f45057b5749da07ef1714ca617ad5736caa386fc1"
+    }
+  ],
+  "validatePasswordStrength": [
+    {
+      "in": "",
+      "score": 0,
+      "feedback": [
+        "密码长度至少需要8个字符",
+        "建议包含小写字母",
+        "建议包含大写字母",
+        "建议包含数字",
+        "建议包含特殊字符"
+      ]
+    },
+    {
+      "in": "abc",
+      "score": 1,
+      "feedback": [
+        "密码长度至少需要8个字符",
+        "建议包含大写字母",
+        "建议包含数字",
+        "建议包含特殊字符"
+      ]
+    },
+    {
+      "in": "abcdefgh",
+      "score": 2,
+      "feedback": [
+        "密码长度建议至少12个字符",
+        "建议包含大写字母",
+        "建议包含数字",
+        "建议包含特殊字符"
+      ]
+    },
+    {
+      "in": "Abcd1234!",
+      "score": 5,
+      "feedback": [
+        "密码长度建议至少12个字符"
+      ]
+    },
+    {
+      "in": "Str0ng!Pass#2024xyz",
+      "score": 6,
+      "feedback": []
+    },
+    {
+      "in": "password",
+      "score": 0,
+      "feedback": [
+        "密码长度建议至少12个字符",
+        "建议包含大写字母",
+        "建议包含数字",
+        "建议包含特殊字符",
+        "避免使用常见密码"
+      ]
+    },
+    {
+      "in": "123456",
+      "score": 0,
+      "feedback": [
+        "密码长度至少需要8个字符",
+        "建议包含小写字母",
+        "建议包含大写字母",
+        "建议包含特殊字符",
+        "避免使用常见密码"
+      ]
+    }
+  ],
+  "validateHintAndKeysUuidMatch": [
+    {
+      "encrypted": "密钥UUID: ab12cd34ef",
+      "meta": "密钥UUID: ab12cd34ef",
+      "out": true
+    },
+    {
+      "encrypted": "密钥UUID: ab12cd34ef",
+      "meta": "密钥UUID: 0000000000",
+      "out": false
+    },
+    {
+      "encrypted": "no uuid here",
+      "meta": "密钥UUID: ab12cd34ef",
+      "out": true
+    },
+    {
+      "encrypted": "密钥UUID: ab12cd34ef",
+      "meta": "no uuid here",
+      "out": false
+    },
+    {
+      "encrypted": "密钥UUID: ABCD1234EF",
+      "meta": "密钥UUID: abcd1234ef",
+      "out": false
+    },
+    {
+      "encrypted": "前缀 密钥UUID: 1a2b****ffff 后缀",
+      "meta": "密钥UUID: 1a2b****ffff",
+      "out": true
+    }
+  ],
+  "validateKeyRecovery": [
+    {
+      "key": "abcdef1234567890...WVWXYZ12345678",
+      "uuids": [
+        "abcdef12WVWXYZ12",
+        "nope1234567890ab"
+      ],
+      "out": false
+    },
+    {
+      "key": "abcdef1234567890...WVWXYZ12345678",
+      "uuids": [
+        "abcdef1212345678",
+        "zzz"
+      ],
+      "out": true
+    },
+    {
+      "key": "abcdef1234567890...WVWXYZ12345678",
+      "uuids": [
+        "zzzzzzzzzzzzzzzz"
+      ],
+      "out": false
+    },
+    {
+      "key": "12345678abcdefgh",
+      "uuids": [
+        "12345678abcdefgh"
+      ],
+      "out": true
+    },
+    {
+      "key": "shortkey",
+      "uuids": [
+        "shortkeyshortkey"
+      ],
+      "out": true
+    }
+  ]
+}
