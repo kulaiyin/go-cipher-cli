@@ -103,11 +103,21 @@ popd >/dev/null
 echo "已生成 $DIST_DIR/Release"
 
 # 3. 签名（生成 Release.gpg 与 InRelease）
-if [ -n "$GPG_KEY" ]; then
+#    选 key 的优先级：
+#      ① 环境变量 GPG_KEY
+#      ② repo/conf/distributions 中的 SignWith 行
+#      ③ gpg 默认 key
+#    这样无论 gpg 默认 key 是哪个，都会用配置里声明的 key 签名，
+#    保证 distributions 声明、实际签名、repo.gpg.key 三者一致。
+if [ -z "$GPG_KEY" ]; then
+  GPG_KEY=$(awk -F': ' '/^SignWith:/ {print $2; exit}' "$REPO_DIR/conf/distributions" | tr -d ' ')
+fi
+
+if [ -n "$GPG_KEY" ] && [ "$GPG_KEY" != "YOUR-KEY-ID" ]; then
   gpg --default-key "$GPG_KEY" --batch --yes -abs -o "$DIST_DIR/Release.gpg" "$DIST_DIR/Release"
   gpg --default-key "$GPG_KEY" --batch --yes --clearsign -o "$DIST_DIR/InRelease" "$DIST_DIR/Release"
   echo "已使用 GPG Key $GPG_KEY 生成 Release.gpg 与 InRelease"
-elif gpg --list-keys >/dev/null 2>&1 && [ -n "$(gpg --list-keys --with-colons | grep '^pub')" ]; then
+elif gpg --list-keys >/dev/null 2>&1 && [ -n "$(gpg --list-keys --with-colons | awk -F: '/^pub/{print $5}' | head -1)" ]; then
   gpg --batch --yes -abs -o "$DIST_DIR/Release.gpg" "$DIST_DIR/Release"
   gpg --batch --yes --clearsign -o "$DIST_DIR/InRelease" "$DIST_DIR/Release"
   echo "已使用默认 GPG Key 生成 Release.gpg 与 InRelease"
