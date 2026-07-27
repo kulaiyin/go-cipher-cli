@@ -1,6 +1,11 @@
 version: 2
 project_name: go-cipher-cli
 
+# snapshot 模式下使用真实版本号（从 git tag 提取，如 v0.1.0 -> 0.1.0），
+# 而非默认的 0.0.0-SNAPSHOT-<commit>。
+snapshot:
+  version_template: "{{ .Version }}"
+
 builds:
   - id: go-cipher-cli
     main: ./main.go
