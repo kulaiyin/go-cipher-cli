@@ -109,7 +109,7 @@ else
   gzip -kf "$DIST_REL/$COMPONENT/binary-$ARCH/Packages"
 
   # 2. 生成 Release 文件（仅扫描 dists/<suite> 下的内容）。
-  #    必须先清理旧的 Release/InRelease，并且把输出写到临时文件再移动到位
+  #    必须先清理旧的 Release/InRelease，并把输出写到临时文件再移动到位
   #    ——否则 shell 重定向会先创建空的 Release 文件，apt-ftparchive 扫描
   #    目录时就会把它计入自身校验和（自引用）。
   rm -f "$DIST_REL/Release" "$DIST_REL/Release.gpg" "$DIST_REL/InRelease"
@@ -142,8 +142,8 @@ if [ -z "$GPG_KEY" ]; then
   GPG_KEY=$(awk -F': ' '/^SignWith:/ {print $2; exit}' "$REPO_DIR/conf/distributions" | tr -d ' ')
 fi
 
+# pinentry-mode loopback 兼容 CI 等无 TTY 环境（密钥无密码时无影响）
 if [ -n "$GPG_KEY" ] && [ "$GPG_KEY" != "YOUR-KEY-ID" ]; then
-  # 提供无 TTY 的密码管道（密钥若无密码则无影响）
   gpg --default-key "$GPG_KEY" --batch --yes --pinentry-mode loopback \
     -abs -o "$DIST_DIR/Release.gpg" "$DIST_DIR/Release"
   gpg --default-key "$GPG_KEY" --batch --yes --pinentry-mode loopback \

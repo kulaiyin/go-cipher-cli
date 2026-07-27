@@ -1,47 +1,29 @@
 # go-cipher-cli
 
-一个基于 Go 的 CLI 演示项目，演示如何集成配置管理、结构化日志、交互式提示和进度条，并支持打包为 Debian 安装包（`.deb`）发布到自托管 APT 仓库。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/kulaiyin/go-cipher-cli)](https://github.com/kulaiyin/go-cipher-cli/releases)
+
+一个基于 Go 的 CLI 演示项目，演示如何集成配置管理、结构化日志、交互式提示和进度条，并通过 GitHub Pages 托管的 APT 仓库分发。
+
+📖 **完整文档**：https://kulaiyin.github.io/go-cipher-cli/
 
 ## 功能特性
 
 - **命令框架**：[Cobra](https://github.com/spf13/cobra)
-- **配置管理**：[Viper](https://github.com/spf13/viper) — 支持配置文件（YAML/JSON/TOML）、环境变量、默认值、`--config` 指定路径
-- **日志**：[Zap](https://go.uber.org/zap) — 支持 `debug` / `info` / `warn` / `error` 级别
-- **交互提示**：[Survey](https://github.com/AlecAivazis/survey/v2) — 选择操作类型、输入目标名称
+- **配置管理**：[Viper](https://github.com/spf13/viper) — 配置文件 / 环境变量 / 默认值 / `--config`
+- **日志**：[Zap](https://go.uber.org/zap) — `debug` / `info` / `warn` / `error`
+- **交互提示**：[Survey](https://github.com/AlecAivazis/survey/v2) — 操作类型选择、目标输入
 - **进度条**：[MPB](https://github.com/vbauerster/mpb/v8)
-
-## 命令
-
-```bash
-go-cipher-cli              # 显示帮助
-go-cipher-cli version      # 输出版本号
-go-cipher-cli run          # 执行交互式演示任务（提示 + 进度条）
-go-cipher-cli --help       # 查看帮助
-```
-
-全局参数：
-
-```bash
---config <path>            # 指定配置文件
---log-level <level>        # debug | info | warn | error（默认 info）
-```
+- **分发**：goreleaser 打包 `.deb` → GitHub Actions 自动发布到 GitHub Pages APT 仓库
 
 ## 快速开始
 
-### 从源码构建
-
-```bash
-go build -o go-cipher-cli ./main.go
-```
-
 ### 通过 APT 安装（Debian/Ubuntu）
 
-详见 [安装文档](https://kulaiyin.github.io/go-cipher-cli/guide/installation) 或 [PACKAGING.md](PACKAGING.md)。
-
 ```bash
-# 1. 导入仓库 GPG 公钥
-curl -fsSL https://kulaiyin.github.io/go-cipher-cli/apt/repo.gpg.key | sudo gpg --dearmor \
-  -o /usr/share/keyrings/go-cipher-cli.gpg
+# 1. 导入 GPG 公钥
+curl -fsSL https://kulaiyin.github.io/go-cipher-cli/apt/repo.gpg.key \
+  | sudo gpg --dearmor -o /usr/share/keyrings/go-cipher-cli.gpg
 
 # 2. 添加源
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/go-cipher-cli.gpg] https://kulaiyin.github.io/go-cipher-cli/apt stable main" \
@@ -50,37 +32,51 @@ echo "deb [arch=amd64 signed-by=/usr/share/keyrings/go-cipher-cli.gpg] https://k
 # 3. 安装
 sudo apt update
 sudo apt install go-cipher-cli
+go-cipher-cli version   # 输出 v0.1.0
 ```
 
-## 打包与发布
+> 遇到网络问题（`Could not handshake`）？参见[安装文档 - 网络问题应对](https://kulaiyin.github.io/go-cipher-cli/guide/installation#网络问题应对)。
 
-打包与发布分两步完成：
+### 从源码构建
 
 ```bash
-# 第一步：生成 .deb（使用 goreleaser，失败回退到 dpkg-deb）
-bash scripts/package.sh
-
-# 第二步：发布到 APT 仓库并生成元数据（dists/ pool/ Release InRelease）
-bash scripts/publish_repo.sh
+git clone https://github.com/kulaiyin/go-cipher-cli.git
+cd go-cipher-cli
+go build -o go-cipher-cli ./main.go
 ```
 
-详细的打包、签名、APT 仓库发布说明见 [PACKAGING.md](PACKAGING.md)。
+## 命令
+
+```bash
+go-cipher-cli              # 显示帮助
+go-cipher-cli version      # 输出版本号
+go-cipher-cli run          # 交互式演示任务（提示 + 进度条）
+go-cipher-cli --help       # 查看帮助
+```
+
+## 文档
+
+| 主题 | 链接 |
+| --- | --- |
+| 安装 | https://kulaiyin.github.io/go-cipher-cli/guide/installation |
+| 使用 | https://kulaiyin.github.io/go-cipher-cli/guide/usage |
+| 打包与发布 | https://kulaiyin.github.io/go-cipher-cli/guide/packaging |
+| APT 仓库 | https://kulaiyin.github.io/go-cipher-cli/guide/apt-repo |
+| CI/CD | https://kulaiyin.github.io/go-cipher-cli/guide/ci-cd |
 
 ## 项目结构
 
 ```
-.
 ├── main.go                 # 程序入口
-├── cmd/                    # CLI 命令（root / run / version）
-├── .goreleaser.yml         # goreleaser 配置（生成 .deb）
-├── scripts/
-│   ├── package.sh          # 打包脚本
-│   └── publish_repo.sh     # APT 仓库发布脚本
-├── repo/conf/              # APT 仓库配置（reprepro distributions）
-├── PACKAGING.md            # 打包与发布指南
-└── REQUIREMENTS.md         # 项目需求说明
+├── cmd/                    # CLI 命令
+├── docs/                   # VitePress 文档站源码
+├── scripts/                # 打包与发布脚本
+├── repo/conf/              # APT 仓库配置
+├── .github/workflows/      # GitHub Actions 工作流
+├── .goreleaser.yml         # goreleaser 配置
+└── go.mod                  # Go 模块定义
 ```
 
 ## License
 
-MIT
+[MIT](LICENSE)

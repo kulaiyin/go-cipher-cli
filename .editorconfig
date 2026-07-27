@@ -1,0 +1,35 @@
+# EditorConfig: https://editorconfig.org
+# 统一各类文件的缩进、换行符、文件末尾换行，方便多人协作。
+# 大多数编辑器（VSCode、GoLand、Vim 等）原生或通过插件支持。
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Go：官方 gofmt 规范，Tab 缩进
+[*.go]
+indent_style = tab
+indent_size = 4
+
+# Shell 脚本：2 空格缩进
+[*.sh]
+indent_size = 2
+
+# YAML / TS / JS：2 空格缩进（VitePress / goreleaser / GitHub Actions 配置）
+[*.{yml,yaml,ts,js,json}]
+indent_size = 2
+
+# Markdown：保留行尾空格（Markdown 用两个空格表示换行）
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# Makefile 必须用 Tab
+[Makefile]
+indent_style = tab
