@@ -1,0 +1,8 @@
+Origin: go-cipher-cli
+Label: go-cipher-cli
+Suite: stable
+Codename: stable
+Architectures: amd64
+Components: main
+Description: go-cipher-cli APT repository
+SignWith: 9E38A2B39666B218

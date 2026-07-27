@@ -1,0 +1,27 @@
+version: 2
+project_name: go-cipher-cli
+
+builds:
+  - id: go-cipher-cli
+    main: ./main.go
+    binary: go-cipher-cli
+    goos:
+      - linux
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=0
+
+nfpms:
+  - id: deb
+    package_name: go-cipher-cli
+    maintainer: "Your Name <you@example.com>"
+    description: |
+      A Go CLI tool for configuration, logging, interactive prompts, and progress.
+    homepage: https://github.com/your-github-user/your-repo
+    license: MIT
+    section: utils
+    priority: optional
+    formats:
+      - deb
+
