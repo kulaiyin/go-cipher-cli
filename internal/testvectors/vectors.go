@@ -1,6 +1,5 @@
-// Package testvectors loads golden vectors captured from the reference frontend
-// implementation (libs/common-tools). These vectors are the source of truth for
-// byte-for-byte compatibility; tests under other internal packages consume them.
+// Package testvectors loads the golden test vectors used to verify the crypto
+// implementation. Tests under other internal packages consume them.
 package testvectors
 
 import (
@@ -12,8 +11,7 @@ import (
 //go:embed vectors.json
 var vectorsJSON []byte
 
-// Vectors is the parsed golden-vector set. See scripts/gen-vectors.mjs in the
-// frontend project for how each field is produced.
+// Vectors is the parsed golden-vector set.
 type Vectors struct {
 	HKDFExpand []struct {
 		Name         string `json:"name"`

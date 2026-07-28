@@ -4,8 +4,7 @@ import (
 	"testing"
 )
 
-// TDD: crypto package mirrors the facade in crypto/index.ts (CryptoTools/HmacTools).
-// Hash golden values are taken verbatim from libs/common-tools/tests/crypto.test.ts.
+// Tests for the crypto package.
 
 func TestHashText_KnownVectors(t *testing.T) {
 	cases := []struct {

@@ -1,12 +1,11 @@
-// Package aesgcm mirrors crypto/aes-gcm.ts: the AES-256-GCM key-derivation and
-// encryption core.
+// Package aesgcm implements the AES-256-GCM key-derivation and encryption core.
 //
 // Key derivation pipeline (GenerateAesGcmKey):
 //  1. salt_text   = SHA256(pw) for each pw, sorted, joined by ":"
 //  2. salt_prk    = HMAC-SHA3-512(key=salt, msg=salt_text)   (hex string)
 //  3. s1..sdata   = HKDF(salt_prk, info=<label>, L=64)        (4 sub-keys)
 //  4. each weak pw -> argon2id(pw, salt=s1, t=3,m=32768,p=2,dkLen=64) -> hex
-//     then base64Decode(hashHex) (a reference quirk) -> hex again
+//     then base64Decode(hashHex) -> hex again
 //  5. usr_strong  = processedPws.sort().join(":")
 //  6. prk_dek     = HMAC-SHA3-512(key=s3, msg=usr_strong)     (hex string)
 //  7. aes_dek     = HKDF(prk_dek, info="aes-256-gcm-final-key", L=32)
@@ -35,7 +34,7 @@ import (
 	"go-cipher-cli/internal/safety"
 )
 
-// labels for HKDF info fields (mirror the literal strings in aes-gcm.ts).
+// labels for HKDF info fields.
 var (
 	infoArgon2Salt     = []byte("argon2id-salt")
 	infoHkdfSafetyKey  = []byte("hkdf-safety-key")
@@ -49,7 +48,7 @@ var (
 var reStrongPasswordHex = regexp.MustCompile(`^[0-9a-fA-F]{128}$`)
 
 // GenerateAesGcmKey derives the AES-256 DEK and the data salt (sdata) from a
-// salt_seed hex string and a password list. Mirrors generate_aes_gcm_key.
+// salt_seed hex string and a password list.
 func GenerateAesGcmKey(salt string, passwords []string) (key, saltOut []byte, err error) {
 	valid := getValidPasswords(passwords)
 	saltText := passwordsToSaltText(valid)
@@ -101,13 +100,13 @@ func DecryptWithPassword(enc []byte, salt string, passwords []string) ([]byte, e
 	return dec, nil
 }
 
-// GcmEncrypt mirrors gcmEncryptData with a random 12-byte IV.
+// GcmEncrypt encrypts data with a random 12-byte IV.
 func GcmEncrypt(data, key, salt []byte) ([]byte, error) {
 	iv := safety.GenerateRandomBytes(12)
 	return gcmEncryptWithIV(data, key, salt, iv)
 }
 
-// gcmEncryptWithIV mirrors gcmEncryptData with a caller-supplied IV (used for
+// gcmEncryptWithIV encrypts data with a caller-supplied IV (used for
 // deterministic tests).
 func gcmEncryptWithIV(data, key, salt, iv []byte) ([]byte, error) {
 	dataPrk := safety.HMACSHA3512(iv, salt)
@@ -128,7 +127,7 @@ func gcmEncryptWithIV(data, key, salt, iv []byte) ([]byte, error) {
 	return out, nil
 }
 
-// GcmDecrypt mirrors gcmDecryptData.
+// GcmDecrypt decrypts enc (12-byte IV prefix) with AES-256-GCM.
 func GcmDecrypt(enc, key, salt []byte) ([]byte, error) {
 	if len(enc) < 12 {
 		return nil, fmt.Errorf("aesgcm: ciphertext too short")
@@ -153,7 +152,7 @@ func GcmDecrypt(enc, key, salt []byte) ([]byte, error) {
 	return pt, nil
 }
 
-// getValidPasswords mirrors AesGcmTools.getValidPasswords: drop empty-after-trim entries.
+// getValidPasswords drops empty-after-trim entries.
 func getValidPasswords(passwords []string) []string {
 	out := make([]string, 0, len(passwords))
 	for _, p := range passwords {
@@ -164,7 +163,7 @@ func getValidPasswords(passwords []string) []string {
 	return out
 }
 
-// passwordsToSaltText mirrors AesGcmTools.passwordsToSaltText.
+// passwordsToSaltText builds the salt text: SHA256 of each pw, sorted and joined by ":".
 func passwordsToSaltText(passwords []string) string {
 	hashed := make([]string, len(passwords))
 	for i, p := range passwords {
@@ -174,8 +173,8 @@ func passwordsToSaltText(passwords []string) string {
 	return strings.Join(hashed, ":")
 }
 
-// processPasswords mirrors AesGcmTools.processPasswords: weak passwords are
-// strengthened via argon2id; strong (128-hex) passwords pass through lowercased.
+// processPasswords strengthens weak passwords via argon2id; strong (128-hex)
+// passwords pass through lowercased.
 func processPasswords(passwords []string, s1 []byte) ([]string, error) {
 	out := make([]string, 0, len(passwords))
 	for _, p := range passwords {
@@ -191,13 +190,10 @@ func processPasswords(passwords []string, s1 []byte) ([]string, error) {
 			if !res.Success {
 				return nil, fmt.Errorf("aesgcm: strengthen: %s", res.Error)
 			}
-			// Reproduce the reference deriveStrongPassword quirk: decode the argon2 hex
-			// digest as if it were base64 (mirrors SafetyUtility.base64ToBytes(hashHex)),
-			// then hex-encode the result.
+			// Decode the argon2 hex digest as if it were base64, then hex-encode the result.
 			quirked, err := base64.StdEncoding.DecodeString(res.Data)
 			if err != nil {
-				// Fall back to the raw bytes of the hex string (matches atob's tolerant
-				// behaviour for inputs it cannot fully decode).
+				// Fall back to the raw bytes of the hex string if base64 decoding fails.
 				quirked = []byte(res.Data)
 			}
 			out = append(out, hex.EncodeToString(quirked))
@@ -208,7 +204,7 @@ func processPasswords(passwords []string, s1 []byte) ([]string, error) {
 	return out, nil
 }
 
-// checkPasswordStrength mirrors AesGcmTools.checkPasswordStrength (0..10).
+// checkPasswordStrength scores password strength on a 0..10 scale.
 func checkPasswordStrength(password string) int {
 	score := 0
 	if len(password) >= 8 {

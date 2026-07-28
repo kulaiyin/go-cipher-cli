@@ -6,8 +6,7 @@ import (
 	"go-cipher-cli/internal/testvectors"
 )
 
-// TDD: fusion package mirrors password/fusion.ts.
-// Tests first (Red), implementation in fusion.go (Green).
+// Tests for the fusion package.
 
 func TestNormalizePassword(t *testing.T) {
 	v := testvectors.MustLoad()
@@ -24,8 +23,8 @@ func TestNormalizePassword(t *testing.T) {
 }
 
 func TestSafetyMergeStrings(t *testing.T) {
-	// safety_merge_strings is the building block of fusePasswords.
-	// A couple of direct cases pin down its behaviour independently of fusePasswords.
+	// safetyMergeStrings is the building block of FusePasswords.
+	// A couple of direct cases pin down its behaviour independently of FusePasswords.
 	cases := []struct {
 		a, b, want string
 	}{

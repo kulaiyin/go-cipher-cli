@@ -37,8 +37,7 @@ func TestMain(m *testing.M) {
 
 // End-to-end test of the encrypt/decrypt CLI commands against real files,
 // exercising the full pipeline (argon2id -> HMAC-SHA3-512 -> HKDF -> AES-256-GCM
-// -> binary container). Mirrors what a user would do and what the web tool
-// interop requires.
+// -> binary container).
 
 func runCLI(t *testing.T, args ...string) (stdout string, exitCode int) {
 	t.Helper()

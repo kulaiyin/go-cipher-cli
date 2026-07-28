@@ -28,7 +28,6 @@ func errMsg(err error, def string) string {
 }
 
 // hkdfWithSalt runs a full HKDF-SHA3-512 (Extract+Expand) with the given salt.
-// Mirrors SafetyUtility.hkdf (which always uses @noble/hashes full hkdf).
 func hkdfWithSalt(ikm, salt, info []byte, length int) []byte {
 	r := hkdf.New(sha3.New512, ikm, salt, info)
 	out := make([]byte, length)

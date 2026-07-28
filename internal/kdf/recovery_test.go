@@ -6,8 +6,8 @@ import (
 	"go-cipher-cli/internal/testvectors"
 )
 
-// TDD: ValidateKeyRecovery mirrors key-recovery.ts:validateKeyRecovery.
-// processedKey = key[0:8] + key[len-8:]; returns whether processedKey is in uuids.
+// Tests for ValidateKeyRecovery: processedKey = key[0:8] + key[len-8:];
+// returns whether processedKey is in uuids.
 
 func TestValidateKeyRecovery_GoldenVectors(t *testing.T) {
 	v := testvectors.MustLoad()

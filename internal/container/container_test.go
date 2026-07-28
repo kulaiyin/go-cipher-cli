@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TDD: container package mirrors packages/web/src/utils/data-encryption.ts.
+// Tests for the container package.
 // Layout (little-endian): version(4) | reserved(4) | salt_seed(64 bytes) | length(4) | ciphertext.
 
 func TestAssembleExtract_RoundTrip(t *testing.T) {

@@ -6,9 +6,8 @@ import (
 	"go-cipher-cli/internal/testvectors"
 )
 
-// TDD: ValidateHintAndKeysUuidMatch mirrors data-encryption.ts:validateHintAndKeysUuidMatch.
-// Regex /KEYUUID: ([a-f0-9*]+)/i; encrypted without uuid -> true; meta without uuid -> false;
-// else compare captures (case-sensitive).
+// Tests for ValidateHintAndKeysUuidMatch: encrypted without uuid -> true; meta without
+// uuid -> false; else compare captures (case-sensitive).
 
 func TestValidateHintAndKeysUuidMatch_GoldenVectors(t *testing.T) {
 	v := testvectors.MustLoad()

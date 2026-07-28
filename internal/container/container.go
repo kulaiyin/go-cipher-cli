@@ -1,6 +1,5 @@
-// Package container mirrors packages/web/src/utils/data-encryption.ts: the binary
-// container that wraps an AES-GCM ciphertext together with the salt_seed needed
-// to re-derive the key.
+// Package container implements the binary container that wraps an AES-GCM
+// ciphertext together with the salt_seed needed to re-derive the key.
 //
 // Layout (little-endian):
 //
@@ -19,15 +18,15 @@ import (
 	"regexp"
 )
 
-// uuidHintRe mirrors the JS regex /KEYUUID: ([a-f0-9*]+)/i. The (?i) flag makes both the
-// literal prefix and the [a-f] range case-insensitive (so [A-F] also matches), matching the
-// reference's /i behaviour. The capture keeps the original case for a case-sensitive compare.
+// uuidHintRe matches the KEYUUID marker, case-insensitive, capturing the hex/asterisk
+// body for a case-sensitive compare.
 var uuidHintRe = regexp.MustCompile(`(?i)KEYUUID: ([a-f0-9*]+)`)
 
-// ValidateHintAndKeysUuidMatch mirrors data-encryption.ts:validateHintAndKeysUuidMatch.
+// ValidateHintAndKeysUuidMatch returns whether the encrypted hint and meta hint
+// reference the same key UUID.
 //   - if encryptedHint has no UUID match -> true
 //   - else if metaHint has no UUID match -> false
-//   - else return whether the two captured UUIDs are byte-for-byte equal (case-sensitive)
+//   - else return whether the two captured UUIDs are equal (case-sensitive)
 func ValidateHintAndKeysUuidMatch(encryptedHint, metaHint string) bool {
 	encMatch := uuidHintRe.FindStringSubmatch(encryptedHint)
 	if encMatch == nil {
@@ -40,7 +39,7 @@ func ValidateHintAndKeysUuidMatch(encryptedHint, metaHint string) bool {
 	return trimSpace(encMatch[1]) == trimSpace(metaMatch[1])
 }
 
-// trimSpace mirrors JS String.prototype.trim (ASCII whitespace, which is what these hints use).
+// trimSpace trims ASCII whitespace.
 func trimSpace(s string) string {
 	start := 0
 	for start < len(s) && isASCIISpace(s[start]) {
@@ -82,7 +81,7 @@ func AssembleDownloadData(version, reserved uint32, saltSeedHex string, encrypte
 		return nil, fmt.Errorf("container: salt_seed hex: %w", err)
 	}
 	if len(saltBytes) > saltSeedLen {
-		// mirror the frontend: it writes min(len, 64) bytes, padding with zero.
+		// truncate to saltSeedLen, padding the remainder with zero.
 		saltBytes = saltBytes[:saltSeedLen]
 	}
 
@@ -90,7 +89,7 @@ func AssembleDownloadData(version, reserved uint32, saltSeedHex string, encrypte
 	buf := make([]byte, total)
 	binary.LittleEndian.PutUint32(buf[0:4], version)
 	binary.LittleEndian.PutUint32(buf[4:8], reserved)
-	// write salt bytes (pad remaining with 0, mirroring `salt_buffer[i] || 0`)
+	// write salt bytes (remaining slots stay zero)
 	copy(buf[8:8+saltSeedLen], saltBytes)
 	binary.LittleEndian.PutUint32(buf[72:76], uint32(len(encryptedData)))
 	copy(buf[headerSize:], encryptedData)

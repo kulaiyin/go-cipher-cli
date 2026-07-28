@@ -6,10 +6,10 @@ import (
 	"go-cipher-cli/internal/testvectors"
 )
 
-// TDD: DeriveNewSalt mirrors password/fusion.ts:deriveNewSalt.
+// Tests for DeriveNewSalt.
 // It uses argon2id with salt-as-string (ASCII bytes) for BOTH password and salt,
 // t=3, m=65536, p=4, dkLen=8, and returns the hex digest. On error it returns the
-// original salt unchanged (matching the reference).
+// original salt unchanged.
 
 func TestDeriveNewSalt_MatchesGolden(t *testing.T) {
 	if testing.Short() {

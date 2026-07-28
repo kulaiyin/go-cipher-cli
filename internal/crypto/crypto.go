@@ -1,6 +1,6 @@
-// Package crypto mirrors the facade in crypto/index.ts (CryptoTools/HmacTools):
-// text hashing across MD5/SHA1/SHA2/SHA3, HMAC, and Base64 helpers. It forwards
-// the SHA3-512 / AES-GCM paths to internal/safety and internal/aesgcm.
+// Package crypto provides text hashing across MD5/SHA1/SHA2/SHA3, HMAC, and
+// Base64 helpers. It forwards the SHA3-512 / AES-GCM paths to internal/safety
+// and internal/aesgcm.
 package crypto
 
 import (
@@ -20,7 +20,7 @@ import (
 	"go-cipher-cli/internal/i18n"
 )
 
-// Result mirrors the frontend Result/SuccessResult/ErrorResult shape.
+// Result is the unified success/error shape returned by the package.
 type Result struct {
 	Success        bool
 	Data           string
@@ -30,7 +30,7 @@ type Result struct {
 
 // HashText hashes s with the named algorithm and returns a hex digest.
 // Supported: md5, sha1, sha224, sha256, sha384, sha512, sha3-224, sha3-256,
-// sha3-384, sha3-512 (matches the frontend HashAlgorithm union).
+// sha3-384, sha3-512.
 func HashText(s, algorithm string) Result {
 	h, err := newHash(algorithm)
 	if err != nil {
@@ -41,8 +41,8 @@ func HashText(s, algorithm string) Result {
 }
 
 // HMAC computes HMAC over data with key using algorithm, returning a hex digest.
-// algorithm accepts the frontend names ("hmac-sha256", "hmac-sha3-512", ...) as well as
-// the bare hash name ("sha256", "sha3-512", ...).
+// algorithm accepts both "hmac-<hash>" names ("hmac-sha256", "hmac-sha3-512", ...)
+// and the bare hash name ("sha256", "sha3-512", ...).
 func HMAC(data, algorithm, key string) Result {
 	name := strings.TrimPrefix(algorithm, "hmac-")
 	fn, ok := hashFunc(name)
@@ -54,10 +54,10 @@ func HMAC(data, algorithm, key string) Result {
 	return Result{Success: true, Data: hex.EncodeToString(m.Sum(nil))}
 }
 
-// Base64Encode mirrors CryptoTools.base64Encode.
+// Base64Encode returns the standard base64 encoding of b.
 func Base64Encode(b []byte) string { return base64.StdEncoding.EncodeToString(b) }
 
-// Base64Decode mirrors CryptoTools.base64Decode.
+// Base64Decode decodes a standard base64 string.
 func Base64Decode(s string) ([]byte, error) { return base64.StdEncoding.DecodeString(s) }
 
 func newHash(algorithm string) (hash.Hash, error) {

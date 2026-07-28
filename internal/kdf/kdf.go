@@ -1,9 +1,8 @@
-// Package kdf mirrors kdf/index.ts: the KeyDerivation API surface that the CLI
-// and higher layers consume. It wraps internal/safety primitives.
+// Package kdf exposes the key derivation API surface that the CLI and higher
+// layers consume. It wraps internal/safety primitives.
 //
-// Note on the salt encoding: the frontend's KeyDerivation.argon2 returns the salt
-// Base64-encoded and the derived key as a hex string (this is the noble-fallback
-// path, which is what we reproduce — no browser/WASM exists in the CLI).
+// Note on the salt encoding: argon2 returns the salt Base64-encoded and the
+// derived key as a hex string.
 package kdf
 
 import (
@@ -14,7 +13,7 @@ import (
 	"go-cipher-cli/internal/safety"
 )
 
-// Argon2Config mirrors Argon2Config in types/safety-type.ts.
+// Argon2Config configures an argon2 derivation.
 // MemorySize is in KiB.
 type Argon2Config struct {
 	Salt        []byte
@@ -24,7 +23,7 @@ type Argon2Config struct {
 	HashLength  int // bytes
 }
 
-// KDFResult mirrors CryptoResult/KDFResult: Success/Data/Error plus echo'd params.
+// KDFResult holds the derivation outcome: Success/Data/Error plus echoed params.
 type KDFResult struct {
 	Success        bool
 	Data           string // hex string of the derived key
@@ -36,12 +35,12 @@ type KDFResult struct {
 }
 
 const (
-	defaultMemoryKiB  = 65536 // 64 MB (matches kdf/index.ts default)
+	defaultMemoryKiB  = 65536 // 64 MiB
 	defaultParallel   = 1
 	defaultIterations = 3
 )
 
-// Argon2 mirrors KeyDerivation.argon2 (noble fallback path).
+// Argon2 derives a key with argon2id and returns the result struct.
 func Argon2(password string, cfg Argon2Config) KDFResult {
 	start := nowMs()
 	time := orDefault(cfg.Iterations, defaultIterations)
@@ -65,7 +64,7 @@ func Argon2(password string, cfg Argon2Config) KDFResult {
 	}
 }
 
-// HKDF mirrors KeyDerivation.hkdf: full HKDF-SHA3-512 returning the raw bytes.
+// HKDF runs a full HKDF-SHA3-512 returning the raw bytes.
 // salt is consumed as its bytes; info is optional.
 func HKDF(password []byte, salt, info []byte, hashLength int) []byte {
 	if salt == nil {
@@ -74,11 +73,11 @@ func HKDF(password []byte, salt, info []byte, hashLength int) []byte {
 	if info == nil {
 		info = []byte{}
 	}
-	// full HKDF with the given (non-empty) salt — mirrors SafetyUtility.hkdf.
+	// full HKDF with the given (non-empty) salt.
 	return hkdfWithSalt(password, salt, info, hashLength)
 }
 
-// GenerateSalt mirrors KeyDerivation.generateSalt: random bytes -> hex string.
+// GenerateSalt returns random bytes as a hex string.
 func GenerateSalt(lengthBytes int) string {
 	if lengthBytes <= 0 {
 		lengthBytes = 16
@@ -86,9 +85,8 @@ func GenerateSalt(lengthBytes int) string {
 	return safety.BytesToHex(safety.GenerateRandomBytes(lengthBytes))
 }
 
-// GenerateStrongPassword mirrors KeyDerivation.generateStrongPassword: a CSPRNG
-// index into the charset modulo length. Note: this has modulo bias (intentionally
-// matches the reference; do not reuse for new designs).
+// GenerateStrongPassword generates a random password by indexing into the
+// charset modulo length. Note: this has modulo bias; do not reuse for new designs.
 func GenerateStrongPassword(length int) string {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>/?"
 	if length <= 0 {
@@ -108,7 +106,7 @@ type PasswordFeedback struct {
 	Feedback []string
 }
 
-// ValidatePasswordStrength mirrors KeyDerivation.validatePasswordStrength.
+// ValidatePasswordStrength scores a password and returns improvement feedback.
 func ValidatePasswordStrength(password string) (score int, feedback []string) {
 	// length tiers
 	switch {
@@ -195,13 +193,12 @@ func normalizeLowerASCII(s string) string {
 	return string(b)
 }
 
-// ValidateKeyRecovery mirrors key-recovery.ts:validateKeyRecovery.
-// It builds processedKey = key[0:8] + key[len-8:] (JS substring semantics: indices clamp to
+// ValidateKeyRecovery builds processedKey = key[0:8] + key[len-8:] (indices clamp to
 // [0,len]) and returns whether processedKey is present in uuids.
 func ValidateKeyRecovery(generatedKey string, uuids []string) bool {
 	keyRunes := []rune(generatedKey)
 	n := len(keyRunes)
-	// prefix = substring(0, min(8, n)); suffix = substring(max(0, n-8))
+	// prefix = key[0:min(8,n)]; suffix = key[max(0,n-8):]
 	prefixEnd := 8
 	if prefixEnd > n {
 		prefixEnd = n

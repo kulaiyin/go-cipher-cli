@@ -45,7 +45,7 @@ var keygenCmd = &cobra.Command{
 		res := kdf.Argon2(joinPasswords(salt, keygenPasswords), kdf.Argon2Config{
 			Salt:        saltBytes,
 			Iterations:  3,
-			MemorySize:  64 * 1024, // 64 MiB (frontend default)
+			MemorySize:  64 * 1024, // 64 MiB
 			Parallelism: 4,
 			HashLength:  keygenHashLength,
 		})
@@ -63,9 +63,8 @@ var keygenCmd = &cobra.Command{
 	},
 }
 
-// joinPasswords mirrors how the web PasswordGenerationModal turns a password list into the
-// single input fed to argon2: a single password is used as-is; multiple passwords are fused
-// via fusion.ComputeFinalPassword (normalize + fusePasswords).
+// joinPasswords turns a password list into the single input fed to argon2: a single password
+// is used as-is; multiple passwords are fused via fusion.ComputeFinalPassword (normalize + fuse).
 func joinPasswords(salt string, pws []string) string {
 	if len(pws) == 0 {
 		return ""

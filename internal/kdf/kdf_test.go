@@ -14,7 +14,7 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-// TDD: kdf package mirrors kdf/index.ts (KeyDerivation API surface).
+// Tests for the kdf package.
 
 func TestValidatePasswordStrength_GoldenVectors(t *testing.T) {
 	v := testvectors.MustLoad()
@@ -74,7 +74,7 @@ func TestGenerateSalt(t *testing.T) {
 }
 
 func TestArgon2_ReturnsHexAndBase64Salt(t *testing.T) {
-	// Mirrors KeyDerivation.argon2 fallback path: data is hex string, salt is base64.
+	// Verifies the argon2 path: data is hex string, salt is base64.
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}
@@ -101,12 +101,11 @@ func TestArgon2_ReturnsHexAndBase64Salt(t *testing.T) {
 }
 
 func TestArgon2_StrongPasswordDerivation_MatchesGolden(t *testing.T) {
-	// This validates the raw argon2id primitive (the value KeyDerivation.argon2 returns
-	// as .data) against the reference, using the strengthening config t=3,m=32*1024,p=2,
-	// dkLen=64, salt=s1. NOTE: the reference's deriveStrongPassword applies an additional
-	// base64-decode quirk on top of this hex before it reaches processedPasswords — that
-	// quirk is exercised and validated in internal/aesgcm. Here we check only the raw
-	// argon2 hex captured in argon2RawHex.
+	// Validates the raw argon2id primitive (the value returned as .data) using the
+	// strengthening config t=3,m=32*1024,p=2, dkLen=64, salt=s1. NOTE:
+	// deriveStrongPassword applies an additional base64-decode step on top of this
+	// hex before it reaches processedPasswords — that step is exercised in
+	// internal/aesgcm. Here we check only the raw argon2 hex.
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}

@@ -8,8 +8,8 @@ import (
 // End-to-end tests for the enhance CLI command (password-to-key).
 //
 // enhance output is deterministic (same password + salt suffix → same key), so
-// these tests assert against golden vectors captured from the reference
-// implementation, proving end-to-end byte-level compatibility with the web tool.
+// these tests assert against golden vectors, proving end-to-end byte-level
+// determinism of the enhance command.
 // Vectors come from internal/testvectors/domain-key-vectors.json.
 
 // extractKeyHex pulls the hex key value out of the "Key (hex):" line.

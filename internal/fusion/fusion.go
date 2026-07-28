@@ -1,7 +1,6 @@
-// Package fusion mirrors the password-aggregation logic of the frontend
-// password/fusion.ts. It is a pure, deterministic string transformation with no
-// cryptographic primitives; behaviour must match the reference implementation
-// byte-for-byte, validated by golden vectors in internal/testvectors.
+// Package fusion implements password aggregation: a pure, deterministic string
+// transformation with no cryptographic primitives. Behaviour is locked by golden
+// vectors in internal/testvectors.
 package fusion
 
 import (
@@ -15,8 +14,7 @@ import (
 	"go-cipher-cli/internal/safety"
 )
 
-// NormalizePassword removes all whitespace and applies Unicode NFC normalization,
-// matching password/fusion.ts:normalizePassword.
+// NormalizePassword removes all whitespace and applies Unicode NFC normalization.
 func NormalizePassword(password string) string {
 	noSpaces := strings.Map(func(r rune) rune {
 		if r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\v' || r == '\f' {
@@ -24,7 +22,7 @@ func NormalizePassword(password string) string {
 		}
 		return r
 	}, password)
-	// \s in JS also covers other unicode spaces; strip any remaining whitespace runes.
+	// also strip any remaining unicode-space runes
 	noSpaces = strings.Map(func(r rune) rune {
 		if isUnicodeSpace(r) {
 			return -1
@@ -34,7 +32,7 @@ func NormalizePassword(password string) string {
 	return norm.NFC.String(noSpaces)
 }
 
-// isUnicodeSpace mirrors ECMAScript \s (WhiteSpace + LineTerminator + unicode spaces).
+// isUnicodeSpace reports whether r is a unicode whitespace rune.
 func isUnicodeSpace(r rune) bool {
 	switch r {
 	case '\t', '\n', '\v', '\f', '\r', ' ',
@@ -47,9 +45,9 @@ func isUnicodeSpace(r rune) bool {
 	return false
 }
 
-// safetyMergeStrings mirrors safety_merge_strings: interleave the common-length
-// prefix, then splice the remaining tail characters at positions
-// floor(L*index/3) % L, where L grows after each insertion.
+// safetyMergeStrings interleaves the common-length prefix, then splices the
+// remaining tail characters at positions floor(L*index/3) % L, where L grows
+// after each insertion.
 func safetyMergeStrings(strA, strB string) string {
 	ra := []rune(strA)
 	rb := []rune(strB)
@@ -63,7 +61,6 @@ func safetyMergeStrings(strA, strB string) string {
 		combined = append(combined, ra[i], rb[i])
 	}
 
-	// remainingA = strA.slice(minLen) + strB.slice(minLen)
 	remaining := append(append([]rune{}, ra[minLen:]...), rb[minLen:]...)
 
 	for i, ch := range remaining {
@@ -77,7 +74,7 @@ func safetyMergeStrings(strA, strB string) string {
 	return string(combined)
 }
 
-// FusePasswords mirrors password/fusion.ts:fusePasswords.
+// FusePasswords fuses normalized passwords with the salt into a strengthened string.
 // salt is the derived salt string; passwords must already be normalized (length-3 design).
 func FusePasswords(salt string, passwords []string) string {
 	saltRunes := []rune(salt)
@@ -200,8 +197,8 @@ func FusePasswords(salt string, passwords []string) string {
 	return string(finalResult)
 }
 
-// ComputeFinalPassword mirrors computeFinalPassword: normalize all passwords then fuse.
-// (deriveNewSalt is intentionally omitted — the web caller passes the already-derived salt.)
+// ComputeFinalPassword normalizes all passwords then fuses them.
+// (deriveNewSalt is intentionally omitted — callers pass the already-derived salt.)
 func ComputeFinalPassword(salt string, passwords []string) string {
 	normalized := make([]string, len(passwords))
 	for i, p := range passwords {
@@ -210,17 +207,14 @@ func ComputeFinalPassword(salt string, passwords []string) string {
 	return FusePasswords(salt, normalized)
 }
 
-// DeriveNewSalt mirrors password/fusion.ts:deriveNewSalt.
-// It derives a new 8-byte (16-hex) salt from the original salt using argon2id with the
-// salt STRING used as both password and salt (i.e. the salt's ASCII bytes — NOT hex-decoded),
-// t=3, m=65536 KiB (64 MiB), p=4, dkLen=8. On failure it returns the original salt and the
-// error (the reference silently returns the original; we surface the error for testability
-// while callers may ignore it).
+// DeriveNewSalt derives a new 8-byte (16-hex) salt from the original salt using argon2id
+// with the salt string used as both password and salt (i.e. the salt's ASCII bytes — NOT
+// hex-decoded), t=3, m=65536 KiB (64 MiB), p=4, dkLen=8. On failure it returns the original
+// salt and the error; callers may ignore the error.
 func DeriveNewSalt(originalSalt string) (string, error) {
-	saltBytes := []byte(originalSalt) // ASCII bytes of the salt string (reference behaviour)
+	saltBytes := []byte(originalSalt) // ASCII bytes of the salt string
 	out, err := safety.Argon2id([]byte(originalSalt), saltBytes, 3, 64*1024, 4, 8)
 	if err != nil {
-		// The reference swallows the error and returns the original salt.
 		return originalSalt, err
 	}
 	return hex.EncodeToString(out), nil

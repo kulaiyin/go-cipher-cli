@@ -36,7 +36,7 @@ var encryptCmd = &cobra.Command{
 			return errors.New(i18n.T("encrypt.error.empty_input"))
 		}
 
-		// Generate a salt if none provided (the web tool always has one from key-derivation).
+		// Generate a salt if none provided.
 		salt := encryptSalt
 		if salt == "" {
 			salt = safety.BytesToHex(safety.GenerateRandomBytes(64))

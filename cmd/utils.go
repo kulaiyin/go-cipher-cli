@@ -13,7 +13,7 @@ import (
 	"go-cipher-cli/internal/kdf"
 )
 
-// hashCmd mirrors CryptoTools.hashText: hash stdin/file text with a named algorithm.
+// hashCmd hashes stdin/file text with a named algorithm.
 var hashCmd = &cobra.Command{
 	Use:   "hash [text]",
 	Short: "placeholder",
@@ -30,7 +30,7 @@ var hashCmd = &cobra.Command{
 	},
 }
 
-// hmacCmd mirrors HmacTools.hashText.
+// hmacCmd computes an HMAC over stdin/file text.
 var hmacCmd = &cobra.Command{
 	Use:   "hmac [data]",
 	Short: "placeholder",
@@ -47,7 +47,7 @@ var hmacCmd = &cobra.Command{
 	},
 }
 
-// fuseCmd mirrors computeFinalPassword (normalize + fusePasswords).
+// fuseCmd fuses passwords (normalize + fuse) into a single strengthened string.
 var fuseCmd = &cobra.Command{
 	Use:   "fuse",
 	Short: "placeholder",
@@ -66,7 +66,7 @@ var fuseCmd = &cobra.Command{
 	},
 }
 
-// recoverCmd mirrors validateKeyRecovery (first-8 + last-8 against stored uuids).
+// recoverCmd checks first-8 + last-8 of a key against stored uuids.
 var recoverCmd = &cobra.Command{
 	Use:   "recover [generated-key]",
 	Short: "placeholder",
@@ -83,7 +83,7 @@ var recoverCmd = &cobra.Command{
 	},
 }
 
-// hintMatchCmd mirrors validateHintAndKeysUuidMatch.
+// hintMatchCmd checks whether the encrypted hint and meta hint reference the same key UUID.
 var hintMatchCmd = &cobra.Command{
 	Use:   "hint-match",
 	Short: "placeholder",

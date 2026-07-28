@@ -1,6 +1,5 @@
 // Package diceware implements the Diceware passphrase generator using the
-// EFF large wordlist (7776 words), matching the frontend's
-// generateDicewarePassphrase in password/diceware.ts byte-for-byte.
+// EFF large wordlist (7776 words).
 //
 // Security: randomness comes from crypto/rand (Go's CSPRNG).
 package diceware
@@ -53,8 +52,7 @@ type DicewareResult struct {
 }
 
 // rollDie returns a cryptographically secure random integer in [1, 6] using
-// rejection sampling to eliminate modulo bias. Uses crypto/rand (Go's CSPRNG)
-// matching the frontend's crypto.getRandomValues.
+// rejection sampling to eliminate modulo bias.
 func rollDie() (int, error) {
 	buf := make([]byte, 1)
 	// 256 is not divisible by 6, so reject 252..255 to avoid bias.

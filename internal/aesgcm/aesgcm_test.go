@@ -8,9 +8,9 @@ import (
 	"go-cipher-cli/internal/testvectors"
 )
 
-// TDD: aesgcm package mirrors crypto/aes-gcm.ts.
+// Tests for the aesgcm package.
 // These tests verify the FULL key-derivation pipeline + AES-256-GCM against the
-// reference implementation's golden vectors — the end-to-end byte-compatibility gate.
+// golden vectors — the end-to-end gate.
 
 func TestGenerateAesGcmKey_FullPipeline_MatchesGolden(t *testing.T) {
 	if testing.Short() {

@@ -9,11 +9,10 @@ import (
 	"go-cipher-cli/internal/testvectors"
 )
 
-// TDD: safety package mirrors utils/safety-utility.ts (the crypto primitive layer).
-// Tests first (Red), implementation in safety.go (Green).
+// Tests for the safety package (the crypto primitive layer).
 
 func TestHKDFExpand_GoldenVectors(t *testing.T) {
-	// Verifies traps #1 (full HKDF with empty salt) and #2 (prk is hex-string ASCII bytes).
+	// Verifies full HKDF with empty salt, where prk is the hex-string ASCII bytes.
 	v := testvectors.MustLoad()
 	for _, c := range v.HKDFExpand {
 		want, err := hex.DecodeString(c.Out)
@@ -38,7 +37,7 @@ func TestHMACSHA3512_GoldenVectors(t *testing.T) {
 }
 
 func TestArgon2id_GoldenVectors(t *testing.T) {
-	// Verifies trap #3: production-size argon2id matches noble argon2id output (memory in KiB).
+	// Verifies production-size argon2id output (memory in KiB).
 	if testing.Short() {
 		t.Skip("argon2 golden vectors are slow; skip in -short")
 	}
@@ -103,7 +102,7 @@ func TestGenerateRandomBytes(t *testing.T) {
 }
 
 func TestIsPasswordHighStrength(t *testing.T) {
-	// mirrors SafetyUtility.isPasswordHighStrength: >=128 hex chars with rich char set.
+	// >=128 hex chars with a rich char set.
 	if IsPasswordHighStrength(strings.Repeat("0", 127)) {
 		t.Error("127-char string should NOT be high strength")
 	}
