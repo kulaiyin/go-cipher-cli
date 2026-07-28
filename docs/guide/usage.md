@@ -86,7 +86,7 @@ Domain:   default-v1
 ### 基本用法
 
 ```bash
-# 默认 5 词，空格分隔
+# 默认 5 词，无分隔符
 go-cipher-cli diceware
 
 # 指定词数和分隔符
@@ -115,7 +115,7 @@ go-cipher-cli diceware -n 6 --sep none
 | 参数 | 说明 |
 | --- | --- |
 | `-n, --num-words` | 单词数量（1-20，默认 5） |
-| `--sep` | 分隔符：`space`（空格）/ `hyphen`（连字符） / `none`（无），默认 `space` |
+| `--sep` | 分隔符：`space`（空格）/ `hyphen`（连字符） / `none`（无），默认 `none` |
 
 ## 全局参数
 

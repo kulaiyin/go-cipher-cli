@@ -53,7 +53,7 @@ go-cipher-cli enhance -p "密码"                              # 派生 256 位�
 go-cipher-cli enhance -p "密码" --salt-suffix google          # 不同盐后缀派生不同密钥
 
 # Diceware 助记口令
-go-cipher-cli diceware                                       # 5 词默认口令
+go-cipher-cli diceware                                       # 5 词默认口令（无分隔符）
 go-cipher-cli diceware -n 8 --sep hyphen                     # 8 词连字符分隔
 
 # 其他

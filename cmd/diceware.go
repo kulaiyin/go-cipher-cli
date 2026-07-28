@@ -70,6 +70,6 @@ func sepDesc(s diceware.Separator) string {
 
 func init() {
 	dicewareCmd.Flags().IntVarP(&diceNumWords, "num-words", "n", 5, "单词数量 (1-20)")
-	dicewareCmd.Flags().StringVar(&diceSep, "sep", "space", "分隔符: space / hyphen / none")
+	dicewareCmd.Flags().StringVar(&diceSep, "sep", "none", "分隔符: space / hyphen / none")
 	rootCmd.AddCommand(dicewareCmd)
 }
