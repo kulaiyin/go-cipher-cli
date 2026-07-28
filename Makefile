@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := setup
 
-.PHONY: setup check
+.PHONY: setup check test
 
 # Install git hooks for this repository.
 # Run once after cloning.
@@ -24,3 +24,8 @@ check:
 	go test ./...
 	@echo ""
 	@echo "All checks passed."
+
+# Run the full test suite (including slow argon2 tests).
+test:
+	@echo "==> go test ./..."
+	@go test ./...
