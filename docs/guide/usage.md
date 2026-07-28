@@ -21,7 +21,7 @@ Available Commands:
 
 ```bash
 go-cipher-cli version
-# 输出: v0.2.1
+# 输出: v0.3.0
 ```
 
 ## 密码转密钥（enhance）
