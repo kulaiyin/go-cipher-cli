@@ -30,6 +30,13 @@ export default defineConfig({
         ]
       },
       {
+        text: '密钥管理',
+        items: [
+          { text: '概述', link: '/guide/key-management' },
+          { text: '需求说明', link: '/spec/key-management' }
+        ]
+      },
+      {
         text: '打包与发布',
         items: [
           { text: '概述', link: '/guide/packaging' },

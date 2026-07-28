@@ -9,6 +9,8 @@
 
 ## 功能特性
 
+- **密钥管理与加解密**（v0.2.0+）：AES-256-GCM 加密，argon2id 密钥派生，**与 [web 工具](https://tools.wcheer.com/) 字节级互通**
+- **哈希计算**：MD5 / SHA1 / SHA2 / SHA3 全算法，HMAC
 - **命令框架**：[Cobra](https://github.com/spf13/cobra)
 - **配置管理**：[Viper](https://github.com/spf13/viper) — 配置文件 / 环境变量 / 默认值 / `--config`
 - **日志**：[Zap](https://go.uber.org/zap) — `debug` / `info` / `warn` / `error`
@@ -32,7 +34,7 @@ echo "deb [arch=amd64 signed-by=/usr/share/keyrings/go-cipher-cli.gpg] https://k
 # 3. 安装
 sudo apt update
 sudo apt install go-cipher-cli
-go-cipher-cli version   # 输出 v0.1.0
+go-cipher-cli version   # 输出 v0.2.0
 ```
 
 > 遇到网络问题（`Could not handshake`）？参见[安装文档 - 网络问题应对](https://kulaiyin.github.io/go-cipher-cli/guide/installation#网络问题应对)。
@@ -48,11 +50,27 @@ go build -o go-cipher-cli ./main.go
 ## 命令
 
 ```bash
-go-cipher-cli              # 显示帮助
-go-cipher-cli version      # 输出版本号
-go-cipher-cli run          # 交互式演示任务（提示 + 进度条）
-go-cipher-cli --help       # 查看帮助
+# 加密解密（与 web 工具互通）
+go-cipher-cli encrypt secret.txt -p "密码"           # 加密文件，生成 .enc
+go-cipher-cli decrypt secret.txt.enc -p "密码"        # 解密还原
+
+# 密钥与密码
+go-cipher-cli keygen -p "密码" --hash-length 32       # argon2id 派生密钥
+go-cipher-cli fuse --salt <盐> -p "密码1" -p "密码2"  # 多密码融合
+go-cipher-cli recover <key> --uuid <候选>...          # 密钥恢复验证
+go-cipher-cli hint-match --encrypted <t> --meta <t>   # 提示/UUID 匹配
+
+# 哈希
+go-cipher-cli hash "hello" --algo sha256              # 文本哈希
+go-cipher-cli hmac "hello" --algo hmac-sha256 --key "secret"
+
+# 其他
+go-cipher-cli version                                  # 输出版本号
+go-cipher-cli run                                      # 交互式演示
+go-cipher-cli --help                                   # 查看帮助
 ```
+
+完整用法见 [使用说明](https://kulaiyin.github.io/go-cipher-cli/guide/usage) 和 [密钥管理](https://kulaiyin.github.io/go-cipher-cli/guide/key-management)。
 
 ## 文档
 
@@ -60,6 +78,7 @@ go-cipher-cli --help       # 查看帮助
 | --- | --- |
 | 安装 | https://kulaiyin.github.io/go-cipher-cli/guide/installation |
 | 使用 | https://kulaiyin.github.io/go-cipher-cli/guide/usage |
+| 密钥管理 | https://kulaiyin.github.io/go-cipher-cli/guide/key-management |
 | 打包与发布 | https://kulaiyin.github.io/go-cipher-cli/guide/packaging |
 | APT 仓库 | https://kulaiyin.github.io/go-cipher-cli/guide/apt-repo |
 | CI/CD | https://kulaiyin.github.io/go-cipher-cli/guide/ci-cd |
