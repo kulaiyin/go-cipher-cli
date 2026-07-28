@@ -31,3 +31,7 @@ coverage.txt
 
 # 开发助手/会话临时文件（不进版本库）
 .zcode/
+.codewhale/
+
+# 编译产物
+go-cipher-cli

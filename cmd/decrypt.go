@@ -55,7 +55,7 @@ reported as a decryption failure.`,
 func init() {
 	decryptCmd.Flags().StringSliceVarP(&decryptPasswords, "password", "p", nil, "password (repeatable)")
 	_ = decryptCmd.MarkFlagRequired("password")
-	rootCmd.AddCommand(decryptCmd)
+	// rootCmd.AddCommand(decryptCmd)
 }
 
 // guard against unused import in case future edits drop an error use.

@@ -80,7 +80,7 @@ func init() {
 	keygenCmd.Flags().IntVar(&keygenHashLength, "hash-length", 32, "derived key length in bytes")
 	keygenCmd.Flags().BoolVar(&keygenShowSalt, "show-salt", false, "print only the salt line when auto-generating")
 	_ = keygenCmd.MarkFlagRequired("password")
-	rootCmd.AddCommand(keygenCmd)
+	// rootCmd.AddCommand(keygenCmd)
 
 	_ = safety.GenerateRandomBytes // keep package referenced for future helpers
 }

@@ -1,118 +1,130 @@
 # 密钥管理
 
-本文介绍 go-cipher-cli 的密钥管理能力，以及它与 [web 工具](https://tools.wcheer.com/) 的互通关系。
+本文介绍 go-cipher-cli 的密码转密钥和 Diceware 助记口令功能，以及它们与 [web 工具](https://tools.wcheer.com/) 的互通关系。
 
 ## 核心能力
 
-go-cipher-cli 复刻了 web 工具的密钥管理逻辑，使用同一套加密管线，做到**字节级互通**：
+### 密码转密钥（enhance）
 
-- CLI 加密的文件，web 端能用相同密码解密
-- web 端加密的文件，CLI 也能解密
-- 密钥派生、密码融合结果与 web 端完全一致
+将用户"头脑记忆"级别的密码，通过 Argon2id 慢函数加固 + HKDF-Expand(SHA-256) 域分离，转换成 256 位高熵密钥。**真正用于加密/认证的是这把密钥**，密码本身只是生成原料。
 
-## 加密管线
+与 web 工具**字节级互通**：相同「密码 + 盐后缀」在 CLI 和 web 端会派生出完全相同的密钥。
 
-加密栈是一条链：**argon2id → HMAC-SHA3-512 → HKDF(SHA3-512) → AES-256-GCM**。
+### Diceware 助记口令（diceware）
+
+用 EFF 大型词表（7776 词）和密码学安全随机掷骰，生成易记但高熵的口令。
+
+## 密码转密钥管线
 
 ```
-密码 + 盐
+密码 + 盐后缀
    │
    ▼
-1. SHA256(每个密码) → 排序 → 拼接为 salt_text
-2. salt_prk = HMAC-SHA3-512(盐, salt_text)
-3. 由 salt_prk 经 HKDF 派生 4 个子密钥（盐/密钥/数据）
-4. 弱密码用 argon2id 强化（基于硬件成本，抵抗暴力破解）
-5. 强化后的密码组合 → 派生最终的 AES-256 密钥
+1. 固定盐 = "Your_Super_Long_Fixed_Salt_String_Here_2026"
+   全盐 = 固定盐 + 用户盐后缀
    │
    ▼
-AES-256-GCM 加密（每次随机 IV + 128 位认证标签）
+2. Argon2id(64MB/3轮/1路并行, 输出 64 字节)
+   → 主密钥 PRK (512 位)
+   │
+   ▼
+3. HKDF-Expand(SHA-256, PRK, domain="default-v1", 输出 32 字节)
+   → 子密钥 (256 位)
+   │
+   ▼
+4. 输出 64 位 hex 字符串
 ```
 
-## 典型工作流
+### 固定盐
 
-### 场景一：加密文件
+第一层固定盐硬编码在代码中（`Your_Super_Long_Fixed_Salt_String_Here_2026`），与 web 端完全一致。它的作用是防止通用彩虹表——即使攻击者提前为所有常见密码构建了彩虹表，也会因为固定盐的存在而失效。
+
+### 盐后缀
+
+用户可选的第二层盐（如站点名、设备名），与固定盐拼接后作为 Argon2id 的盐。不同盐后缀会派生出互不相同的密钥：
 
 ```bash
-# 1. 加密（盐自动生成并嵌入容器）
-go-cipher-cli encrypt report.pdf -p "我的密码A" -p "我的密码B"
-# 生成 report.pdf.enc
+go-cipher-cli enhance -p "MyMaster@2024" --salt-suffix google
+# 输出: 3aac7a86fd8c549020841738920154a05bcae6dd116c116a991144df33a440eb
 
-# 2. 解密（密码顺序无关）
-go-cipher-cli decrypt report.pdf.enc -p "我的密码B" -p "我的密码A"
-# 还原 report.pdf
+go-cipher-cli enhance -p "MyMaster@2024" --salt-suffix firefox
+# 输出: 12a642320091c23fe4d1ba943c86ba9a60ad99f2eba6ce4814636a4cdd664e6d
 ```
 
-盐值嵌入容器，**无需单独保存盐**，只需记住密码。
+即使谷歌的密钥泄露，火狐的密钥也是安全的。
 
-### 场景二：与 web 端协作
+### HKDF-Expand 域分离
 
-```bash
-# CLI 加密
-go-cipher-cli encrypt data.json -p "shared-secret"
-# 生成 data.json.enc
+Argon2id 输出的 64 字节主密钥 (PRK) 已经是均匀分布的高熵数据，因此跳过 HKDF-Extract，直接用纯 Expand 做域分离。内部 domain 标签固定为 `default-v1`。
 
-# 把 data.json.enc 上传到 web 工具的"数据加密"页面
-# 输入相同密码 "shared-secret" 即可解密
-```
+## Diceware 口令生成原理
 
-反之，web 端加密下载的文件，也能用 CLI 解密。
+### EFF 词表
 
-### 场景三：派生密钥给其他工具用
+使用 EFF（Electronic Frontier Foundation）发布的大型 Diceware 词表，共 7776 个英文单词，按 5 骰子骰点（11111–66666）的 base-6 编码顺序排列：
 
-```bash
-# 用 argon2id 从密码派生 32 字节密钥
-go-cipher-cli keygen -p "我的主密码" --hash-length 32
-# 输出 hex 和 base64 两种格式，可用于配置其他需要密钥的工具
-```
+- 骰点 `11111` → 下标 0 → `abacus`
+- 骰点 `11112` → 下标 1 → `abdomen`
+- ...
+- 骰点 `66666` → 下标 7775 → `zoom`
+
+### 真随机掷骰
+
+每词掷 5 次骰（1–6），每次骰点来自 Go 标准库 `crypto/rand`（操作系统 CSPRNG）。采用**拒绝采样**消除模偏差：
+
+- 生成随机字节（0–255）
+- 只接受 0–251（6 的 42 倍），拒绝 252–255
+- `byte % 6 + 1` 得到 1–6
+
+这确保了每个骰点的概率严格为 1/6，无偏向。
+
+### 熵值
+
+| 词数 | 信息熵 | 可能组合数 | 安全等级 |
+| --- | --- | --- | --- |
+| 4 | 51.7 bit | 3.66 × 10¹² | 弱（不建议） |
+| 5 | 64.6 bit | 2.84 × 10¹⁹ | 基础 |
+| 6 | 77.5 bit | 2.21 × 10²³ | 良好 |
+| 7 | 90.5 bit | 1.72 × 10²⁷ | 强 |
+| 8 | 103.4 bit | 1.34 × 10³¹ | 很强 |
+
+建议至少 5 个词。8 个词及以上适合对安全性要求极高的场景。
 
 ## 安全说明
 
-### 密码顺序无关
+### Argon2id 抗暴力破解
 
-加密/解密时密码数组会先 SHA256 排序再参与派生，所以 `-p a -p b` 和 `-p b -p a` 等价。但**密码集合必须完全一致**（数量和内容）。
+64MB 内存 / 3 轮迭代的参数使得每次派生耗时数秒，即便攻击者使用专用硬件也难以在有限时间内暴力破解。这是密码哈希竞赛 (PHC) 的获奖算法。
 
-### 多密码增强
+### 全部本地运算
 
-`encrypt` 和 `keygen` 支持多个密码：
+密码和密钥始终在本地操作系统上运算，不会上传到任何服务器。
 
-- `encrypt`：多密码直接参与密钥派生（顺序无关）
-- `keygen`：多密码会先用融合算法合并为一个再派生（对应 web 端密码生成器行为）
+### 确定性派生
 
-### 弱密码自动强化
-
-输入弱密码时，CLI 会自动用 argon2id（3 次迭代、32 MiB 内存、2 并行度）进行强化，抵抗暴力破解。无需手动处理。
-
-### AES-256-GCM 认证
-
-每次加密生成随机 IV，附带 128 位 GCM 认证标签。密码错误时**不会输出错误数据**，而是认证失败报错，保证完整性。
+同一组「密码 + 盐后缀」永远得到相同的密钥。无需保存密钥本身，只需记住密码即可随时还原。无法由密钥反推密码。
 
 ## 与 web 工具的功能对照
 
 | 能力 | CLI 命令 | web 工具对应 |
 | --- | --- | --- |
-| AES-256-GCM 加解密 | `encrypt` / `decrypt` | 数据加密页面 |
-| argon2id 密钥派生 | `keygen` | 密钥派生页面 |
-| 密码融合 | `fuse` | 密码生成器（多密码合并） |
-| 哈希计算 | `hash` | 哈希工具（MD5/SHA/SHA3） |
-| HMAC | `hmac` | HMAC 工具 |
-| 密钥恢复验证 | `recover` | 密钥派生（恢复校验） |
-| 提示/UUID 匹配 | `hint-match` | 数据加密（密钥归属校验） |
-
-## 容器格式
-
-`.enc` 文件是二进制容器（小端字节序）：
-
-```
-偏移  长度  字段
-0     4     version      (uint32 LE, 当前 = 10000)
-4     4     reserved      (uint32 LE, = 0)
-8     64    salt_seed     (64 字节盐，渲染为 128 位 hex)
-72    4     length        (uint32 LE, 密文长度)
-76    N     ciphertext    (iv 12 字节 ‖ 加密数据 ‖ GCM tag 16 字节)
-```
-
-盐值存在偏移 8–72，解密时自动读取，因此**无需单独传递盐**。
+| 密码转密钥 | `enhance` | 密钥管理 → 密码转密钥 |
+| Diceware 助记口令 | `diceware` | 密钥管理 → Diceware 助记口令生成 |
 
 ## 技术细节
 
-如需了解完整的派生流程、字节兼容的关键点、黄金向量验证机制等实现细节，请参考[密钥管理模块需求说明](../spec/key-management)。
+### 跨语言一致性保证
+
+密码转密钥的 Go 实现通过了 6 组**黄金向量测试**：
+- 3 组不同 domain（age-key-v1 / file-key-v1 / auth-key-v1）
+- 3 组不同密码 + 盐后缀组合（弱密码 / 强密码 / 中文密码）
+
+所有向量由 Go 参考实现生成，CLI 和 web 端都必须全部通过才算实现正确。
+
+### 完整测试覆盖
+
+```bash
+go test ./internal/... -v
+# internal/kdf: TestDeriveSubKeyByDomain_GoldenVectors (6 组向量)
+# internal/diceware: 词表完整性、骰点映射、口令生成、随机性、边界处理
+```

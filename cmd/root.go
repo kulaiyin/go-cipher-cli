@@ -38,7 +38,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "log level (debug, info, warn, error)")
-	rootCmd.AddCommand(runCmd)
+	// rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 

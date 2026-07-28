@@ -55,6 +55,44 @@ func HMACSHA512(data, key []byte) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
+// HKDFExpandSHA256 implements pure HKDF-Expand (RFC 5869 §2.3) using SHA-256.
+//
+// This is NOT the full HKDF (Extract+Expand); it directly uses PRK as the HMAC key
+// and performs only the Expand step. It matches `hkdf_expand_only(sha256, prk, info, length)`
+// from @noble/hashes, which is what the frontend DomainKeyDerivation uses.
+//
+// For L ≤ 32 (SHA-256 output size), only one HMAC round is needed:
+//
+//	T(1) = HMAC-SHA-256(PRK, info || 0x01)
+//
+// prk is raw bytes (the Argon2id master PRK output).
+func HKDFExpandSHA256(prk, info []byte, length int) []byte {
+	if length <= 0 {
+		length = 32
+	}
+	out := make([]byte, 0, length)
+	counter := byte(1)
+	prev := []byte{} // T(0) = empty
+
+	for len(out) < length {
+		mac := hmac.New(sha256.New, prk)
+		mac.Write(prev)  // T(i-1)
+		mac.Write(info)  // info
+		mac.Write([]byte{counter}) // counter byte
+		t := mac.Sum(nil)
+
+		remaining := length - len(out)
+		if remaining > len(t) {
+			remaining = len(t)
+		}
+		out = append(out, t[:remaining]...)
+
+		prev = t
+		counter++
+	}
+	return out
+}
+
 // Argon2id mirrors SafetyUtility.noble_argon2id (production sizes).
 // memoryKiB is the memory cost in KiB (matches noble's `m` and argon2's memory unit).
 func Argon2id(password, salt []byte, time, memoryKiB, parallelism, keyLen int) ([]byte, error) {

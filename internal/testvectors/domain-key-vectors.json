@@ -1,0 +1,38 @@
+[
+  {
+    "password": "19980824@MyFirstPet@602",
+    "saltSuffix": "CustomSuffix123",
+    "domain": "age-key-v1",
+    "subKeyHex": "7cfd77bccffead2465662a54037d1be25025ec426ed3901329fa7898e19919ea"
+  },
+  {
+    "password": "19980824@MyFirstPet@602",
+    "saltSuffix": "CustomSuffix123",
+    "domain": "file-key-v1",
+    "subKeyHex": "cbfd5e7542af833616cffc0e93e6dde1300b5a36089e294b3fab5a273eb003a7"
+  },
+  {
+    "password": "19980824@MyFirstPet@602",
+    "saltSuffix": "CustomSuffix123",
+    "domain": "auth-key-v1",
+    "subKeyHex": "2bae2db5f8cb9ddbb997b29598ba6e6bfa65390f689ca1c27388efee31717c81"
+  },
+  {
+    "password": "weakpass",
+    "saltSuffix": "",
+    "domain": "default-v1",
+    "subKeyHex": "6b5e4099abfaa82d246ee9207665740cb813be93488b14b2ff4f7e8abc139e06"
+  },
+  {
+    "password": "Str0ng!Pass#2",
+    "saltSuffix": "mysalt",
+    "domain": "default-v1",
+    "subKeyHex": "a0e1dd425ae257de12d40f66e51ffe82578621a9c860c662264ef381ccf6463b"
+  },
+  {
+    "password": "测试密码123",
+    "saltSuffix": "后缀",
+    "domain": "default-v1",
+    "subKeyHex": "3a7edb5666b3eeaa353f64ba4b2bbcab3e296e3e1e0a7e2b2d3ebf640e42077a"
+  }
+]

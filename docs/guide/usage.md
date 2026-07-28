@@ -1,6 +1,6 @@
 # 使用说明
 
-go-cipher-cli 提供密钥管理、加密解密、哈希计算等命令，核心加密能力与 [web 工具](https://tools.wcheer.com/) 字节级互通——CLI 加密的文件可用 web 端解密，反之亦然。
+go-cipher-cli 提供密码转密钥和 Diceware 助记口令生成两个核心功能，与 [web 工具](https://tools.wcheer.com/) 字节级互通。
 
 ## 命令总览
 
@@ -11,189 +11,118 @@ go-cipher-cli --help
 ```
 Available Commands:
   completion  Generate the autocompletion script for the specified shell
-  decrypt     解密容器（与 encrypt 或 web 工具产物兼容）
-  encrypt     用 AES-256-GCM 加密文件（输出 web 兼容容器）
-  fuse        融合多个密码（对应 computeFinalPassword）
-  hash        文本哈希（MD5/SHA1/SHA2/SHA3）
-  hint-match  验证提示/UUID 匹配（对应 validateHintAndKeysUuidMatch）
-  hmac        计算 HMAC
-  keygen      从盐 + 密码派生密钥（argon2id）
-  recover     验证密钥恢复（对应 validateKeyRecovery）
-  run         交互式演示任务
-  version     输出版本号
+  diceware    生成 Diceware 助记口令（EFF 词表，7776 词）
+  enhance     将密码转换为 256 位高熵密钥（密码转密钥）
+  help        Help about any command
+  version     Print the CLI version
 ```
 
 ## 版本号
 
 ```bash
 go-cipher-cli version
-# 输出: v0.2.0
+# 输出: v0.2.1
 ```
 
-## 加密与解密
+## 密码转密钥（enhance）
 
-### 加密文件（encrypt）
+把你"常用但可能不够强"的密码，通过 Argon2id 慢函数加固，转换成 256 位高熵密钥。同一组密码 + 盐后缀**确定性**派生出相同的密钥，无法由密钥反推密码。
+
+### 算法流程
+
+1. **Argon2id 慢函数抗爆破**：以用户密码为输入，以「固定盐 + 用户盐后缀」为盐，参数 64MB / 3 轮迭代 / 1 路并行，输出 64 字节主密钥 (PRK)
+2. **HKDF-Expand(SHA-256) 域分离**：对 PRK 做纯 Expand，输出 32 字节（256 位）子密钥
+3. **输出**：64 位十六进制字符串，方便跨平台复制与对齐
+
+### 基本用法
 
 ```bash
-go-cipher-cli encrypt secret.txt -p "MyPass123" -p "SecondPass!" --salt "7a7a...7a7a"
+# 派生 256 位密钥
+go-cipher-cli enhance -p "MyMaster@2024"
+
+# 不同盐后缀派生不同密钥（推荐做法）
+go-cipher-cli enhance -p "MyMaster@2024" --salt-suffix google
+go-cipher-cli enhance -p "MyMaster@2024" --salt-suffix firefox
 ```
 
-输出：
+输出示例：
 
 ```
-Encrypted 75 bytes -> secret.txt.enc (salt embedded, version=10000)
+算法:     Argon2id(64MB/3轮/1路并行) + HKDF-Expand(SHA-256)
+Domain:   default-v1
+盐后缀:   google
+密钥(hex):     3aac7a86fd8c549020841738920154a05bcae6dd116c116a991144df33a440eb
+密钥(base64):  oqx6hv2MVJAg...9E3zOkDr
+密钥长度:      256 位 (256 bit)
 ```
-
-参数说明：
 
 | 参数 | 说明 |
 | --- | --- |
-| `-p, --password` | 密码，可重复（`-p a -p b`）。**密码顺序无关**，加密时用任意顺序，解密时也用任意顺序即可 |
-| `--salt` | 可选，128 位十六进制盐。省略时自动随机生成并嵌入容器 |
-
-加密后盐值嵌入容器，解密时只需密码。
+| `-p, --password` | 要转换的密码（必填） |
+| `--salt-suffix` | 可选盐后缀（如站点名、设备名），不同后缀派生不同密钥 |
+| `--domain` | 域标签（默认 `default-v1`，一般不修改） |
 
 ::: tip 与 web 端互通
-生成的 `.enc` 文件采用与 web 工具一致的容器格式，可直接上传到 [web 端](https://tools.wcheer.com/) 用相同密码解密。
+只要「密码 + 盐后缀」相同，CLI 和 [web 工具](https://tools.wcheer.com/) 会派生出完全相同的 256 位密钥。
 :::
 
-### 解密文件（decrypt）
-
-```bash
-# 密码顺序可与加密时不同
-go-cipher-cli decrypt secret.txt.enc -p "SecondPass!" -p "MyPass123"
-```
-
-输出（还原为去掉 `.enc` 后缀的文件名）：
-
-```
-Decrypted 75 bytes -> secret.txt
-```
-
-密码错误时 GCM 认证失败：
-
-```
-decrypt: 密码错误！
-```
-
-::: warning 容器格式
-`.enc` 文件是二进制容器（小端）：`version(4) | reserved(4) | salt_seed(64) | length(4) | 密文`。密文部分为 `iv(12) | 加密数据 | GCM tag(16)`。
+::: tip 盐后缀的使用建议
+为不同用途使用不同盐后缀（如 `google`、`firefox`），即可从同一密码派生出互不相同的密钥，避免"一处泄露处处泄露"。
 :::
 
-## 密钥派生（keygen）
+## Diceware 助记口令（diceware）
 
-用 argon2id 从密码派生密钥，可用于配置其他工具。
+用 EFF 大型词表（7776 词）和密码学安全随机掷骰，生成易记但高熵的口令。
+
+### 安全原理
+
+- 随机源：`crypto/rand`（Go CSPRNG），采用拒绝采样消除模偏差
+- 每词提供约 **12.9 bit** 信息熵：
+  - 5 词 → ~64.6 bit
+  - 6 词 → ~77.5 bit
+  - 8 词 → ~103.4 bit
+- 可能组合数 = 7776^词数（5 词约为 2.8×10^19）
+
+### 基本用法
 
 ```bash
-go-cipher-cli keygen -p "MyPass123" --salt "7a7a...7a7a" --hash-length 32
+# 默认 5 词，空格分隔
+go-cipher-cli diceware
+
+# 指定词数和分隔符
+go-cipher-cli diceware -n 8 --sep hyphen
+go-cipher-cli diceware -n 6 --sep none
 ```
 
-输出：
+输出示例：
 
 ```
-key (hex):      c34adb02a84ae6f8ba5f60560ea27d75adfd9f7b37442a93603f63e6d69179da
-key (base64):   w0rbAqhK5vi6X2BWDqJ9da39n3s3RCqTYD9j5taRedo=
-iterations:     3
-hash length:    32 bytes
-processing:     54ms
+口令:         cavity-puppy-lego-vanquish-sediment
+长度:         35 字符
+词数:         5
+信息熵:       64.62 bit
+可能组合数:   2.84 × 10^19
+分隔符:       连字符 (-)
+
+逐词掷骰详情:
+   1. [15264] cavity
+   2. [45662] puppy
+   3. [35656] lego
+   4. [65415] vanquish
+   5. [53443] sediment
 ```
 
 | 参数 | 说明 |
 | --- | --- |
-| `-p, --password` | 密码，可重复。**多密码会先用融合算法合并**（对应 web 端密码生成器的行为） |
-| `--salt` | 可选，128 位十六进制盐。省略时随机生成 |
-| `--hash-length` | 派生密钥字节数，默认 32 |
-
-## 哈希计算
-
-### 文本哈希（hash）
-
-```bash
-go-cipher-cli hash "hello" --algo sha256
-# 输出: 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
-```
-
-支持的算法（`--algo`）：
-
-| 算法 | 示例值 |
-| --- | --- |
-| `md5` | `5d41402abc4b2a76b9719d911017c592` |
-| `sha1` / `sha224` / `sha256` / `sha384` / `sha512` | SHA-2 家族 |
-| `sha3-224` / `sha3-256` / `sha3-384` / `sha3-512` | SHA-3 家族 |
-
-```bash
-go-cipher-cli hash "hello" --algo sha3-512
-# 输出: 75d527c368f2efe848ecf6b073a36767800805e9eef2b1857d5f984f036eb6df891d75f72d9b154518c1cd58835286d1da9a38deba3de98b5a53e5ed78a84976
-```
-
-默认算法为 `sha256`。
-
-### HMAC（hmac）
-
-```bash
-go-cipher-cli hmac "hello" --algo hmac-sha256 --key "secret"
-# 输出: 88aab3ede8d3adf94d26ab90d3bafd4a2083070c3bcce9c014ee04a443847c0b
-```
-
-`--algo` 支持 `hmac-sha224` / `hmac-sha256` / `hmac-sha384` / `hmac-sha512` / `hmac-sha3-*`，也可省略 `hmac-` 前缀（如 `sha256`）。
-
-## 密码与密钥恢复
-
-### 密码融合（fuse）
-
-将多个密码按前端算法融合为一个密码（去空格 + Unicode NFC + 融合打乱 + 插入特殊字符）。
-
-```bash
-go-cipher-cli fuse --salt "a76fdc37b135f1c3" -p "123456789" -p "shanghai" -p "@"
-# 输出: a4s373h6a9^6ca2f1i5n8d1gfc7h@1b3573
-```
-
-设计为 1–3 个密码，融合结果与 web 端密码生成器完全一致。
-
-### 密钥恢复验证（recover）
-
-验证生成密钥的"前 8 位 + 后 8 位"是否出现在存储的 uuid 列表中（对应 web 端的密钥恢复校验）。
-
-```bash
-# 匹配
-go-cipher-cli recover "abcdef1234567890WVWXYZ12345678" --uuid "abcdef1212345678"
-# 输出: MATCH
-
-# 不匹配
-go-cipher-cli recover "abcdef1234567890WVWXYZ12345678" --uuid "nomatch00000000"
-# 输出: NO MATCH
-```
-
-`--uuid` 可重复提供多个候选。
-
-### 提示/UUID 匹配（hint-match）
-
-比对加密提示和元数据提示中嵌入的 `密钥UUID:`，用于校验密钥归属。
-
-```bash
-go-cipher-cli hint-match --encrypted "密钥UUID: ab12cd34ef" --meta "密钥UUID: ab12cd34ef"
-# 输出: MATCH
-```
-
-## 交互式演示（run）
-
-```bash
-go-cipher-cli run
-```
-
-执行流程：
-
-1. **选择操作类型**（交互式下拉）：`Encrypt` 或 `Decrypt`，默认 `Encrypt`。
-2. **输入目标名称**：文件名、key 或任意标识符。
-3. **显示进度条**：以 MPB 渲染 0%→100% 进度。
-4. **输出结果**与结构化日志（Zap）。
+| `-n, --num-words` | 单词数量（1-20，默认 5） |
+| `--sep` | 分隔符：`space`（空格）/ `hyphen`（连字符） / `none`（无），默认 `space` |
 
 ## 全局参数
 
 ### 指定配置文件
 
 ```bash
-go-cipher-cli --config /path/to/config.yaml run
+go-cipher-cli --config /path/to/config.yaml enhance -p test
 ```
 
 支持的配置格式：YAML / JSON / TOML 等（由 Viper 自动识别扩展名）。
@@ -213,7 +142,7 @@ log:
 ### 设置日志级别
 
 ```bash
-go-cipher-cli --log-level debug run
+go-cipher-cli --log-level debug diceware
 ```
 
 可选值：`debug` / `info` / `warn` / `error`，默认 `info`。
@@ -223,7 +152,7 @@ go-cipher-cli --log-level debug run
 例如 `log.level` 对应环境变量 `GOCIPHER_LOG_LEVEL`：
 
 ```bash
-GOCIPHER_LOG_LEVEL=warn go-cipher-cli run
+GOCIPHER_LOG_LEVEL=warn go-cipher-cli enhance -p test
 ```
 :::
 
@@ -232,4 +161,4 @@ GOCIPHER_LOG_LEVEL=warn go-cipher-cli run
 | 退出码 | 含义 |
 | --- | --- |
 | `0` | 成功 |
-| `1` | 执行出错（如配置加载失败、命令返回错误、解密时密码错误） |
+| `1` | 执行出错（如配置加载失败、命令返回错误） |

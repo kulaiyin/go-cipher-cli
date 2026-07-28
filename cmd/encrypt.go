@@ -73,5 +73,5 @@ func init() {
 	encryptCmd.Flags().StringSliceVarP(&encryptPasswords, "password", "p", nil, "password (repeatable, e.g. -p a -p b); order does not matter")
 	encryptCmd.Flags().StringVar(&encryptSalt, "salt", "", "optional 128-hex salt seed (auto-generated if omitted)")
 	_ = encryptCmd.MarkFlagRequired("password")
-	rootCmd.AddCommand(encryptCmd)
+	// rootCmd.AddCommand(encryptCmd)
 }
