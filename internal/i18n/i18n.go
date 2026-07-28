@@ -65,6 +65,15 @@ func Init(lang string) error {
 	return initErr
 }
 
+// MustInit is a convenience wrapper around Init that panics on error.
+// Use it in init() functions where the error cannot be propagated; failure here
+// means the embedded locale files are corrupt, i.e. the binary is unusable.
+func MustInit(lang string) {
+	if err := Init(lang); err != nil {
+		panic("i18n: " + err.Error())
+	}
+}
+
 // SetLanguage switches the localizer to the given language at runtime.
 // If lang is empty, detects from the LANG environment variable.
 func SetLanguage(lang string) {

@@ -77,7 +77,7 @@ func sepDesc(s diceware.Separator) string {
 }
 
 func init() {
-	i18n.Init("")
+	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		dicewareCmd.Short = i18n.T("diceware.short")
 		dicewareCmd.Long = i18n.T("diceware.long")

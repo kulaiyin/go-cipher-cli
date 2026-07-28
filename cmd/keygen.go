@@ -77,7 +77,7 @@ func joinPasswords(salt string, pws []string) string {
 }
 
 func init() {
-	i18n.Init("")
+	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		keygenCmd.Short = i18n.T("keygen.short")
 		keygenCmd.Long = i18n.T("keygen.long")

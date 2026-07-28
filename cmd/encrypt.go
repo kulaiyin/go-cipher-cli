@@ -69,7 +69,7 @@ var encryptCmd = &cobra.Command{
 }
 
 func init() {
-	i18n.Init("")
+	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		encryptCmd.Short = i18n.T("encrypt.short")
 		encryptCmd.Long = i18n.T("encrypt.long")

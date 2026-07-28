@@ -54,7 +54,7 @@ var decryptCmd = &cobra.Command{
 }
 
 func init() {
-	i18n.Init("")
+	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		decryptCmd.Short = i18n.T("decrypt.short")
 		decryptCmd.Long = i18n.T("decrypt.long")

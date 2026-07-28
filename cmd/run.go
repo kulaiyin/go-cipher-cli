@@ -64,7 +64,7 @@ var runCmd = &cobra.Command{
 }
 
 func init() {
-	i18n.Init("")
+	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		runCmd.Short = i18n.T("run.short")
 		runCmd.Long = i18n.T("run.long")

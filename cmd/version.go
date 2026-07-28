@@ -19,7 +19,7 @@ var versionCmd = &cobra.Command{
 }
 
 func init() {
-	i18n.Init("")
+	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		versionCmd.Short = i18n.T("version.short")
 	})

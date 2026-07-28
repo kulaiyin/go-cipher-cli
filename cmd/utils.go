@@ -101,7 +101,7 @@ var hintMatchCmd = &cobra.Command{
 }
 
 func init() {
-	i18n.Init("")
+	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		hashCmd.Short = i18n.T("hash.short")
 		hashCmd.Long = i18n.T("hash.long")

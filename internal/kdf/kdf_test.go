@@ -10,7 +10,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	i18n.Init("en")
+	i18n.MustInit("en")
 	m.Run()
 }
 
