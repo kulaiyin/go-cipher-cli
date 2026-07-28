@@ -83,6 +83,15 @@ jobs:
           fi
 
       # ---------- 第四阶段：构建 VitePress 文档 ----------
+      # 从 git tag 提取版本号写入 version.json，供文档站导航栏显示当前版本。
+      # tag 形如 v0.2.0，去掉前缀 v 得到 0.2.0；无 tag 时回退到 0.0.0-dev。
+      - name: Inject version into docs
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0-dev")
+          VERSION="${VERSION#v}"
+          echo "{\"version\": \"$VERSION\"}" > docs/.vitepress/version.json
+          echo "Docs version: $VERSION"
+
       - name: Build VitePress docs
         run: |
           npm ci

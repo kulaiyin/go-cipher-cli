@@ -1,7 +1,22 @@
 import { defineConfig } from 'vitepress'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
 
 // 部署在 https://kulaiyin.github.io/go-cipher-cli/，需设置 base。
 // 如部署到自定义域名根路径，将 base 改为 '/'。
+
+// 读取版本号：CI 发版时由 release.yml 从 git tag 写入 version.json；
+// 本地开发时为占位版本（0.0.0-dev）。
+const __dirname = dirname(fileURLToPath(import.meta.url))
+let siteVersion = '0.0.0-dev'
+try {
+  const v = JSON.parse(readFileSync(resolve(__dirname, 'version.json'), 'utf-8'))
+  if (v && typeof v.version === 'string') siteVersion = v.version
+} catch {
+  // version.json 缺失时回退到占位版本
+}
+
 export default defineConfig({
   lang: 'zh-CN',
   title: 'go-cipher-cli',
@@ -18,7 +33,9 @@ export default defineConfig({
     nav: [
       { text: '指南', link: '/guide/installation' },
       { text: '打包发布', link: '/guide/packaging' },
-      { text: 'GitHub', link: 'https://github.com/kulaiyin/go-cipher-cli' }
+      { text: 'GitHub', link: 'https://github.com/kulaiyin/go-cipher-cli' },
+      // 版本号显示在导航栏右侧，点击跳转到 Releases 页面
+      { text: `v${siteVersion}`, link: 'https://github.com/kulaiyin/go-cipher-cli/releases' }
     ],
 
     sidebar: [
