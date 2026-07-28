@@ -27,6 +27,7 @@ coverage.txt
 .vscode/
 *.swp
 .DS_Store
+*.bak*
 
 # 开发助手/会话临时文件（不进版本库）
 .zcode/
