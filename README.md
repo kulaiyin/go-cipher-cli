@@ -50,7 +50,7 @@ go build -o go-cipher-cli ./main.go
 ```bash
 # 密码转密钥（与 web 工具互通）
 go-cipher-cli enhance -p "密码"                              # 派生 256 位密钥
-go-cipher-cli enhance -p "密码" --salt-suffix google          # 不同盐后缀派生不同密钥
+go-cipher-cli enhance -p "密码" -s google                      # 不同盐后缀派生不同密钥
 
 # Diceware 助记口令
 go-cipher-cli diceware                                       # 5 词默认口令（无分隔符）

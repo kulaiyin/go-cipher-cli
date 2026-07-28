@@ -52,7 +52,7 @@ var enhanceCmd = &cobra.Command{
 
 func init() {
 	enhanceCmd.Flags().StringVarP(&enhancePassword, "password", "p", "", "要转换的密码（必填）")
-	enhanceCmd.Flags().StringVar(&enhanceSaltSuffix, "salt-suffix", "", "可选盐后缀（如站点名、设备名），不同后缀派生不同密钥")
+	enhanceCmd.Flags().StringVarP(&enhanceSaltSuffix, "salt-suffix", "s", "", "可选盐后缀（如站点名、设备名），不同后缀派生不同密钥")
 	enhanceCmd.Flags().StringVar(&enhanceDomain, "domain", "", "域标签（默认 default-v1，一般不修改）")
 	_ = enhanceCmd.MarkFlagRequired("password")
 	rootCmd.AddCommand(enhanceCmd)

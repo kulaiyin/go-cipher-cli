@@ -21,7 +21,7 @@ Available Commands:
 
 ```bash
 go-cipher-cli version
-# 输出: v0.3.0
+# 输出: v0.3.1
 ```
 
 ## 密码转密钥（enhance）
@@ -41,8 +41,8 @@ go-cipher-cli version
 go-cipher-cli enhance -p "MyMaster@2024"
 
 # 不同盐后缀派生不同密钥（推荐做法）
-go-cipher-cli enhance -p "MyMaster@2024" --salt-suffix google
-go-cipher-cli enhance -p "MyMaster@2024" --salt-suffix firefox
+go-cipher-cli enhance -p "MyMaster@2024" -s google
+go-cipher-cli enhance -p "MyMaster@2024" -s firefox
 ```
 
 输出示例：
@@ -59,7 +59,7 @@ Domain:   default-v1
 | 参数 | 说明 |
 | --- | --- |
 | `-p, --password` | 要转换的密码（必填） |
-| `--salt-suffix` | 可选盐后缀（如站点名、设备名），不同后缀派生不同密钥 |
+| `-s, --salt-suffix` | 可选盐后缀（如站点名、设备名），不同后缀派生不同密钥 |
 | `--domain` | 域标签（默认 `default-v1`，一般不修改） |
 
 ::: tip 与 web 端互通
