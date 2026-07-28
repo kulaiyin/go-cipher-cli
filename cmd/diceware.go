@@ -15,8 +15,9 @@ var (
 )
 
 var dicewareCmd = &cobra.Command{
-	Use:   "diceware [-n <词数>] [--sep <分隔符>]",
-	Short: "生成 Diceware 助记口令（EFF 词表，7776 词）",
+	Use:     "diceware [-n <词数>] [--sep <分隔符>]",
+	Aliases: []string{"dw"},
+	Short:   "生成 Diceware 助记口令（EFF 词表，7776 词）",
 	Long: `用 EFF 大型词表（7776 词）和密码学安全随机掷骰，生成易记但高熵的口令。
 
 随机数来源：crypto/rand (Go CSPRNG)。
