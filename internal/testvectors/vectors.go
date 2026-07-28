@@ -78,8 +78,8 @@ type Vectors struct {
 	} `json:"gcmEncryptFixedIV"`
 
 	FusePasswords struct {
-		Basic   []FusePasswordCase `json:"basic"`
-		Chinese []FusePasswordCase `json:"chinese"`
+		Basic    []FusePasswordCase `json:"basic"`
+		Extended []FusePasswordCase `json:"extended"`
 	} `json:"fusePasswords"`
 
 	NormalizePassword []struct {

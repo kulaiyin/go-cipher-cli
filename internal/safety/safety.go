@@ -19,6 +19,8 @@ import (
 	"io"
 	"strings"
 
+	"go-cipher-cli/internal/i18n"
+
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/sha3"
@@ -76,8 +78,8 @@ func HKDFExpandSHA256(prk, info []byte, length int) []byte {
 
 	for len(out) < length {
 		mac := hmac.New(sha256.New, prk)
-		mac.Write(prev)  // T(i-1)
-		mac.Write(info)  // info
+		mac.Write(prev)            // T(i-1)
+		mac.Write(info)            // info
 		mac.Write([]byte{counter}) // counter byte
 		t := mac.Sum(nil)
 
@@ -126,7 +128,7 @@ func SHA256Hex(s string) string {
 func BytesToHex(b []byte) string { return hex.EncodeToString(b) }
 func HexToBytes(s string) ([]byte, error) {
 	if len(s)%2 != 0 {
-		return nil, fmt.Errorf("16 进制字符串长度必须为偶数")
+		return nil, fmt.Errorf("%s", i18n.T("safety.error.hex_even"))
 	}
 	return hex.DecodeString(s)
 }

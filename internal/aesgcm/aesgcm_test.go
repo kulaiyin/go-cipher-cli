@@ -71,7 +71,7 @@ func TestEncryptDecrypt_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plaintext := []byte("round-trip test payload — 中文 + emoji 🎉")
+	plaintext := []byte("round-trip test payload — CJK + emoji 🎉")
 
 	enc, err := GcmEncrypt(plaintext, key, salt)
 	if err != nil {

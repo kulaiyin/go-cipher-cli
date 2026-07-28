@@ -5,8 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/testvectors"
 )
+
+func TestMain(m *testing.M) {
+	i18n.Init("en")
+	m.Run()
+}
 
 // TDD: kdf package mirrors kdf/index.ts (KeyDerivation API surface).
 

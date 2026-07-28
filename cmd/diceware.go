@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"go-cipher-cli/internal/diceware"
+	"go-cipher-cli/internal/i18n"
 )
 
 var (
@@ -15,30 +16,37 @@ var (
 )
 
 var dicewareCmd = &cobra.Command{
-	Use:   "diceware [-n <词数>] [--sep <分隔符>]",
-	Short: "生成 Diceware 助记口令（EFF 词表，7776 词）",
-	Long: `用 EFF 大型词表（7776 词）和密码学安全随机掷骰，生成易记但高熵的口令。
-
-随机数来源：crypto/rand (Go CSPRNG)。
-每词提供约 12.9 bit 熵，5 词口令约 64.6 bit，8 词口令约 103.4 bit。
-
-与 Web 工具 (https://tools.wcheer.com/) 的 Diceware 生成器同词表、同算法。`,
+	Use:   "diceware [-n <num-words>] [--sep <separator>]",
+	Short: "placeholder",
+	Long:  "placeholder",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sep := parseSeparator(diceSep)
 
 		result, err := diceware.GeneratePassphrase(diceNumWords, sep)
 		if err != nil {
-			return fmt.Errorf("生成失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T("diceware.error.generate_failed"), err)
 		}
 
-		fmt.Printf("口令:         %s\n", result.Passphrase)
-		fmt.Printf("长度:         %d 字符\n", len(result.Passphrase))
-		fmt.Printf("词数:         %d\n", len(result.Rolls))
-		fmt.Printf("信息熵:       %.2f bit\n", result.EntropyBits)
-		fmt.Printf("可能组合数:   %s\n", diceware.FormatCombinations(result.Combinations))
-		fmt.Printf("分隔符:       %s\n", sepDesc(sep))
+		fmt.Println(i18n.TWithData("diceware.output.passphrase", map[string]interface{}{
+			"Passphrase": result.Passphrase,
+		}))
+		fmt.Println(i18n.TWithData("diceware.output.length", map[string]interface{}{
+			"Len": len(result.Passphrase),
+		}))
+		fmt.Println(i18n.TWithData("diceware.output.words", map[string]interface{}{
+			"Count": len(result.Rolls),
+		}))
+		fmt.Println(i18n.TWithData("diceware.output.entropy", map[string]interface{}{
+			"Bits": fmt.Sprintf("%.2f", result.EntropyBits),
+		}))
+		fmt.Println(i18n.TWithData("diceware.output.combinations", map[string]interface{}{
+			"Combinations": diceware.FormatCombinations(result.Combinations),
+		}))
+		fmt.Println(i18n.TWithData("diceware.output.separator", map[string]interface{}{
+			"Sep": sepDesc(sep),
+		}))
 		fmt.Println()
-		fmt.Println("逐词掷骰详情:")
+		fmt.Println(i18n.T("diceware.output.details_header"))
 		for i, roll := range result.Rolls {
 			fmt.Printf("  %2d. [%s] %s\n", i+1, roll.Dice, roll.Word)
 		}
@@ -60,16 +68,16 @@ func parseSeparator(s string) diceware.Separator {
 func sepDesc(s diceware.Separator) string {
 	switch s {
 	case diceware.SepHyphen:
-		return "连字符 (-)"
+		return i18n.T("diceware.sep.hyphen")
 	case diceware.SepNone:
-		return "无"
+		return i18n.T("diceware.sep.none")
 	default:
-		return "空格"
+		return i18n.T("diceware.sep.space")
 	}
 }
 
 func init() {
-	dicewareCmd.Flags().IntVarP(&diceNumWords, "num-words", "n", 5, "单词数量 (1-20)")
-	dicewareCmd.Flags().StringVar(&diceSep, "sep", "none", "分隔符: space / hyphen / none")
+	dicewareCmd.Flags().IntVarP(&diceNumWords, "num-words", "n", 5, i18n.T("diceware.flag.num_words"))
+	dicewareCmd.Flags().StringVar(&diceSep, "sep", "none", i18n.T("diceware.flag.sep"))
 	rootCmd.AddCommand(dicewareCmd)
 }

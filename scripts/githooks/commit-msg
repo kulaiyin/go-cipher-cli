@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# commit-msg — commit message validation
+# Fires on: git commit (after message is written, before commit is created)
+# Checks:
+#   1. No CJK characters in commit message
+#   2. Conventional Commits format
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+COMMIT_MSG_FILE="$1"
+
+# ============================================
+# 1. No CJK characters
+# ============================================
+cjk_hits=$(grep -Pn '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' "$COMMIT_MSG_FILE" 2>/dev/null || true)
+if [ -n "$cjk_hits" ]; then
+    echo -e "${RED}[commit-msg] CJK characters are not allowed in commit messages:${NC}"
+    echo "$cjk_hits"
+    echo ""
+    echo -e "${RED}Commit blocked. Write your message in English.${NC}"
+    exit 1
+fi
+
+# ============================================
+# 2. Conventional Commits format
+#    type(optional-scope): description
+#    Supported types: feat fix docs style refactor perf test chore ci build revert
+# ============================================
+# Skip merge commits
+first_line=$(head -n 1 "$COMMIT_MSG_FILE")
+if echo "$first_line" | grep -qE '^Merge '; then
+    exit 0
+fi
+
+pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\([a-zA-Z0-9_.-]+\))?: .+'
+
+if ! echo "$first_line" | grep -qE "$pattern"; then
+    echo -e "${RED}[commit-msg] Commit message does not follow Conventional Commits.${NC}"
+    echo ""
+    echo "Expected format: type(optional-scope): description"
+    echo ""
+    echo "Examples:"
+    echo "  feat: add diceware command"
+    echo "  fix(parser): handle empty input"
+    echo "  docs: update installation guide"
+    echo "  chore: bump dependencies"
+    echo ""
+    echo "Supported types: feat fix docs style refactor perf test chore ci build revert"
+    echo ""
+    echo "Your message: $first_line"
+    exit 1
+fi
+
+echo -e "${GREEN}[commit-msg] OK${NC}"
+exit 0

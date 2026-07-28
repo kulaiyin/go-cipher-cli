@@ -90,7 +90,7 @@ stored --uuid list (the web tool's key-recovery verification).`,
 var hintMatchCmd = &cobra.Command{
 	Use:   "hint-match",
 	Short: "Validate hint/key UUID match (mirrors validateHintAndKeysUuidMatch)",
-	Long: `Compare the 密钥UUID embedded in an encrypted hint against a meta hint.
+	Long: `Compare the KEYUUID embedded in an encrypted hint against a meta hint.
 Both inputs are read from --encrypted and --meta.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		enc, _ := cmd.Flags().GetString("encrypted")

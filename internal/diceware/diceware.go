@@ -17,7 +17,6 @@ const (
 
 	// WordlistSize is the total number of words = 6^5 = 7776.
 	WordlistSize = 7776
-
 )
 
 // EntropyBitsPerWord is log2(7776) ≈ 12.9248.

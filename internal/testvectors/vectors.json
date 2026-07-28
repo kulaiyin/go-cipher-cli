@@ -171,60 +171,60 @@
         "out": "24e@d673817asghh&00d5912e34560i6fan"
       }
     ],
-    "chinese": [
+    "extended": [
       {
         "salt": "a76fdc37b135f1c3",
         "passwords": [
           "123456789",
-          "shanghai上海",
+          "shanghaiCN",
           "@"
         ],
-        "out": "上4a3s376h9海ca261a5^f8i1nfd7g@cbh51337"
+        "out": "C4a3s376h9Nca261a5^f8i1nfd7g@cbh51337"
       },
       {
         "salt": "cb1045ee07414e4e",
         "passwords": [
           "123456789",
-          "shanghai上海",
+          "shanghaiCN",
           "@"
         ],
-        "out": "0.b5@ee73841海4ie4he4c191207456asgh上an"
+        "out": "0.b5@ee73841N4ie4he4c191207456asghCan"
       },
       {
         "salt": "b5f6044f2129c682",
         "passwords": [
           "123456789",
-          "shanghai上海",
+          "shanghaiCN",
           "@"
         ],
-        "out": "上4b2s356h9海8a\"2f6a568i1nc07g&@42h9142f"
+        "out": "C4b2s356h9N8a\"2f6a568i1nc07g&@42h9142f"
       },
       {
         "salt": "857c1eea3013d365",
         "passwords": [
           "123456789",
-          "shanghai上海",
+          "shanghaiCN",
           "@"
         ],
-        "out": "98#152773c841a3a海h{ase上6e50in1g3h5(3d6@"
+        "out": "98#152773c841a3aNh{aseC6e50in1g3h5(3d6@"
       },
       {
         "salt": "e98310c3be31e633",
         "passwords": [
           "123456789",
-          "shanghai上海",
+          "shanghaiCN",
           "@"
         ],
-        "out": "上4e3s396h9海3a286a538i1ne17g@0bh1(ec33"
+        "out": "C4e3s396h9N3a286a538i1ne17g@0bh1(ec33"
       },
       {
         "salt": "d4520ed6e31706f0",
         "passwords": [
           "123456789",
-          "shanghai上海",
+          "shanghaiCN",
           "@"
         ],
-        "out": "24e@d673817海0i6fh00d5912e3456a&sgh上an"
+        "out": "24e@d673817N0i6fh00d5912e3456a&sghCan"
       }
     ]
   },
@@ -272,98 +272,98 @@
     {
       "in": "",
       "score": 0,
-      "feedback": [
-        "密码长度至少需要8个字符",
-        "建议包含小写字母",
-        "建议包含大写字母",
-        "建议包含数字",
-        "建议包含特殊字符"
-      ]
-    },
-    {
-      "in": "abc",
-      "score": 1,
-      "feedback": [
-        "密码长度至少需要8个字符",
-        "建议包含大写字母",
-        "建议包含数字",
-        "建议包含特殊字符"
-      ]
-    },
-    {
-      "in": "abcdefgh",
-      "score": 2,
-      "feedback": [
-        "密码长度建议至少12个字符",
-        "建议包含大写字母",
-        "建议包含数字",
-        "建议包含特殊字符"
-      ]
-    },
-    {
-      "in": "Abcd1234!",
-      "score": 5,
-      "feedback": [
-        "密码长度建议至少12个字符"
-      ]
-    },
-    {
-      "in": "Str0ng!Pass#2024xyz",
-      "score": 6,
-      "feedback": []
-    },
-    {
-      "in": "password",
-      "score": 0,
-      "feedback": [
-        "密码长度建议至少12个字符",
-        "建议包含大写字母",
-        "建议包含数字",
-        "建议包含特殊字符",
-        "避免使用常见密码"
-      ]
-    },
-    {
-      "in": "123456",
-      "score": 0,
-      "feedback": [
-        "密码长度至少需要8个字符",
-        "建议包含小写字母",
-        "建议包含大写字母",
-        "建议包含特殊字符",
-        "避免使用常见密码"
-      ]
-    }
+        "feedback": [
+          "password must be at least 8 characters",
+          "add a lowercase letter",
+          "add an uppercase letter",
+          "add a digit",
+          "add a special character"
+        ]
+      },
+      {
+        "in": "abc",
+        "score": 1,
+        "feedback": [
+          "password must be at least 8 characters",
+          "add an uppercase letter",
+          "add a digit",
+          "add a special character"
+        ]
+      },
+      {
+        "in": "abcdefgh",
+        "score": 2,
+        "feedback": [
+          "password should be at least 12 characters",
+          "add an uppercase letter",
+          "add a digit",
+          "add a special character"
+        ]
+      },
+      {
+        "in": "Abcd1234!",
+        "score": 5,
+        "feedback": [
+          "password should be at least 12 characters"
+        ]
+      },
+      {
+        "in": "Str0ng!Pass#2024xyz",
+        "score": 6,
+        "feedback": []
+      },
+      {
+        "in": "password",
+        "score": 0,
+        "feedback": [
+          "password should be at least 12 characters",
+          "add an uppercase letter",
+          "add a digit",
+          "add a special character",
+          "avoid common passwords"
+        ]
+      },
+      {
+        "in": "123456",
+        "score": 0,
+        "feedback": [
+          "password must be at least 8 characters",
+          "add a lowercase letter",
+          "add an uppercase letter",
+          "add a special character",
+          "avoid common passwords"
+        ]
+      }
   ],
   "validateHintAndKeysUuidMatch": [
     {
-      "encrypted": "密钥UUID: ab12cd34ef",
-      "meta": "密钥UUID: ab12cd34ef",
+      "encrypted": "KEYUUID: ab12cd34ef",
+      "meta": "KEYUUID: ab12cd34ef",
       "out": true
     },
     {
-      "encrypted": "密钥UUID: ab12cd34ef",
-      "meta": "密钥UUID: 0000000000",
+      "encrypted": "KEYUUID: ab12cd34ef",
+      "meta": "KEYUUID: 0000000000",
       "out": false
     },
     {
       "encrypted": "no uuid here",
-      "meta": "密钥UUID: ab12cd34ef",
+      "meta": "KEYUUID: ab12cd34ef",
       "out": true
     },
     {
-      "encrypted": "密钥UUID: ab12cd34ef",
+      "encrypted": "KEYUUID: ab12cd34ef",
       "meta": "no uuid here",
       "out": false
     },
     {
-      "encrypted": "密钥UUID: ABCD1234EF",
-      "meta": "密钥UUID: abcd1234ef",
+      "encrypted": "KEYUUID: ABCD1234EF",
+      "meta": "KEYUUID: abcd1234ef",
       "out": false
     },
     {
-      "encrypted": "前缀 密钥UUID: 1a2b****ffff 后缀",
-      "meta": "密钥UUID: 1a2b****ffff",
+      "encrypted": "prefix KEYUUID: 1a2b****ffff suffix",
+      "meta": "KEYUUID: 1a2b****ffff",
       "out": true
     }
   ],

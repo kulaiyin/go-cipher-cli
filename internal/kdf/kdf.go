@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 
+	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/safety"
 )
 
@@ -52,7 +53,7 @@ func Argon2(password string, cfg Argon2Config) KDFResult {
 	}
 	out, err := safety.Argon2id([]byte(password), cfg.Salt, time, mem, par, keyLen)
 	if err != nil {
-		return KDFResult{Error: errMsg(err, "Argon2 密钥派生失败"), ProcessingTime: elapsedMs(start)}
+		return KDFResult{Error: errMsg(err, i18n.T("kdf.error.argon2_failed")), ProcessingTime: elapsedMs(start)}
 	}
 	return KDFResult{
 		Success:        true,
@@ -112,9 +113,9 @@ func ValidatePasswordStrength(password string) (score int, feedback []string) {
 	// length tiers
 	switch {
 	case len(password) < 8:
-		feedback = append(feedback, "密码长度至少需要8个字符")
+		feedback = append(feedback, i18n.T("kdf.feedback.too_short"))
 	case len(password) < 12:
-		feedback = append(feedback, "密码长度建议至少12个字符")
+		feedback = append(feedback, i18n.T("kdf.feedback.recommend_longer"))
 		score += 1
 	case len(password) >= 16:
 		score += 2
@@ -141,22 +142,22 @@ func ValidatePasswordStrength(password string) (score int, feedback []string) {
 	if hasLower {
 		score += 1
 	} else {
-		feedback = append(feedback, "建议包含小写字母")
+		feedback = append(feedback, i18n.T("kdf.feedback.add_lowercase"))
 	}
 	if hasUpper {
 		score += 1
 	} else {
-		feedback = append(feedback, "建议包含大写字母")
+		feedback = append(feedback, i18n.T("kdf.feedback.add_uppercase"))
 	}
 	if hasNumber {
 		score += 1
 	} else {
-		feedback = append(feedback, "建议包含数字")
+		feedback = append(feedback, i18n.T("kdf.feedback.add_digit"))
 	}
 	if hasSpecial {
 		score += 1
 	} else {
-		feedback = append(feedback, "建议包含特殊字符")
+		feedback = append(feedback, i18n.T("kdf.feedback.add_special"))
 	}
 
 	common := map[string]bool{
@@ -164,7 +165,7 @@ func ValidatePasswordStrength(password string) (score int, feedback []string) {
 		"qwerty": true, "abc123": true, "password123": true,
 	}
 	if common[normalizeLowerASCII(password)] {
-		feedback = append(feedback, "避免使用常见密码")
+		feedback = append(feedback, i18n.T("kdf.feedback.avoid_common"))
 		if score-2 < 0 {
 			score = 0
 		} else {

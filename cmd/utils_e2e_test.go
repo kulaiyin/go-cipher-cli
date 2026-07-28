@@ -73,8 +73,8 @@ func TestRecoverCmd(t *testing.T) {
 
 func TestHintMatchCmd(t *testing.T) {
 	out, code := runCLI(t, "hint-match",
-		"--encrypted", "密钥UUID: ab12cd34ef",
-		"--meta", "密钥UUID: ab12cd34ef")
+		"--encrypted", "KEYUUID: ab12cd34ef",
+		"--meta", "KEYUUID: ab12cd34ef")
 	if code != 0 {
 		t.Fatalf("hint-match failed: %s", out)
 	}
@@ -82,8 +82,8 @@ func TestHintMatchCmd(t *testing.T) {
 		t.Errorf("hint-match = %s, want MATCH", out)
 	}
 	out, _ = runCLI(t, "hint-match",
-		"--encrypted", "密钥UUID: ab12cd34ef",
-		"--meta", "密钥UUID: 0000000000")
+		"--encrypted", "KEYUUID: ab12cd34ef",
+		"--meta", "KEYUUID: 0000000000")
 	if strings.TrimSpace(out) != "NO MATCH" {
 		t.Errorf("hint-match (diff) = %s, want NO MATCH", out)
 	}

@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# pre-commit — code quality checks before commit
+# Fires on: git commit (before commit message editor opens)
+# Checks:
+#   1. No new CJK characters in .go files (diff only)
+#   2. gofmt compliance
+#   3. No trailing whitespace
+#   4. Files must end with a newline
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+failed=0
+
+# ---- collect staged files ----
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -z "$staged_files" ]; then
+    exit 0
+fi
+
+staged_go=$(echo "$staged_files" | grep '\.go$' || true)
+
+# ============================================
+# 1. No new CJK characters in Go source (diff only)
+#    Scans only added/modified lines so existing CJK in untouched
+#    code does not block unrelated commits.
+# ============================================
+if [ -n "$staged_go" ]; then
+    cjk_hits=$(echo "$staged_go" | xargs -I{} sh -c \
+        'git diff --cached "{}" | grep -E "^\+[^+]" | grep -Pn "[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]" && echo "  in {}"' 2>/dev/null || true)
+    if [ -n "$cjk_hits" ]; then
+        echo -e "${RED}[pre-commit] New CJK characters are not allowed in .go files:${NC}"
+        echo "$cjk_hits"
+        echo ""
+        failed=1
+    fi
+fi
+
+# ============================================
+# 2. gofmt
+# ============================================
+if [ -n "$staged_go" ]; then
+    fmt_issues=$(echo "$staged_go" | xargs gofmt -l 2>/dev/null || true)
+    if [ -n "$fmt_issues" ]; then
+        echo -e "${RED}[pre-commit] Files not gofmt'd:${NC}"
+        echo "$fmt_issues" | while read -r f; do
+            echo "  -> $f"
+            gofmt -d "$f" 2>/dev/null
+        done
+        echo ""
+        failed=1
+    fi
+fi
+
+# ============================================
+# 3. No trailing whitespace
+# ============================================
+text_files=$(echo "$staged_files" | grep -vE '\.(png|jpg|jpeg|gif|ico|gz|zip|tar|bin|exe|wasm|sum)$' || true)
+if [ -n "$text_files" ]; then
+    ws_hits=$(echo "$text_files" | xargs grep -Pn '[[:space:]]$' 2>/dev/null || true)
+    if [ -n "$ws_hits" ]; then
+        echo -e "${RED}[pre-commit] Trailing whitespace found:${NC}"
+        echo "$ws_hits"
+        echo ""
+        failed=1
+    fi
+fi
+
+# ============================================
+# 4. Files must end with a newline
+# ============================================
+if [ -n "$text_files" ]; then
+    while IFS= read -r f; do
+        if [ -f "$f" ] && [ -s "$f" ]; then
+            last_byte=$(tail -c 1 "$f" | xxd -p)
+            if [ "$last_byte" != "0a" ]; then
+                echo -e "${RED}[pre-commit] File missing trailing newline: $f${NC}"
+                failed=1
+            fi
+        fi
+    done <<< "$text_files"
+fi
+
+# ============================================
+# Result
+# ============================================
+if [ "$failed" -eq 1 ]; then
+    echo -e "${RED}Commit blocked. Fix the issues above and try again.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}[pre-commit] All checks passed.${NC}"
+exit 0

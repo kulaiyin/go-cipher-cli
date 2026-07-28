@@ -54,9 +54,9 @@ func TestFusePasswords_BasicGoldenVectors(t *testing.T) {
 	}
 }
 
-func TestFusePasswords_ChineseGoldenVectors(t *testing.T) {
+func TestFusePasswords_ExtendedGoldenVectors(t *testing.T) {
 	v := testvectors.MustLoad()
-	for _, c := range v.FusePasswords.Chinese {
+	for _, c := range v.FusePasswords.Extended {
 		got := FusePasswords(c.Salt, c.Passwords)
 		if got != c.Out {
 			t.Errorf("FusePasswords(chinese, salt=%q) mismatch:\n got = %q\nwant = %q", c.Salt, got, c.Out)

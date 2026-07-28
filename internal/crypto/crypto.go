@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/sha3"
+
+	"go-cipher-cli/internal/i18n"
 )
 
 // Result mirrors the frontend Result/SuccessResult/ErrorResult shape.
@@ -45,7 +47,7 @@ func HMAC(data, algorithm, key string) Result {
 	name := strings.TrimPrefix(algorithm, "hmac-")
 	fn, ok := hashFunc(name)
 	if !ok {
-		return Result{Error: fmt.Errorf("不支持的HMAC算法: %s", algorithm).Error()}
+		return Result{Error: i18n.TWithData("crypto.error.unsupported_hmac", map[string]interface{}{"Algorithm": algorithm})}
 	}
 	m := hmac.New(fn, []byte(key))
 	m.Write([]byte(data))
@@ -61,7 +63,7 @@ func Base64Decode(s string) ([]byte, error) { return base64.StdEncoding.DecodeSt
 func newHash(algorithm string) (hash.Hash, error) {
 	fn, ok := hashFunc(algorithm)
 	if !ok {
-		return nil, fmt.Errorf("不支持的算法: %s", algorithm)
+		return nil, fmt.Errorf("%s", i18n.TWithData("crypto.error.unsupported_algo", map[string]interface{}{"Algorithm": algorithm}))
 	}
 	return fn(), nil
 }

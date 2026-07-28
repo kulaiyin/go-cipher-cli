@@ -19,10 +19,10 @@ import (
 	"regexp"
 )
 
-// uuidHintRe mirrors the JS regex /密钥UUID: ([a-f0-9*]+)/i. The (?i) flag makes both the
+// uuidHintRe mirrors the JS regex /KEYUUID: ([a-f0-9*]+)/i. The (?i) flag makes both the
 // literal prefix and the [a-f] range case-insensitive (so [A-F] also matches), matching the
 // reference's /i behaviour. The capture keeps the original case for a case-sensitive compare.
-var uuidHintRe = regexp.MustCompile(`(?i)密钥UUID: ([a-f0-9*]+)`)
+var uuidHintRe = regexp.MustCompile(`(?i)KEYUUID: ([a-f0-9*]+)`)
 
 // ValidateHintAndKeysUuidMatch mirrors data-encryption.ts:validateHintAndKeysUuidMatch.
 //   - if encryptedHint has no UUID match -> true

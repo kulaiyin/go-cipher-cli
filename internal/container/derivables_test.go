@@ -7,7 +7,7 @@ import (
 )
 
 // TDD: ValidateHintAndKeysUuidMatch mirrors data-encryption.ts:validateHintAndKeysUuidMatch.
-// Regex /密钥UUID: ([a-f0-9*]+)/i; encrypted without uuid -> true; meta without uuid -> false;
+// Regex /KEYUUID: ([a-f0-9*]+)/i; encrypted without uuid -> true; meta without uuid -> false;
 // else compare captures (case-sensitive).
 
 func TestValidateHintAndKeysUuidMatch_GoldenVectors(t *testing.T) {

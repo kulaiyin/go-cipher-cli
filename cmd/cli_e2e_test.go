@@ -64,7 +64,7 @@ func TestEncryptDecrypt_RoundTrip(t *testing.T) {
 	tmp := t.TempDir()
 	inPath := filepath.Join(tmp, "secret.txt")
 	outPath := inPath + ".enc"
-	plaintext := []byte("top secret payload with 中文 and emoji 🔐")
+	plaintext := []byte("top secret payload with CJK and emoji 🔐")
 	if err := os.WriteFile(inPath, plaintext, 0o644); err != nil {
 		t.Fatal(err)
 	}

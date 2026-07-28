@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strings"
 
+	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/kdf"
 	"go-cipher-cli/internal/safety"
 )
@@ -46,12 +47,6 @@ var (
 
 // reStrongPasswordHex matches the "already strong" passthrough (128 hex chars).
 var reStrongPasswordHex = regexp.MustCompile(`^[0-9a-fA-F]{128}$`)
-
-var (
-	errInvalidInput  = errors.New("无效的输入参数，数据和密码数组不能为空")
-	errEmptyData     = errors.New("无效的输入参数，加密数据和密码数组不能为空")
-	errWrongPassword = errors.New("密码错误！")
-)
 
 // GenerateAesGcmKey derives the AES-256 DEK and the data salt (sdata) from a
 // salt_seed hex string and a password list. Mirrors generate_aes_gcm_key.
@@ -77,7 +72,7 @@ func GenerateAesGcmKey(salt string, passwords []string) (key, saltOut []byte, er
 // EncryptWithPassword derives the key from salt+passwords and AES-256-GCM encrypts data.
 func EncryptWithPassword(data []byte, salt string, passwords []string) ([]byte, error) {
 	if len(data) == 0 || len(passwords) == 0 {
-		return nil, errInvalidInput
+		return nil, errors.New(i18n.T("aesgcm.error.invalid_input"))
 	}
 	key, saltOut, err := GenerateAesGcmKey(salt, passwords)
 	if err != nil {
@@ -91,7 +86,7 @@ func EncryptWithPassword(data []byte, salt string, passwords []string) ([]byte, 
 // DecryptWithPassword derives the key from salt+passwords and AES-256-GCM decrypts enc.
 func DecryptWithPassword(enc []byte, salt string, passwords []string) ([]byte, error) {
 	if len(enc) == 0 || len(passwords) == 0 {
-		return nil, errEmptyData
+		return nil, errors.New(i18n.T("aesgcm.error.empty_data"))
 	}
 	key, saltOut, err := GenerateAesGcmKey(salt, passwords)
 	if err != nil {
@@ -101,7 +96,7 @@ func DecryptWithPassword(enc []byte, salt string, passwords []string) ([]byte, e
 	defer wipe(saltOut)
 	dec, err := GcmDecrypt(enc, key, saltOut)
 	if err != nil {
-		return nil, errWrongPassword
+		return nil, errors.New(i18n.T("aesgcm.error.wrong_password"))
 	}
 	return dec, nil
 }

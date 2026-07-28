@@ -113,7 +113,7 @@ func T(messageID string) string {
 // TWithData translates a message ID with template data.
 func TWithData(messageID string, data map[string]interface{}) string {
 	s, err := Localize(&i18n.LocalizeConfig{
-		MessageID:   messageID,
+		MessageID:    messageID,
 		TemplateData: data,
 	})
 	if err != nil {

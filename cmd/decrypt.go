@@ -36,7 +36,7 @@ reported as a decryption failure.`,
 		if err != nil {
 			// Strip the trailing punctuation the internal package adds for nicer UX.
 			msg := err.Error()
-			msg = strings.TrimRight(msg, "！")
+			msg = strings.TrimRight(msg, "!")
 			return fmt.Errorf("decrypt: %s", msg)
 		}
 

@@ -30,9 +30,9 @@
     "subKeyHex": "a0e1dd425ae257de12d40f66e51ffe82578621a9c860c662264ef381ccf6463b"
   },
   {
-    "password": "测试密码123",
-    "saltSuffix": "后缀",
+    "password": "testpass123",
+    "saltSuffix": "suffix",
     "domain": "default-v1",
-    "subKeyHex": "3a7edb5666b3eeaa353f64ba4b2bbcab3e296e3e1e0a7e2b2d3ebf640e42077a"
+    "subKeyHex": "573851acc971adc9e3d7221b2d22003b3e3509295212ae89c41fa24a6b8bec0d"
   }
 ]
