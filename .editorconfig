@@ -1,7 +1,7 @@
 # EditorConfig: https://editorconfig.org
-# 统一各类文件的缩进、换行符、文件末尾换行，方便多人协作。
-# 大多数编辑器（VSCode、GoLand、Vim 等）原生或通过插件支持。
-
+# Unifies indentation, line endings and final newlines across file types for
+# collaborative editing. Supported natively or via plugin by most editors
+# (VS Code, GoLand, Vim, etc.).
 root = true
 
 [*]
@@ -12,24 +12,24 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
 
-# Go：官方 gofmt 规范，Tab 缩进
+# Go: official gofmt style, tab indentation
 [*.go]
 indent_style = tab
 indent_size = 4
 
-# Shell 脚本：2 空格缩进
+# Shell scripts: 2-space indentation
 [*.sh]
 indent_size = 2
 
-# YAML / TS / JS：2 空格缩进（VitePress / goreleaser / GitHub Actions 配置）
+# YAML / TS / JS: 2-space indentation (VitePress / goreleaser / GitHub Actions)
 [*.{yml,yaml,ts,js,json}]
 indent_size = 2
 
-# Markdown：保留行尾空格（Markdown 用两个空格表示换行）
+# Markdown: keep trailing whitespace (two trailing spaces mean a line break)
 [*.md]
 trim_trailing_whitespace = false
 max_line_length = off
 
-# Makefile 必须用 Tab
+# Makefiles must use tabs
 [Makefile]
 indent_style = tab

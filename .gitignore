@@ -1,37 +1,38 @@
-# 构建产物
+# Build artifacts
 /dist/
 /build/
 
-# APT 仓库生成产物（conf/ 为配置需提交；dists/pool/ 与签名密钥为生成物）
+# APT repository generated files (conf/ is config and tracked; dists/pool/ and
+# signing keys are build products)
 /repo/dists/
 /repo/pool/
 /repo/*.gpg.key
 
-# VitePress 文档构建产物
+# VitePress docs build output
 /docs/.vitepress/dist/
 /docs/.vitepress/cache/
 
-# Node 依赖
+# Node dependencies
 /node_modules/
 
-# goreleaser 本地快照
+# goreleaser local snapshots
 *.snapshot
 
-# Go 测试/覆盖率
+# Go test/coverage output
 *.out
 *.test
 coverage.txt
 
-# 编辑器/系统
+# Editor/system files
 .idea/
 .vscode/
 *.swp
 .DS_Store
 *.bak*
 
-# 开发助手/会话临时文件（不进版本库）
+# Dev assistant / session temp files (not version controlled)
 .zcode/
 .codewhale/
 
-# 编译产物
+# Compiled binary
 go-cipher-cli
