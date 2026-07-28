@@ -46,6 +46,7 @@ func runCLI(t *testing.T, args ...string) (stdout string, exitCode int) {
 		t.Fatal("testBinary not built")
 	}
 	cmd := exec.Command(testBinary, args...)
+	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

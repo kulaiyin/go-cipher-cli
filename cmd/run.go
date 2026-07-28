@@ -10,18 +10,20 @@ import (
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 	"go.uber.org/zap"
+
+	"go-cipher-cli/internal/i18n"
 )
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Run an interactive demo task",
-	Long:  "Run a demo task that prompts for user input, logs progress, and shows a progress bar.",
+	Short: "placeholder",
+	Long:  "placeholder",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := GetLogger()
 
 		var action string
 		actionPrompt := &survey.Select{
-			Message: "Choose the operation:",
+			Message: i18n.T("run.prompt.operation"),
 			Options: []string{"Encrypt", "Decrypt"},
 			Default: "Encrypt",
 		}
@@ -31,19 +33,19 @@ var runCmd = &cobra.Command{
 
 		var target string
 		targetPrompt := &survey.Input{
-			Message: "Enter the target name:",
-			Help:    "This can be a file, key, or identifier used for the demo operation.",
+			Message: i18n.T("run.prompt.target_name"),
+			Help:    i18n.T("run.prompt.target_help"),
 		}
 		if err := survey.AskOne(targetPrompt, &target, survey.WithValidator(survey.Required)); err != nil {
 			return err
 		}
 
 		logger.Info("starting demo operation", zap.String("action", action), zap.String("target", target))
-		fmt.Println("Processing...")
+		fmt.Println(i18n.T("run.output.processing"))
 
 		p := mpb.New(mpb.WithOutput(os.Stdout), mpb.WithWidth(60))
 		bar := p.New(int64(100), mpb.BarStyle().Lbound("[").Filler("=").Tip(">").Padding(" ").Rbound("]"),
-			mpb.PrependDecorators(decor.Name("Progress:"), decor.Percentage()),
+			mpb.PrependDecorators(decor.Name(i18n.T("run.output.progress")), decor.Percentage()),
 		)
 
 		for i := 0; i < 100; i++ {
@@ -53,7 +55,19 @@ var runCmd = &cobra.Command{
 		p.Wait()
 
 		logger.Info("demo operation finished", zap.String("action", action), zap.String("target", target))
-		fmt.Printf("Operation %s completed for %s\n", action, target)
+		fmt.Println(i18n.TWithData("run.output.completed", map[string]interface{}{
+			"Action": action,
+			"Target": target,
+		}))
 		return nil
 	},
+}
+
+func init() {
+	i18n.Init("")
+	refreshCmdDescs = append(refreshCmdDescs, func() {
+		runCmd.Short = i18n.T("run.short")
+		runCmd.Long = i18n.T("run.long")
+	})
+	rootCmd.AddCommand(runCmd)
 }

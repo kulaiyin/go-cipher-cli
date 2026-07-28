@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"go-cipher-cli/internal/fusion"
+	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/kdf"
-	"go-cipher-cli/internal/safety"
 )
 
 var (
@@ -21,23 +21,25 @@ var (
 
 var keygenCmd = &cobra.Command{
 	Use:   "keygen",
-	Short: "Derive a key from a salt + passwords (argon2id)",
-	Long: `Derive a key from a salt and one or more passwords using argon2id (the
-frontend KeyDerivation path). Useful for producing a strong key outside of the
-encrypt/decrypt flow, e.g. for configuring other tools.`,
+	Short: "placeholder",
+	Long:  "placeholder",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		salt := keygenSalt
 		if salt == "" {
 			salt = kdf.GenerateSalt(64) // 64 bytes -> 128 hex
 			if keygenShowSalt {
-				fmt.Printf("salt: %s\n", salt)
+				fmt.Println(i18n.TWithData("keygen.output.salt_only", map[string]interface{}{
+					"Salt": salt,
+				}))
 			} else {
-				fmt.Printf("salt: %s (auto-generated, pass --salt to reproduce)\n", salt)
+				fmt.Println(i18n.TWithData("keygen.output.salt_auto", map[string]interface{}{
+					"Salt": salt,
+				}))
 			}
 		}
 		saltBytes, err := hex.DecodeString(salt)
 		if err != nil {
-			return fmt.Errorf("salt must be hex: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T("keygen.error.salt_hex"), err)
 		}
 
 		res := kdf.Argon2(joinPasswords(salt, keygenPasswords), kdf.Argon2Config{
@@ -48,15 +50,15 @@ encrypt/decrypt flow, e.g. for configuring other tools.`,
 			HashLength:  keygenHashLength,
 		})
 		if !res.Success {
-			return fmt.Errorf("derive: %s", res.Error)
+			return fmt.Errorf("%s: %s", i18n.T("keygen.error.derive_failed"), res.Error)
 		}
 
 		keyBytes, _ := hex.DecodeString(res.Data)
-		fmt.Printf("key (hex):      %s\n", res.Data)
-		fmt.Printf("key (base64):   %s\n", base64.StdEncoding.EncodeToString(keyBytes))
-		fmt.Printf("iterations:     %d\n", res.Iterations)
-		fmt.Printf("hash length:    %d bytes\n", res.HashLength)
-		fmt.Printf("processing:     %dms\n", res.ProcessingTime)
+		fmt.Println(i18n.TWithData("keygen.output.key_hex", map[string]interface{}{"Key": res.Data}))
+		fmt.Println(i18n.TWithData("keygen.output.key_base64", map[string]interface{}{"Key": base64.StdEncoding.EncodeToString(keyBytes)}))
+		fmt.Println(i18n.TWithData("keygen.output.iterations", map[string]interface{}{"Count": res.Iterations}))
+		fmt.Println(i18n.TWithData("keygen.output.hash_length", map[string]interface{}{"Len": res.HashLength}))
+		fmt.Println(i18n.TWithData("keygen.output.processing_time", map[string]interface{}{"Ms": res.ProcessingTime}))
 		return nil
 	},
 }
@@ -75,12 +77,16 @@ func joinPasswords(salt string, pws []string) string {
 }
 
 func init() {
-	keygenCmd.Flags().StringSliceVarP(&keygenPasswords, "password", "p", nil, "password (repeatable)")
-	keygenCmd.Flags().StringVar(&keygenSalt, "salt", "", "128-hex salt (auto-generated if omitted)")
-	keygenCmd.Flags().IntVar(&keygenHashLength, "hash-length", 32, "derived key length in bytes")
-	keygenCmd.Flags().BoolVar(&keygenShowSalt, "show-salt", false, "print only the salt line when auto-generating")
-	_ = keygenCmd.MarkFlagRequired("password")
-	// rootCmd.AddCommand(keygenCmd)
+	i18n.Init("")
+	refreshCmdDescs = append(refreshCmdDescs, func() {
+		keygenCmd.Short = i18n.T("keygen.short")
+		keygenCmd.Long = i18n.T("keygen.long")
+	})
 
-	_ = safety.GenerateRandomBytes // keep package referenced for future helpers
+	keygenCmd.Flags().StringSliceVarP(&keygenPasswords, "password", "p", nil, i18n.T("keygen.flag.password"))
+	keygenCmd.Flags().StringVar(&keygenSalt, "salt", "", i18n.T("keygen.flag.salt"))
+	keygenCmd.Flags().IntVar(&keygenHashLength, "hash-length", 32, i18n.T("keygen.flag.hash_length"))
+	keygenCmd.Flags().BoolVar(&keygenShowSalt, "show-salt", false, i18n.T("keygen.flag.show_salt"))
+	_ = keygenCmd.MarkFlagRequired("password")
+	rootCmd.AddCommand(keygenCmd)
 }

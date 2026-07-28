@@ -139,9 +139,360 @@ other = "separator: space / hyphen / none"
 # cmd/utils.go
 # ==========================================
 
+[hint_match.use]
+description = "Use string for hint-match command"
+other = "hint-match"
+
+[hint_match.short]
+description = "Short description for hint-match command"
+other = "Validate hint/key UUID match (mirrors validateHintAndKeysUuidMatch)"
+
 [hint_match.long]
 description = "Long description for hint-match command"
 other = "Compare the KEYUUID embedded in an encrypted hint against a meta hint. Both inputs are read from --encrypted and --meta."
+
+[hint_match.output.match]
+description = "Output when UUID matches"
+other = "MATCH"
+
+[hint_match.output.no_match]
+description = "Output when UUID does not match"
+other = "NO MATCH"
+
+[hint_match.flag.encrypted]
+description = "Description for --encrypted flag"
+other = "encrypted hint text"
+
+[hint_match.flag.meta]
+description = "Description for --meta flag"
+other = "meta hint text"
+
+# ==========================================
+# cmd/utils.go - hash
+# ==========================================
+
+[hash.use]
+description = "Use string for hash command"
+other = "hash [text]"
+
+[hash.short]
+description = "Short description for hash command"
+other = "Hash text with MD5/SHA1/SHA2/SHA3 (mirrors CryptoTools.hashText)"
+
+[hash.long]
+description = "Long description for hash command"
+other = """Hash the given text (or the single argument) with the chosen algorithm.
+Supported: md5, sha1, sha224, sha256, sha384, sha512, sha3-224, sha3-256,
+sha3-384, sha3-512."""
+
+[hash.flag.algo]
+description = "Description for --algo flag"
+other = "hash algorithm"
+
+# ==========================================
+# cmd/utils.go - hmac
+# ==========================================
+
+[hmac.use]
+description = "Use string for hmac command"
+other = "hmac [data]"
+
+[hmac.short]
+description = "Short description for hmac command"
+other = "Compute HMAC of text (mirrors HmacTools.hashText)"
+
+[hmac.flag.algo]
+description = "Description for --algo flag"
+other = "HMAC algorithm"
+
+[hmac.flag.key]
+description = "Description for --key flag"
+other = "HMAC key"
+
+# ==========================================
+# cmd/utils.go - fuse
+# ==========================================
+
+[fuse.use]
+description = "Use string for fuse command"
+other = "fuse"
+
+[fuse.short]
+description = "Short description for fuse command"
+other = "Fuse multiple passwords into one (mirrors computeFinalPassword)"
+
+[fuse.long]
+description = "Long description for fuse command"
+other = """Combine one or more passwords into a single fused password using the
+frontend password-fusion algorithm (normalize + fusePasswords). Requires a salt
+and 1-3 passwords."""
+
+[fuse.error.salt_required]
+description = "Error when --salt is missing"
+other = "--salt is required"
+
+[fuse.error.password_required]
+description = "Error when --password is missing"
+other = "at least one --password is required"
+
+[fuse.flag.salt]
+description = "Description for --salt flag"
+other = "salt string used by the fusion algorithm"
+
+[fuse.flag.password]
+description = "Description for --password flag"
+other = "password (repeatable, 1-3)"
+
+# ==========================================
+# cmd/utils.go - recover
+# ==========================================
+
+[recover.use]
+description = "Use string for recover command"
+other = "recover [generated-key]"
+
+[recover.short]
+description = "Short description for recover command"
+other = "Validate key recovery (mirrors validateKeyRecovery)"
+
+[recover.long]
+description = "Long description for recover command"
+other = """Check whether a generated key's first-8 + last-8 chars appear in the
+stored --uuid list (the web tool's key-recovery verification)."""
+
+[recover.output.match]
+description = "Output when key is recoverable"
+other = "MATCH"
+
+[recover.output.no_match]
+description = "Output when key is not recoverable"
+other = "NO MATCH"
+
+[recover.flag.uuid]
+description = "Description for --uuid flag"
+other = "stored uuid list (repeatable)"
+
+# ==========================================
+# cmd/encrypt.go
+# ==========================================
+
+[encrypt.use]
+description = "Use string for encrypt command"
+other = "encrypt [input file]"
+
+[encrypt.short]
+description = "Short description for encrypt command"
+other = "Encrypt a file with AES-256-GCM (frontend-compatible container)"
+
+[encrypt.long]
+description = "Long description for encrypt command"
+other = """Encrypt a file using the same key-derivation pipeline as the web tool:
+argon2id -> HMAC-SHA3-512 -> HKDF-SHA3-512 -> AES-256-GCM.
+
+The salt is stored inside the output container so decryption only needs the
+password(s). If --salt is omitted a random one is generated. The output file is
+a binary container (version|reserved|salt_seed|length|ciphertext) that the web
+tool can also decrypt."""
+
+[encrypt.error.read_input]
+description = "Error when reading input file fails"
+other = "read input: {{.Err}}"
+
+[encrypt.error.empty_input]
+description = "Error when input is empty"
+other = "input file is empty"
+
+[encrypt.error.salt_hex]
+description = "Error when salt is not valid hex"
+other = "salt must be a hex string: {{.Err}}"
+
+[encrypt.error.encrypt_failed]
+description = "Error when encryption fails"
+other = "encrypt: {{.Err}}"
+
+[encrypt.error.assemble_container]
+description = "Error when assembling container fails"
+other = "assemble container: {{.Err}}"
+
+[encrypt.error.write_output]
+description = "Error when writing output fails"
+other = "write output: {{.Err}}"
+
+[encrypt.output.success]
+description = "Output on successful encryption"
+other = "Encrypted {{.Size}} bytes -> {{.Path}} (salt embedded, version={{.Version}})"
+
+[encrypt.flag.password]
+description = "Description for --password flag"
+other = "password (repeatable, e.g. -p a -p b); order does not matter"
+
+[encrypt.flag.salt]
+description = "Description for --salt flag"
+other = "optional 128-hex salt seed (auto-generated if omitted)"
+
+# ==========================================
+# cmd/keygen.go
+# ==========================================
+
+[keygen.use]
+description = "Use string for keygen command"
+other = "keygen"
+
+[keygen.short]
+description = "Short description for keygen command"
+other = "Derive a key from a salt + passwords (argon2id)"
+
+[keygen.long]
+description = "Long description for keygen command"
+other = """Derive a key from a salt and one or more passwords using argon2id (the
+frontend KeyDerivation path). Useful for producing a strong key outside of the
+encrypt/decrypt flow, e.g. for configuring other tools."""
+
+[keygen.error.salt_hex]
+description = "Error when salt is not valid hex"
+other = "salt must be hex: {{.Err}}"
+
+[keygen.error.derive_failed]
+description = "Error when key derivation fails"
+other = "derive: {{.Err}}"
+
+[keygen.output.salt_auto]
+description = "Output salt with hint to reproduce"
+other = "salt: {{.Salt}} (auto-generated, pass --salt to reproduce)"
+
+[keygen.output.salt_only]
+description = "Output salt line only"
+other = "salt: {{.Salt}}"
+
+[keygen.output.key_hex]
+description = "Key hex label in output"
+other = "key (hex):      {{.Key}}"
+
+[keygen.output.key_base64]
+description = "Key base64 label in output"
+other = "key (base64):   {{.Key}}"
+
+[keygen.output.iterations]
+description = "Iterations label in output"
+other = "iterations:     {{.Count}}"
+
+[keygen.output.hash_length]
+description = "Hash length label in output"
+other = "hash length:    {{.Len}} bytes"
+
+[keygen.output.processing_time]
+description = "Processing time label in output"
+other = "processing:     {{.Ms}}ms"
+
+[keygen.flag.password]
+description = "Description for --password flag"
+other = "password (repeatable)"
+
+[keygen.flag.salt]
+description = "Description for --salt flag"
+other = "128-hex salt (auto-generated if omitted)"
+
+[keygen.flag.hash_length]
+description = "Description for --hash-length flag"
+other = "derived key length in bytes"
+
+[keygen.flag.show_salt]
+description = "Description for --show-salt flag"
+other = "print only the salt line when auto-generating"
+
+# ==========================================
+# cmd/run.go
+# ==========================================
+
+[run.use]
+description = "Use string for run command"
+other = "run"
+
+[run.short]
+description = "Short description for run command"
+other = "Run an interactive demo task"
+
+[run.long]
+description = "Long description for run command"
+other = "Run a demo task that prompts for user input, logs progress, and shows a progress bar."
+
+[run.prompt.operation]
+description = "Prompt message for selecting operation"
+other = "Choose the operation:"
+
+[run.prompt.target_name]
+description = "Prompt message for entering target name"
+other = "Enter the target name:"
+
+[run.prompt.target_help]
+description = "Help text for target name input"
+other = "This can be a file, key, or identifier used for the demo operation."
+
+[run.output.processing]
+description = "Processing status message"
+other = "Processing..."
+
+[run.output.progress]
+description = "Progress bar label"
+other = "Progress:"
+
+[run.output.completed]
+description = "Output when operation completes"
+other = "Operation {{.Action}} completed for {{.Target}}"
+
+# ==========================================
+# cmd/version.go
+# ==========================================
+
+[version.use]
+description = "Use string for version command"
+other = "version"
+
+[version.short]
+description = "Short description for version command"
+other = "Print the CLI version"
+
+# ==========================================
+# cmd/decrypt.go
+# ==========================================
+
+[decrypt.use]
+description = "Use string for decrypt command"
+other = "decrypt [input file]"
+
+[decrypt.short]
+description = "Short description for decrypt command"
+other = "Decrypt a container produced by 'encrypt' or the web tool"
+
+[decrypt.long]
+description = "Long description for decrypt command"
+other = """Decrypt an AES-256-GCM container. The salt is read from the container, so
+only the password(s) are required. An auth-tag mismatch (wrong password) is
+reported as a decryption failure."""
+
+[decrypt.error.read_input]
+description = "Error when reading input file fails"
+other = "read input: {{.Err}}"
+
+[decrypt.error.parse_container]
+description = "Error when parsing container fails"
+other = "parse container: {{.Err}}"
+
+[decrypt.error.decrypt_failed]
+description = "Error when decryption fails"
+other = "decrypt: {{.Err}}"
+
+[decrypt.error.write_output]
+description = "Error when writing output fails"
+other = "write output: {{.Err}}"
+
+[decrypt.output.success]
+description = "Output on successful decryption"
+other = "Decrypted {{.Size}} bytes -> {{.Path}}"
+
+[decrypt.flag.password]
+description = "Description for --password flag"
+other = "password (repeatable)"
 
 # ==========================================
 # internal/kdf/kdf.go - password strength feedback

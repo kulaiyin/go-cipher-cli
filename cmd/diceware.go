@@ -77,6 +77,12 @@ func sepDesc(s diceware.Separator) string {
 }
 
 func init() {
+	i18n.Init("")
+	refreshCmdDescs = append(refreshCmdDescs, func() {
+		dicewareCmd.Short = i18n.T("diceware.short")
+		dicewareCmd.Long = i18n.T("diceware.long")
+	})
+
 	dicewareCmd.Flags().IntVarP(&diceNumWords, "num-words", "n", 5, i18n.T("diceware.flag.num_words"))
 	dicewareCmd.Flags().StringVar(&diceSep, "sep", "none", i18n.T("diceware.flag.sep"))
 	rootCmd.AddCommand(dicewareCmd)

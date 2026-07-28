@@ -4,14 +4,23 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"go-cipher-cli/internal/i18n"
 )
 
 var version = "v0.3.2"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the CLI version",
+	Short: "placeholder",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(version)
 	},
+}
+
+func init() {
+	i18n.Init("")
+	refreshCmdDescs = append(refreshCmdDescs, func() {
+		versionCmd.Short = i18n.T("version.short")
+	})
 }

@@ -18,7 +18,14 @@ var (
 	logLevel string
 	lang     string
 	logger   *zap.Logger
-	rootCmd  = &cobra.Command{
+
+	// refreshCmdDescs is populated by each command's init() and invoked from
+	// initConfig() after i18n language is resolved. This ensures Short/Long
+	// descriptions are translated based on --lang / LANG, not the auto-detected
+	// system locale (which would still be active during init()).
+	refreshCmdDescs []func()
+
+	rootCmd = &cobra.Command{
 		Use:   "go-cipher-cli",
 		Short: "A simple Go CLI with configuration, logging, prompts, and progress",
 		Long: `go-cipher-cli is a CLI demo project using Cobra, Viper, Zap, Survey, and MPB.
@@ -95,6 +102,11 @@ func initConfig() {
 	}
 	if resolved != "" {
 		i18n.SetLanguage(resolved)
+	}
+
+	// Re-apply all command descriptions now that the language is final.
+	for _, fn := range refreshCmdDescs {
+		fn()
 	}
 }
 

@@ -56,8 +56,10 @@ var enhanceCmd = &cobra.Command{
 
 func init() {
 	i18n.Init("")
-	enhanceCmd.Short = i18n.T("enhance.short")
-	enhanceCmd.Long = i18n.T("enhance.long")
+	refreshCmdDescs = append(refreshCmdDescs, func() {
+		enhanceCmd.Short = i18n.T("enhance.short")
+		enhanceCmd.Long = i18n.T("enhance.long")
+	})
 
 	enhanceCmd.Flags().StringVarP(&enhancePassword, "password", "p", "", i18n.T("enhance.flag.password"))
 	enhanceCmd.Flags().StringVarP(&enhanceSaltSuffix, "salt-suffix", "s", "", i18n.T("enhance.flag.salt_suffix"))
