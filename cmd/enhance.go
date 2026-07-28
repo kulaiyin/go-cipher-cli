@@ -17,9 +17,8 @@ var (
 )
 
 var enhanceCmd = &cobra.Command{
-	Use:     "enhance -p <密码> [--salt-suffix <后缀>]",
-	Aliases: []string{"en"},
-	Short:   "将密码转换为 256 位高熵密钥（密码转密钥）",
+	Use:   "enhance -p <密码> [--salt-suffix <后缀>]",
+	Short: "将密码转换为 256 位高熵密钥（密码转密钥）",
 	Long: `用你记得住的常用密码生成一把 256 位高熵密钥，真正用于加密/认证的
 是这把密钥，密码本身只是生成原料。
 
