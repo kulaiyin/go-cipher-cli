@@ -1,19 +1,19 @@
 name: Release
 
-# 推送 v* 格式的 tag 时触发全自动发布：
-#   编译 -> 生成 .deb -> GitHub Release -> APT 仓库元数据 -> GPG 签名
-#   -> 构建 VitePress 文档 -> 部署到 GitHub Pages (gh-pages 分支)
+# Pushing a v* tag triggers the fully automated release pipeline:
+#   compile -> build .deb -> GitHub Release -> APT repo metadata -> GPG signing
+#   -> build VitePress docs -> deploy to GitHub Pages (gh-pages branch)
 on:
   push:
     tags:
       - 'v*'
-  # 允许手动触发，便于调试（用时会使用当前 tag 或默认 v0.0.0）
+  # Allow manual triggering for debugging (uses the current tag, or v0.0.0 by default)
   workflow_dispatch:
 
 permissions:
-  contents: write   # goreleaser 创建 Release / 上传资产需要
-  pages: write      # 部署 Pages 需要
-  id-token: write   # Pages OIDC 部署需要
+  contents: write   # goreleaser needs this to create the Release / upload assets
+  pages: write      # needed to deploy Pages
+  id-token: write   # needed for Pages OIDC deployment
 
 concurrency:
   group: release-${{ github.ref }}
@@ -26,7 +26,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # goreleaser 需要完整 git 历史
+          fetch-depth: 0   # goreleaser needs the full git history
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -34,15 +34,16 @@ jobs:
           go-version: '1.25'
           cache: true
 
-      - name: Set up Node (用于 VitePress)
+      - name: Set up Node (for VitePress)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      # ---------- 第一阶段：goreleaser 打包 + 发布 GitHub Release ----------
-      # 使用官方 goreleaser-action，它会自动安装指定版本的 goreleaser 并执行。
-      # 比手工通过 APT 仓库安装更可靠（APT 源的 key URL 曾失效返回 404）。
+      # ---------- Stage 1: goreleaser packaging + GitHub Release ----------
+      # Uses the official goreleaser-action, which installs a pinned goreleaser
+      # version automatically. More reliable than installing via the APT repo
+      # (whose key URL once failed with a 404).
       - name: Run goreleaser
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -51,27 +52,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ---------- 第二阶段：导入 GPG key 用于 APT 仓库签名 ----------
+      # ---------- Stage 2: import GPG key for APT repo signing ----------
       - name: Import GPG signing key
         env:
           GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
         run: |
           if [ -z "$GPG_SIGNING_KEY" ]; then
-            echo "::warning::GPG_SIGNING_KEY 未配置，APT 仓库将不签名，客户端需用 [trusted=yes]"
+            echo "::warning::GPG_SIGNING_KEY not configured; APT repo will be unsigned, clients need [trusted=yes]"
             exit 0
           fi
           echo "$GPG_SIGNING_KEY" | base64 -d | gpg --import --batch
           echo "GPG keys imported:"
           gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print "  key id: " $5}'
 
-      # ---------- 第三阶段：生成 APT 仓库元数据 ----------
+      # ---------- Stage 3: generate APT repo metadata ----------
       - name: Build APT repository metadata
         run: |
-          # publish_repo.sh 会自动从 repo/conf/distributions 的 SignWith 行读取 key id，
-          # 并用上一步导入的私钥签名。无需在此显式设置 GPG_KEY。
+          # publish_repo.sh reads the key id from the SignWith line in
+          # repo/conf/distributions automatically and signs with the private key
+          # imported above. No need to set GPG_KEY explicitly here.
           bash scripts/publish_repo.sh
 
-      # 导出公钥到 repo/repo.gpg.key，客户端需要它
+      # Export the public key to repo/repo.gpg.key; clients need it
       - name: Export GPG public key
         run: |
           KEY_ID=$(awk -F': ' '/^SignWith:/ {print $2}' repo/conf/distributions | tr -d ' ')
@@ -82,9 +84,10 @@ jobs:
             echo "::warning::No valid SignWith key, skipping public key export"
           fi
 
-      # ---------- 第四阶段：构建 VitePress 文档 ----------
-      # 从 git tag 提取版本号写入 version.json，供文档站导航栏显示当前版本。
-      # tag 形如 v0.2.0，去掉前缀 v 得到 0.2.0；无 tag 时回退到 0.0.0-dev。
+      # ---------- Stage 4: build VitePress docs ----------
+      # Extract the version from the git tag into version.json so the docs site
+      # navbar can show the current version. A tag like v0.2.0 becomes 0.2.0;
+      # falls back to 0.0.0-dev when there is no tag.
       - name: Inject version into docs
         run: |
           VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0-dev")
@@ -97,16 +100,17 @@ jobs:
           npm ci
           npm run docs:build
 
-      # ---------- 第五阶段：聚合部署内容 ----------
-      # 文档站放根路径，APT 仓库放 apt/ 子路径，合并到一个目录后推送 gh-pages
+      # ---------- Stage 5: assemble deploy content ----------
+      # Docs site at the root path, APT repo under the apt/ subpath; merge into
+      # one directory and push to gh-pages
       - name: Assemble Pages content
         run: |
           set -e
           DEPLOY_DIR=$(mktemp -d)
           echo "DEPLOY_DIR=$DEPLOY_DIR" >> "$GITHUB_ENV"
-          # 文档站
+          # Docs site
           cp -r docs/.vitepress/dist/. "$DEPLOY_DIR/"
-          # APT 仓库（conf/ 不发布，客户端不需要）
+          # APT repo (conf/ is not published; clients don't need it)
           mkdir -p "$DEPLOY_DIR/apt"
           cp -r repo/dists repo/pool repo/repo.gpg.key "$DEPLOY_DIR/apt/" 2>/dev/null || true
           echo "=== Deploy tree ==="
@@ -118,7 +122,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ${{ env.DEPLOY_DIR }}
           publish_branch: gh-pages
-          force_orphan: true   # 每次发布只保留最新快照，避免 gh-pages 历史膨胀
+          force_orphan: true   # keep only the latest snapshot to avoid gh-pages history bloat
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: 'Deploy ${{ github.ref_name }} to GitHub Pages'

@@ -48,12 +48,12 @@ go-cipher-cli enhance -p "MyMaster@2024" -s firefox
 Example output:
 
 ```
-算法:     Argon2id(64MB/3轮/1路并行) + HKDF-Expand(SHA-256)
+Algorithm: Argon2id(64MB/3 rounds/1 parallelism) + HKDF-Expand(SHA-256)
 Domain:   default-v1
-盐后缀:   google
-密钥(hex):     3aac7a86fd8c549020841738920154a05bcae6dd116c116a991144df33a440eb
-密钥(base64):  oqx6hv2MVJAg...9E3zOkDr
-密钥长度:      256 位 (256 bit)
+Salt suffix: google
+Key (hex):    3aac7a86fd8c549020841738920154a05bcae6dd116c116a991144df33a440eb
+Key (base64): Oqx6hv2MVJAghBc4kgFUoFvK5t0RbBFqmRFE3zOkQOs=
+Key length:   256 bits (256 bit)
 ```
 
 | Parameter | Description |
@@ -97,14 +97,14 @@ go-cipher-cli diceware -n 6 --sep none
 Example output:
 
 ```
-口令:         cavity-puppy-lego-vanquish-sediment
-长度:         35 字符
-词数:         5
-信息熵:       64.62 bit
-可能组合数:   2.84 × 10^19
-分隔符:       连字符 (-)
+Passphrase:   cavity-puppy-lego-vanquish-sediment
+Length:       35 chars
+Words:        5
+Entropy:      64.62 bit
+Combinations: 2.84 × 10^19
+Separator:    hyphen (-)
 
-逐词掷骰详情:
+Per-word dice roll details:
    1. [15264] cavity
    2. [45662] puppy
    3. [35656] lego

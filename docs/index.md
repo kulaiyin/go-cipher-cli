@@ -8,7 +8,8 @@ head:
 ---
 
 <script setup>
-// 客户端跳转兜底（meta refresh 已处理，这里双保险），相对当前路径跳转到英文站
+// Client-side redirect fallback (meta refresh already handles it; this is a
+// belt-and-suspenders backup), relative to the current path to the English site.
 if (typeof window !== 'undefined') {
   window.location.replace('en/')
 }

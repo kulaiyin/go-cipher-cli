@@ -33,6 +33,6 @@ coverage.txt
 # Dev assistant / session temp files (not version controlled)
 .zcode/
 .codewhale/
-
+.claude/
 # Compiled binary
 go-cipher-cli
