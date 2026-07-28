@@ -12,8 +12,11 @@ builds:
     binary: go-cipher-cli
     goos:
       - linux
+      - darwin
+      - windows
     goarch:
       - amd64
+      - arm64
     env:
       - CGO_ENABLED=0
 
