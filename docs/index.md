@@ -1,29 +1,19 @@
 ---
-layout: home
-
-hero:
-  name: go-cipher-cli
-  text: Go CLI 工具
-  tagline: 配置管理、结构化日志、交互提示、进度条，并通过 APT 仓库一键分发
-  actions:
-    - theme: brand
-      text: 快速开始
-      link: /guide/installation
-    - theme: alt
-      text: 使用说明
-      link: /guide/usage
-
-features:
-  - title: Cobra 命令框架
-    details: 使用 spf13/cobra 构建，提供 run / version 子命令与完善的帮助系统。
-  - title: Viper 配置管理
-    details: 支持 YAML/JSON/TOML 配置文件、环境变量、默认值，可通过 --config 指定路径。
-  - title: Zap 结构化日志
-    details: 程序启动即初始化全局 Logger，支持 debug/info/warn/error 多级别。
-  - title: Survey 交互提示
-    details: 支持操作类型选择（Encrypt/Decrypt）与目标名称输入。
-  - title: MPB 进度条
-    details: 执行任务时实时显示进度，反馈清晰。
-  - title: APT 仓库分发
-    details: 通过 GitHub Pages 托管 .deb 与 APT 仓库元数据，客户端 apt install 即可安装。
+layout: page
+title: go-cipher-cli
+head:
+  - - meta
+    - http-equiv: refresh
+      content: 0; url=en/
 ---
+
+<script setup>
+// 客户端跳转兜底（meta refresh 已处理，这里双保险），相对当前路径跳转到英文站
+if (typeof window !== 'undefined') {
+  window.location.replace('en/')
+}
+</script>
+
+# go-cipher-cli
+
+Redirecting to English documentation… If you are not redirected automatically, [click here](./en/).

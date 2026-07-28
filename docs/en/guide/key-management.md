@@ -1,0 +1,130 @@
+# Key Management
+
+This document covers the password-to-key and Diceware mnemonic passphrase features of go-cipher-cli, and their interoperability with the [web tool](https://tools.wcheer.com/).
+
+## Core Capabilities
+
+### Password to Key (enhance)
+
+Takes a password at the "human memory" level and hardens it via the Argon2id slow function + HKDF-Expand(SHA-256) domain separation into a 256-bit high-entropy key. **What is actually used for encryption/authentication is this key**; the password is merely the raw material to generate it.
+
+Byte-level interoperable with the web tool: the same "password + salt suffix" derives exactly the same key in both the CLI and the web client.
+
+### Diceware Mnemonic Passphrase (diceware)
+
+Uses the EFF large wordlist (7776 words) and cryptographically secure random dice rolls to generate memorable yet high-entropy passphrases.
+
+## Password-to-Key Pipeline
+
+```
+Password + Salt Suffix
+   │
+   ▼
+1. Fixed salt = "Your_Super_Long_Fixed_Salt_String_Here_2026"
+   Full salt = fixed salt + user salt suffix
+   │
+   ▼
+2. Argon2id(64MB/3 iterations/1 lane, output 64 bytes)
+   → Master key PRK (512 bits)
+   │
+   ▼
+3. HKDF-Expand(SHA-256, PRK, domain="default-v1", output 32 bytes)
+   → Subkey (256 bits)
+   │
+   ▼
+4. Output a 64-character hex string
+```
+
+### Fixed Salt
+
+The first layer of fixed salt is hardcoded in the source (`Your_Super_Long_Fixed_Salt_String_Here_2026`), identical to the web client. Its purpose is to defeat generic rainbow tables — even if an attacker precomputes rainbow tables for all common passwords, they are invalidated by the presence of the fixed salt.
+
+### Salt Suffix
+
+An optional second-layer salt provided by the user (e.g. site name, device name), concatenated with the fixed salt to serve as the Argon2id salt. Different salt suffixes derive distinct keys:
+
+```bash
+go-cipher-cli enhance -p "MyMaster@2024" --salt-suffix google
+# Output: 3aac7a86fd8c549020841738920154a05bcae6dd116c116a991144df33a440eb
+
+go-cipher-cli enhance -p "MyMaster@2024" --salt-suffix firefox
+# Output: 12a642320091c23fe4d1ba943c86ba9a60ad99f2eba6ce4814636a4cdd664e6d
+```
+
+Even if the Google key is leaked, the Firefox key remains secure.
+
+### HKDF-Expand Domain Separation
+
+The 64-byte master key (PRK) output by Argon2id is already uniformly distributed high-entropy data, so HKDF-Extract is skipped and pure Expand is used for domain separation. The internal domain label is fixed to `default-v1`.
+
+## Diceware Passphrase Generation
+
+### EFF Wordlist
+
+Uses the large Diceware wordlist published by the EFF (Electronic Frontier Foundation) — 7776 English words, ordered by 5-dice rolls (11111–66666) in base-6 encoding:
+
+- Roll `11111` → index 0 → `abacus`
+- Roll `11112` → index 1 → `abdomen`
+- ...
+- Roll `66666` → index 7775 → `zoom`
+
+### True Random Dice Rolls
+
+Each word requires 5 dice rolls (1–6), each value sourced from the Go standard library `crypto/rand` (the OS CSPRNG). **Rejection sampling** eliminates modulo bias:
+
+- Generate a random byte (0–255)
+- Only accept 0–251 (42 × 6), reject 252–255
+- `byte % 6 + 1` yields 1–6
+
+This ensures each die value is strictly 1/6 probability, with no bias.
+
+### Entropy
+
+| Words | Entropy | Possible Combinations | Security Level |
+| --- | --- | --- | --- |
+| 4 | 51.7 bit | 3.66 × 10¹² | Weak (not recommended) |
+| 5 | 64.6 bit | 2.84 × 10¹⁹ | Basic |
+| 6 | 77.5 bit | 2.21 × 10²³ | Good |
+| 7 | 90.5 bit | 1.72 × 10²⁷ | Strong |
+| 8 | 103.4 bit | 1.34 × 10³¹ | Very strong |
+
+At least 5 words are recommended. 8 words or more are suitable for scenarios demanding extremely high security.
+
+## Security Notes
+
+### Argon2id Brute-Force Resistance
+
+The 64MB memory / 3-iteration parameters make each derivation take several seconds, making brute-force attacks infeasible within a reasonable timeframe even with dedicated hardware. This is an award-winning algorithm from the Password Hashing Competition (PHC).
+
+### Fully Local Computation
+
+Passwords and keys are always computed locally on your operating system and never uploaded to any server.
+
+### Deterministic Derivation
+
+The same "password + salt suffix" always yields the same key. There is no need to store the key itself — just remember the password to regenerate it at any time. The password cannot be reversed from the key.
+
+## Feature Mapping with the Web Tool
+
+| Capability | CLI Command | Web Tool Equivalent |
+| --- | --- | --- |
+| Password to key | `enhance` | Key Management → Password to Key |
+| Diceware mnemonic passphrase | `diceware` | Key Management → Diceware Passphrase Generation |
+
+## Technical Details
+
+### Cross-Language Consistency Guarantee
+
+The Go implementation of password-to-key passes 6 sets of **golden vector tests**:
+- 3 sets across different domains (age-key-v1 / file-key-v1 / auth-key-v1)
+- 3 sets across different password + salt suffix combinations (weak password / strong password / Chinese password)
+
+All vectors are generated by the Go reference implementation; both the CLI and the web client must pass all of them to be considered correct.
+
+### Full Test Coverage
+
+```bash
+go test ./internal/... -v
+# internal/kdf: TestDeriveSubKeyByDomain_GoldenVectors (6 vector sets)
+# internal/diceware: wordlist integrity, dice roll mapping, passphrase generation, randomness, edge cases
+```

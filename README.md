@@ -3,41 +3,43 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/kulaiyin/go-cipher-cli)](https://github.com/kulaiyin/go-cipher-cli/releases)
 
-一个基于 Go 的 CLI 演示项目，演示如何集成配置管理、结构化日志、交互式提示和进度条，并通过 GitHub Pages 托管的 APT 仓库分发。
+**English** | [简体中文](./README.zh-CN.md)
 
-📖 **完整文档**：https://kulaiyin.github.io/go-cipher-cli/
+A Go-based CLI demo project showcasing integration of configuration management, structured logging, interactive prompts, and progress bars, distributed via an APT repository hosted on GitHub Pages.
 
-## 功能特性
+📖 **Full documentation**: https://kulaiyin.github.io/go-cipher-cli/
 
-- **密码转密钥**：Argon2id(64MB/3轮) + HKDF-Expand(SHA-256) 域分离，**与 [web 工具](https://tools.wcheer.com/) 字节级互通**
-- **Diceware 助记口令**：EFF 大型词表（7776 词），密码学安全随机掷骰，生成易记但高熵的口令
-- **命令框架**：[Cobra](https://github.com/spf13/cobra)
-- **配置管理**：[Viper](https://github.com/spf13/viper) — 配置文件 / 环境变量 / 默认值 / `--config`
-- **日志**：[Zap](https://go.uber.org/zap) — `debug` / `info` / `warn` / `error`
-- **分发**：goreleaser 打包 `.deb` → GitHub Actions 自动发布到 GitHub Pages APT 仓库
+## Features
 
-## 快速开始
+- **Password-to-key**: Argon2id (64MB / 3 passes) + HKDF-Expand (SHA-256) domain separation, **byte-level interoperable with the [web tool](https://tools.wcheer.com/)**
+- **Diceware mnemonic passphrase**: EFF large wordlist (7776 words) with cryptographically secure random dice rolls, generating memorable yet high-entropy passphrases
+- **Command framework**: [Cobra](https://github.com/spf13/cobra)
+- **Configuration**: [Viper](https://github.com/spf13/viper) — config file / environment variables / defaults / `--config`
+- **Logging**: [Zap](https://go.uber.org/zap) — `debug` / `info` / `warn` / `error`
+- **Distribution**: goreleaser builds `.deb` → GitHub Actions auto-publishes to a GitHub Pages APT repository
 
-### 通过 APT 安装（Debian/Ubuntu）
+## Quick Start
+
+### Install via APT (Debian/Ubuntu)
 
 ```bash
-# 1. 导入 GPG 公钥
+# 1. Import the GPG public key
 curl -fsSL https://kulaiyin.github.io/go-cipher-cli/apt/repo.gpg.key \
   | sudo gpg --dearmor -o /usr/share/keyrings/go-cipher-cli.gpg
 
-# 2. 添加源
+# 2. Add the repository
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/go-cipher-cli.gpg] https://kulaiyin.github.io/go-cipher-cli/apt stable main" \
   | sudo tee /etc/apt/sources.list.d/go-cipher-cli.list
 
-# 3. 安装
+# 3. Install
 sudo apt update
 sudo apt install go-cipher-cli
-go-cipher-cli version   # 输出版本号
+go-cipher-cli version   # prints the version
 ```
 
-> 遇到网络问题（`Could not handshake`）？参见[安装文档 - 网络问题应对](https://kulaiyin.github.io/go-cipher-cli/guide/installation#网络问题应对)。
+> Network issues (`Could not handshake`)? See [Installation — Network troubleshooting](https://kulaiyin.github.io/go-cipher-cli/guide/installation#网络问题应对).
 
-### 从源码构建
+### Build from source
 
 ```bash
 git clone https://github.com/kulaiyin/go-cipher-cli.git
@@ -45,46 +47,46 @@ cd go-cipher-cli
 go build -o go-cipher-cli ./main.go
 ```
 
-## 命令
+## Commands
 
 ```bash
-# 密码转密钥（与 web 工具互通）
-go-cipher-cli enhance -p "密码"                              # 派生 256 位密钥
-go-cipher-cli enhance -p "密码" -s google                      # 不同盐后缀派生不同密钥
+# Password to key (interoperable with the web tool)
+go-cipher-cli enhance -p "password"                       # derive a 256-bit key
+go-cipher-cli enhance -p "password" -s google             # different salt suffix → different key
 
-# Diceware 助记口令
-go-cipher-cli diceware                                       # 5 词默认口令（无分隔符）
-go-cipher-cli diceware -n 8 --sep hyphen                     # 8 词连字符分隔
+# Diceware mnemonic passphrase
+go-cipher-cli diceware                                    # 5-word default passphrase (no separator)
+go-cipher-cli diceware -n 8 --sep hyphen                  # 8 words, hyphen-separated
 
-# 其他
-go-cipher-cli version                                        # 输出版本号
-go-cipher-cli --help                                         # 查看帮助
+# Others
+go-cipher-cli version                                     # prints the version
+go-cipher-cli --help                                      # show help
 ```
 
-完整用法见 [使用说明](https://kulaiyin.github.io/go-cipher-cli/guide/usage) 和 [密钥管理](https://kulaiyin.github.io/go-cipher-cli/guide/key-management)。
+See the [Usage guide](https://kulaiyin.github.io/go-cipher-cli/guide/usage) and [Key management](https://kulaiyin.github.io/go-cipher-cli/guide/key-management) for full details.
 
-## 文档
+## Documentation
 
-| 主题 | 链接 |
+| Topic | Link |
 | --- | --- |
-| 安装 | https://kulaiyin.github.io/go-cipher-cli/guide/installation |
-| 使用 | https://kulaiyin.github.io/go-cipher-cli/guide/usage |
-| 密钥管理 | https://kulaiyin.github.io/go-cipher-cli/guide/key-management |
-| 打包与发布 | https://kulaiyin.github.io/go-cipher-cli/guide/packaging |
-| APT 仓库 | https://kulaiyin.github.io/go-cipher-cli/guide/apt-repo |
+| Installation | https://kulaiyin.github.io/go-cipher-cli/guide/installation |
+| Usage | https://kulaiyin.github.io/go-cipher-cli/guide/usage |
+| Key management | https://kulaiyin.github.io/go-cipher-cli/guide/key-management |
+| Packaging & release | https://kulaiyin.github.io/go-cipher-cli/guide/packaging |
+| APT repository | https://kulaiyin.github.io/go-cipher-cli/guide/apt-repo |
 | CI/CD | https://kulaiyin.github.io/go-cipher-cli/guide/ci-cd |
 
-## 项目结构
+## Project Structure
 
 ```
-├── main.go                 # 程序入口
-├── cmd/                    # CLI 命令
-├── docs/                   # VitePress 文档站源码
-├── scripts/                # 打包与发布脚本
-├── repo/conf/              # APT 仓库配置
-├── .github/workflows/      # GitHub Actions 工作流
-├── .goreleaser.yml         # goreleaser 配置
-└── go.mod                  # Go 模块定义
+├── main.go                 # Entry point
+├── cmd/                    # CLI commands
+├── docs/                   # VitePress documentation site source
+├── scripts/                # Packaging & release scripts
+├── repo/conf/              # APT repository configuration
+├── .github/workflows/      # GitHub Actions workflows
+├── .goreleaser.yml         # goreleaser configuration
+└── go.mod                  # Go module definition
 ```
 
 ## License
