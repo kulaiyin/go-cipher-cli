@@ -9,11 +9,14 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"go-cipher-cli/internal/i18n"
 )
 
 var (
 	cfgFile  string
 	logLevel string
+	lang     string
 	logger   *zap.Logger
 	rootCmd  = &cobra.Command{
 		Use:   "go-cipher-cli",
@@ -38,6 +41,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "log level (debug, info, warn, error)")
+	rootCmd.PersistentFlags().StringVar(&lang, "lang", "", "display language (en, zh); defaults to LANG env")
 	// rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(versionCmd)
 }
@@ -73,6 +77,24 @@ func initConfig() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Initialize i18n (first call loads translations, subsequent are no-op).
+	if err := i18n.Init(""); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize i18n: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Resolve language: --lang flag > config file > GOCIPHER_LANG env > LANG > "en"
+	resolved := lang
+	if resolved == "" {
+		resolved = viper.GetString("lang")
+	}
+	if resolved == "" {
+		resolved = os.Getenv("GOCIPHER_LANG")
+	}
+	if resolved != "" {
+		i18n.SetLanguage(resolved)
 	}
 }
 

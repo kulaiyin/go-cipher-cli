@@ -1,0 +1,216 @@
+# Chinese (zh) translations for go-cipher-cli.
+# These are the original Chinese strings from the codebase.
+
+# ==========================================
+# cmd/enhance.go
+# ==========================================
+
+[enhance.use]
+description = "enhance 命令的 Use 字符串"
+other = "enhance -p <密码> [--salt-suffix <后缀>]"
+
+[enhance.short]
+description = "enhance 命令的简短描述"
+other = "将密码转换为 256 位高熵密钥（密码转密钥）"
+
+[enhance.long]
+description = "enhance 命令的详细描述"
+other = """用你记得住的常用密码生成一把 256 位高熵密钥，真正用于加密/认证的
+是这把密钥，密码本身只是生成原料。
+
+算法：Argon2id(64MB/3轮/1路并行) + HKDF-Expand(SHA-256) 域分离。
+同一组密码 + 盐后缀确定性派生出相同密钥，无法由密钥反推密码。
+与 Web 工具 (https://tools.wcheer.com/) 字节级互通。"""
+
+[enhance.error.derive_failed]
+description = "密钥派生失败的错误信息"
+other = "派生失败: {{.Err}}"
+
+[enhance.output.algorithm]
+description = "输出的算法标签"
+other = "算法:     Argon2id(64MB/3轮/1路并行) + HKDF-Expand(SHA-256)"
+
+[enhance.output.domain]
+description = "输出的域标签"
+other = "Domain:   {{.Domain}}"
+
+[enhance.output.salt_suffix]
+description = "输出的盐后缀标签"
+other = "盐后缀:   {{.Suffix}}"
+
+[enhance.output.key_hex]
+description = "输出的密钥 hex 标签"
+other = "密钥(hex):     {{.Key}}"
+
+[enhance.output.key_base64]
+description = "输出的密钥 base64 标签"
+other = "密钥(base64):  {{.Key}}"
+
+[enhance.output.key_length]
+description = "输出的密钥长度标签"
+other = "密钥长度:      {{.Bits}} 位 (256 bit)"
+
+[enhance.flag.password]
+description = "--password 标志的描述"
+other = "要转换的密码（必填）"
+
+[enhance.flag.salt_suffix]
+description = "--salt-suffix 标志的描述"
+other = "可选盐后缀（如站点名、设备名），不同后缀派生不同密钥"
+
+[enhance.flag.domain]
+description = "--domain 标志的描述"
+other = "域标签（默认 default-v1，一般不修改）"
+
+# ==========================================
+# cmd/diceware.go
+# ==========================================
+
+[diceware.use]
+description = "diceware 命令的 Use 字符串"
+other = "diceware [-n <词数>] [--sep <分隔符>]"
+
+[diceware.short]
+description = "diceware 命令的简短描述"
+other = "生成 Diceware 助记口令（EFF 词表，7776 词）"
+
+[diceware.long]
+description = "diceware 命令的详细描述"
+other = """用 EFF 大型词表（7776 词）和密码学安全随机掷骰，生成易记但高熵的口令。
+
+随机数来源：crypto/rand (Go CSPRNG)。
+每词提供约 12.9 bit 熵，5 词口令约 64.6 bit，8 词口令约 103.4 bit。
+
+与 Web 工具 (https://tools.wcheer.com/) 的 Diceware 生成器同词表、同算法。"""
+
+[diceware.error.generate_failed]
+description = "口令生成失败的错误信息"
+other = "生成失败: {{.Err}}"
+
+[diceware.output.passphrase]
+description = "输出口令标签"
+other = "口令:         {{.Passphrase}}"
+
+[diceware.output.length]
+description = "输出长度标签"
+other = "长度:         {{.Len}} 字符"
+
+[diceware.output.words]
+description = "输出词数标签"
+other = "词数:         {{.Count}}"
+
+[diceware.output.entropy]
+description = "输出熵值标签"
+other = "信息熵:       {{.Bits}} bit"
+
+[diceware.output.combinations]
+description = "输出组合数标签"
+other = "可能组合数:   {{.Combinations}}"
+
+[diceware.output.separator]
+description = "输出分隔符标签"
+other = "分隔符:       {{.Sep}}"
+
+[diceware.output.details_header]
+description = "逐词掷骰详情标题"
+other = "逐词掷骰详情:"
+
+[diceware.sep.hyphen]
+description = "连字符分隔符描述"
+other = "连字符 (-)"
+
+[diceware.sep.none]
+description = "无分隔符描述"
+other = "无"
+
+[diceware.sep.space]
+description = "空格分隔符描述"
+other = "空格"
+
+[diceware.flag.num_words]
+description = "--num-words 标志的描述"
+other = "单词数量 (1-20)"
+
+[diceware.flag.sep]
+description = "--sep 标志的描述"
+other = "分隔符: space / hyphen / none"
+
+# ==========================================
+# cmd/utils.go
+# ==========================================
+
+[hint_match.long]
+description = "hint-match 命令的详细描述"
+other = "Compare the 密钥UUID embedded in an encrypted hint against a meta hint. Both inputs are read from --encrypted and --meta."
+
+# ==========================================
+# internal/kdf/kdf.go
+# ==========================================
+
+[kdf.feedback.too_short]
+description = "密码太短的提示"
+other = "密码长度至少需要8个字符"
+
+[kdf.feedback.recommend_longer]
+description = "建议更长的密码"
+other = "密码长度建议至少12个字符"
+
+[kdf.feedback.add_lowercase]
+description = "建议包含小写字母"
+other = "建议包含小写字母"
+
+[kdf.feedback.add_uppercase]
+description = "建议包含大写字母"
+other = "建议包含大写字母"
+
+[kdf.feedback.add_digit]
+description = "建议包含数字"
+other = "建议包含数字"
+
+[kdf.feedback.add_special]
+description = "建议包含特殊字符"
+other = "建议包含特殊字符"
+
+[kdf.feedback.avoid_common]
+description = "避免常见密码的提示"
+other = "避免使用常见密码"
+
+[kdf.error.argon2_failed]
+description = "Argon2 派生失败的错误信息"
+other = "Argon2 密钥派生失败"
+
+# ==========================================
+# internal/safety/safety.go
+# ==========================================
+
+[safety.error.hex_even]
+description = "十六进制长度错误"
+other = "16 进制字符串长度必须为偶数"
+
+# ==========================================
+# internal/crypto/crypto.go
+# ==========================================
+
+[crypto.error.unsupported_hmac]
+description = "不支持的 HMAC 算法错误"
+other = "不支持的HMAC算法: {{.Algorithm}}"
+
+[crypto.error.unsupported_algo]
+description = "不支持的算法错误"
+other = "不支持的算法: {{.Algorithm}}"
+
+# ==========================================
+# internal/aesgcm/aesgcm.go
+# ==========================================
+
+[aesgcm.error.invalid_input]
+description = "无效输入错误"
+other = "无效的输入参数，数据和密码数组不能为空"
+
+[aesgcm.error.empty_data]
+description = "空数据错误"
+other = "无效的输入参数，加密数据和密码数组不能为空"
+
+[aesgcm.error.wrong_password]
+description = "密码错误"
+other = "密码错误！"

@@ -4,6 +4,8 @@ go 1.25.5
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
+	github.com/BurntSushi/toml v1.6.0
+	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/vbauerster/mpb/v8 v8.14.0

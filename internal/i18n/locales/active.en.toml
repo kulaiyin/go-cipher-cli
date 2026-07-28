@@ -1,0 +1,216 @@
+# English translations for go-cipher-cli.
+# This is the default locale; message IDs are used as fallback when no translation is found.
+
+# ==========================================
+# cmd/enhance.go
+# ==========================================
+
+[enhance.use]
+description = "Use string for enhance command"
+other = "enhance -p <password> [--salt-suffix <suffix>]"
+
+[enhance.short]
+description = "Short description for enhance command"
+other = "Convert a password to a 256-bit high-entropy key (password-to-key)"
+
+[enhance.long]
+description = "Long description for enhance command"
+other = """Generate a 256-bit high-entropy key from a password you can remember. The key
+is what's actually used for encryption/authentication; the password is just the raw material.
+
+Algorithm: Argon2id(64MB/3 rounds/1 parallelism) + HKDF-Expand(SHA-256) domain separation.
+The same password + salt suffix deterministically derives the same key. The key cannot be reversed to recover the password.
+Byte-level compatible with the web tool (https://tools.wcheer.com/)."""
+
+[enhance.error.derive_failed]
+description = "Error when key derivation fails"
+other = "derive failed: {{.Err}}"
+
+[enhance.output.algorithm]
+description = "Algorithm label in output"
+other = "Algorithm: Argon2id(64MB/3 rounds/1 parallelism) + HKDF-Expand(SHA-256)"
+
+[enhance.output.domain]
+description = "Domain label in output"
+other = "Domain:   {{.Domain}}"
+
+[enhance.output.salt_suffix]
+description = "Salt suffix label in output"
+other = "Salt suffix: {{.Suffix}}"
+
+[enhance.output.key_hex]
+description = "Key hex label in output"
+other = "Key (hex):    {{.Key}}"
+
+[enhance.output.key_base64]
+description = "Key base64 label in output"
+other = "Key (base64): {{.Key}}"
+
+[enhance.output.key_length]
+description = "Key length label in output"
+other = "Key length:   {{.Bits}} bits (256 bit)"
+
+[enhance.flag.password]
+description = "Description for --password flag"
+other = "password to convert (required)"
+
+[enhance.flag.salt_suffix]
+description = "Description for --salt-suffix flag"
+other = "optional salt suffix (e.g. site name, device name); different suffixes produce different keys"
+
+[enhance.flag.domain]
+description = "Description for --domain flag"
+other = "domain label (default default-v1, generally not changed)"
+
+# ==========================================
+# cmd/diceware.go
+# ==========================================
+
+[diceware.use]
+description = "Use string for diceware command"
+other = "diceware [-n <num-words>] [--sep <separator>]"
+
+[diceware.short]
+description = "Short description for diceware command"
+other = "Generate a Diceware passphrase (EFF word list, 7776 words)"
+
+[diceware.long]
+description = "Long description for diceware command"
+other = """Use the EFF large word list (7776 words) with cryptographically secure random dice rolls to generate memorable but high-entropy passphrases.
+
+Random source: crypto/rand (Go CSPRNG).
+Each word provides ~12.9 bits of entropy: 5 words ~64.6 bits, 8 words ~103.4 bits.
+
+Uses the same word list and algorithm as the web tool (https://tools.wcheer.com/)."""
+
+[diceware.error.generate_failed]
+description = "Error when passphrase generation fails"
+other = "generate failed: {{.Err}}"
+
+[diceware.output.passphrase]
+description = "Passphrase label in output"
+other = "Passphrase:   {{.Passphrase}}"
+
+[diceware.output.length]
+description = "Length label in output"
+other = "Length:       {{.Len}} chars"
+
+[diceware.output.words]
+description = "Words count label"
+other = "Words:        {{.Count}}"
+
+[diceware.output.entropy]
+description = "Entropy label in output"
+other = "Entropy:      {{.Bits}} bit"
+
+[diceware.output.combinations]
+description = "Combinations label in output"
+other = "Combinations: {{.Combinations}}"
+
+[diceware.output.separator]
+description = "Separator label in output"
+other = "Separator:    {{.Sep}}"
+
+[diceware.output.details_header]
+description = "Header for per-word dice roll details"
+other = "Per-word dice roll details:"
+
+[diceware.sep.hyphen]
+description = "Hyphen separator description"
+other = "hyphen (-)"
+
+[diceware.sep.none]
+description = "No separator description"
+other = "none"
+
+[diceware.sep.space]
+description = "Space separator description"
+other = "space"
+
+[diceware.flag.num_words]
+description = "Description for --num-words flag"
+other = "number of words (1-20)"
+
+[diceware.flag.sep]
+description = "Description for --sep flag"
+other = "separator: space / hyphen / none"
+
+# ==========================================
+# cmd/utils.go
+# ==========================================
+
+[hint_match.long]
+description = "Long description for hint-match command"
+other = "Compare the KEYUUID embedded in an encrypted hint against a meta hint. Both inputs are read from --encrypted and --meta."
+
+# ==========================================
+# internal/kdf/kdf.go - password strength feedback
+# ==========================================
+
+[kdf.feedback.too_short]
+description = "Password is too short"
+other = "password must be at least 8 characters"
+
+[kdf.feedback.recommend_longer]
+description = "Recommend longer password"
+other = "password should be at least 12 characters"
+
+[kdf.feedback.add_lowercase]
+description = "Suggestion to add lowercase letter"
+other = "add a lowercase letter"
+
+[kdf.feedback.add_uppercase]
+description = "Suggestion to add uppercase letter"
+other = "add an uppercase letter"
+
+[kdf.feedback.add_digit]
+description = "Suggestion to add digit"
+other = "add a digit"
+
+[kdf.feedback.add_special]
+description = "Suggestion to add special character"
+other = "add a special character"
+
+[kdf.feedback.avoid_common]
+description = "Warning about common passwords"
+other = "avoid common passwords"
+
+[kdf.error.argon2_failed]
+description = "Argon2 key derivation error"
+other = "Argon2 key derivation failed"
+
+# ==========================================
+# internal/safety/safety.go
+# ==========================================
+
+[safety.error.hex_even]
+description = "Hex string length must be even"
+other = "hex string length must be even"
+
+# ==========================================
+# internal/crypto/crypto.go
+# ==========================================
+
+[crypto.error.unsupported_hmac]
+description = "Unsupported HMAC algorithm error"
+other = "unsupported HMAC algorithm: {{.Algorithm}}"
+
+[crypto.error.unsupported_algo]
+description = "Unsupported hash algorithm error"
+other = "unsupported algorithm: {{.Algorithm}}"
+
+# ==========================================
+# internal/aesgcm/aesgcm.go
+# ==========================================
+
+[aesgcm.error.invalid_input]
+description = "Invalid input error"
+other = "invalid input: data and password array must not be empty"
+
+[aesgcm.error.empty_data]
+description = "Empty data error"
+other = "invalid input: encrypted data and password array must not be empty"
+
+[aesgcm.error.wrong_password]
+description = "Wrong password error"
+other = "wrong password!"
