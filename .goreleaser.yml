@@ -31,6 +31,36 @@ archives:
       - goos: windows
         formats: [zip]
     wrap_in_directory: false
+    # Fix the binary's owner/group/mtime so the archive is reproducible
+    # across machines (local `developer` vs CI `runner` would otherwise
+    # differ and change the checksum).
+    builds_info:
+      group: root
+      owner: root
+      mode: 0755
+      mtime: "{{ .CommitDate }}"
+    # List extra files explicitly so we can pin their owner/group/mtime.
+    # An explicit `files` list replaces the default (LICENSE*/README*),
+    # so there is no duplication.
+    files:
+      - src: LICENSE
+        info:
+          owner: root
+          group: root
+          mode: 0644
+          mtime: "{{ .CommitDate }}"
+      - src: README.md
+        info:
+          owner: root
+          group: root
+          mode: 0644
+          mtime: "{{ .CommitDate }}"
+      - src: README.zh-CN.md
+        info:
+          owner: root
+          group: root
+          mode: 0644
+          mtime: "{{ .CommitDate }}"
 
 nfpms:
   - id: default

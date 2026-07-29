@@ -47,7 +47,9 @@ jobs:
       - name: Run goreleaser
         uses: goreleaser/goreleaser-action@v7
         with:
-          version: latest
+          # Pin the version so CI builds match local builds exactly.
+          # Bump this together with the local goreleaser version.
+          version: v2.17.1
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

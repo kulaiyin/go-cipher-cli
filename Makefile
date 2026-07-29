@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := setup
 
-.PHONY: setup check test release
+.PHONY: setup check test snapshot release
 
 # Install git hooks for this repository.
 # Run once after cloning.
@@ -30,7 +30,15 @@ test:
 	@echo "==> go test ./..."
 	@go test ./...
 
-# Build release artifacts with goreleaser (local snapshot, no publish).
-# Output lands in dist/ — .deb, .tar.gz, checksums, etc.
-release:
+# Build a local snapshot (no publish).
+# Snapshot mode is NOT tied to a git tag, so the version/timestamps differ
+# from a real Release — its checksums cannot be compared with a GitHub
+# Release. Use this only for local testing.
+snapshot:
 	goreleaser release --snapshot --clean
+
+# Reproduce a real CI Release locally (run on a v* tag).
+# goreleaser reads the commit timestamp from the tag, so the output can be
+# compared against the GitHub Release checksums.
+release:
+	goreleaser release --clean --skip=publish --timeout 60m
