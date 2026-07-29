@@ -2,9 +2,6 @@ version: 2
 
 project_name: go-cipher-cli
 
-gomod:
-  proxy: true
-
 builds:
   - id: default
     main: ./main.go
