@@ -24,6 +24,51 @@ other = """Generate the autocompletion script for the specified shell.
 
 Available shells: bash, zsh, fish, powershell."""
 
+[completion.bash.short]
+description = "Short description for completion bash subcommand"
+other = "Generate bash completion script"
+
+[completion.zsh.short]
+description = "Short description for completion zsh subcommand"
+other = "Generate zsh completion script"
+
+[completion.fish.short]
+description = "Short description for completion fish subcommand"
+other = "Generate fish completion script"
+
+[completion.powershell.short]
+description = "Short description for completion powershell subcommand"
+other = "Generate powershell completion script"
+
+[root.short]
+description = "Short description for the root command"
+other = "A simple Go CLI with configuration, logging, prompts, and progress"
+
+[root.long]
+description = "Long description for the root command"
+other = """go-cipher-cli is a CLI demo project using Cobra, Viper, Zap, Survey, and MPB.
+It demonstrates configuration loading, structured logging, interactive prompts, and progress bars."""
+
+[global.message.using_config]
+description = "Message printed when a config file is loaded"
+other = "Using config file: {{.Path}}"
+
+[global.error.read_config]
+description = "Error when reading the config file fails"
+other = "Failed to read config: {{.Err}}"
+
+[global.error.init_i18n]
+description = "Error when i18n initialization fails"
+other = "Failed to initialize i18n: {{.Err}}"
+
+[global.error.init_logger]
+description = "Error when logger initialization fails"
+other = "Failed to initialize logger: {{.Err}}"
+
+[help.unknown_topic]
+description = "Message printed when an unknown help topic is requested"
+other = "Unknown help topic {{.Args}}"
+
 [global.flag.config]
 description = "Description for --config flag"
 other = "config file path"
@@ -47,10 +92,6 @@ other = "log level (debug, info, warn, error)"
 # ==========================================
 # cmd/enhance.go
 # ==========================================
-
-[enhance.use]
-description = "Use string for enhance command"
-other = "enhance -p <password> [--salt-suffix <suffix>]"
 
 [enhance.short]
 description = "Short description for enhance command"
@@ -108,10 +149,6 @@ other = "domain label (default default-v1, generally not changed)"
 # ==========================================
 # cmd/diceware.go
 # ==========================================
-
-[diceware.use]
-description = "Use string for diceware command"
-other = "diceware [-n <num-words>] [--sep <separator>]"
 
 [diceware.short]
 description = "Short description for diceware command"
@@ -182,10 +219,6 @@ other = "separator: space / hyphen / none"
 # cmd/utils.go
 # ==========================================
 
-[hint_match.use]
-description = "Use string for hint-match command"
-other = "hint-match"
-
 [hint_match.short]
 description = "Short description for hint-match command"
 other = "Validate hint/key UUID match (mirrors validateHintAndKeysUuidMatch)"
@@ -214,10 +247,6 @@ other = "meta hint text"
 # cmd/utils.go - hash
 # ==========================================
 
-[hash.use]
-description = "Use string for hash command"
-other = "hash [text]"
-
 [hash.short]
 description = "Short description for hash command"
 other = "Hash text with MD5/SHA1/SHA2/SHA3 (mirrors CryptoTools.hashText)"
@@ -236,13 +265,16 @@ other = "hash algorithm"
 # cmd/utils.go - hmac
 # ==========================================
 
-[hmac.use]
-description = "Use string for hmac command"
-other = "hmac [data]"
-
 [hmac.short]
 description = "Short description for hmac command"
 other = "Compute HMAC of text (mirrors HmacTools.hashText)"
+
+[hmac.long]
+description = "Long description for hmac command"
+other = """Compute an HMAC (keyed hash) of the given text (or the single argument)
+with the chosen algorithm and key. Supported: hmac-md5, hmac-sha1,
+hmac-sha224, hmac-sha256, hmac-sha384, hmac-sha512, hmac-sha3-224,
+hmac-sha3-256, hmac-sha3-384, hmac-sha3-512."""
 
 [hmac.flag.algo]
 description = "Description for --algo flag"
@@ -255,10 +287,6 @@ other = "HMAC key"
 # ==========================================
 # cmd/utils.go - fuse
 # ==========================================
-
-[fuse.use]
-description = "Use string for fuse command"
-other = "fuse"
 
 [fuse.short]
 description = "Short description for fuse command"
@@ -290,10 +318,6 @@ other = "password (repeatable, 1-3)"
 # cmd/utils.go - recover
 # ==========================================
 
-[recover.use]
-description = "Use string for recover command"
-other = "recover [generated-key]"
-
 [recover.short]
 description = "Short description for recover command"
 other = "Validate key recovery (mirrors validateKeyRecovery)"
@@ -318,10 +342,6 @@ other = "stored uuid list (repeatable)"
 # ==========================================
 # cmd/encrypt.go
 # ==========================================
-
-[encrypt.use]
-description = "Use string for encrypt command"
-other = "encrypt [input file]"
 
 [encrypt.short]
 description = "Short description for encrypt command"
@@ -376,10 +396,6 @@ other = "optional 128-hex salt seed (auto-generated if omitted)"
 # ==========================================
 # cmd/keygen.go
 # ==========================================
-
-[keygen.use]
-description = "Use string for keygen command"
-other = "keygen"
 
 [keygen.short]
 description = "Short description for keygen command"
@@ -447,10 +463,6 @@ other = "print only the salt line when auto-generating"
 # cmd/run.go
 # ==========================================
 
-[run.use]
-description = "Use string for run command"
-other = "run"
-
 [run.short]
 description = "Short description for run command"
 other = "Run an interactive demo task"
@@ -487,10 +499,6 @@ other = "Operation {{.Action}} completed for {{.Target}}"
 # cmd/version.go
 # ==========================================
 
-[version.use]
-description = "Use string for version command"
-other = "version"
-
 [version.short]
 description = "Short description for version command"
 other = "Print the CLI version"
@@ -498,10 +506,6 @@ other = "Print the CLI version"
 # ==========================================
 # cmd/decrypt.go
 # ==========================================
-
-[decrypt.use]
-description = "Use string for decrypt command"
-other = "decrypt [input file]"
 
 [decrypt.short]
 description = "Short description for decrypt command"
@@ -612,10 +616,6 @@ other = "wrong password!"
 # ==========================================
 # cmd/update.go
 # ==========================================
-
-[update.use]
-description = "Use string for update command"
-other = "update [--check]"
 
 [update.short]
 description = "Short description for update command"

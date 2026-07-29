@@ -34,6 +34,7 @@ var hashCmd = &cobra.Command{
 var hmacCmd = &cobra.Command{
 	Use:   "hmac [data]",
 	Short: "placeholder",
+	Long:  "placeholder",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		algo, _ := cmd.Flags().GetString("algo")
@@ -106,6 +107,7 @@ func init() {
 		hashCmd.Short = i18n.T("hash.short")
 		hashCmd.Long = i18n.T("hash.long")
 		hmacCmd.Short = i18n.T("hmac.short")
+		hmacCmd.Long = i18n.T("hmac.long")
 		fuseCmd.Short = i18n.T("fuse.short")
 		fuseCmd.Long = i18n.T("fuse.long")
 		recoverCmd.Short = i18n.T("recover.short")

@@ -35,7 +35,9 @@ var enhanceCmd = &cobra.Command{
 		subKeyBytes, _ := hex.DecodeString(subKeyHex)
 
 		fmt.Println(i18n.T("enhance.output.algorithm"))
-		fmt.Printf("Domain:   %s\n", domain)
+		fmt.Println(i18n.TWithData("enhance.output.domain", map[string]interface{}{
+			"Domain": domain,
+		}))
 		if enhanceSaltSuffix != "" {
 			fmt.Println(i18n.TWithData("enhance.output.salt_suffix", map[string]interface{}{
 				"Suffix": enhanceSaltSuffix,

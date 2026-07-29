@@ -24,6 +24,51 @@ other = """生成指定 Shell 的自动补全脚本。
 
 支持的 Shell: bash, zsh, fish, powershell。"""
 
+[completion.bash.short]
+description = "completion bash 子命令简短描述"
+other = "生成 bash 自动补全脚本"
+
+[completion.zsh.short]
+description = "completion zsh 子命令简短描述"
+other = "生成 zsh 自动补全脚本"
+
+[completion.fish.short]
+description = "completion fish 子命令简短描述"
+other = "生成 fish 自动补全脚本"
+
+[completion.powershell.short]
+description = "completion powershell 子命令简短描述"
+other = "生成 powershell 自动补全脚本"
+
+[root.short]
+description = "根命令简短描述"
+other = "一个集配置、日志、交互提示与进度条的 Go CLI"
+
+[root.long]
+description = "根命令详细描述"
+other = """go-cipher-cli 是一个使用 Cobra、Viper、Zap、Survey 和 MPB 的 CLI 演示项目。
+演示配置加载、结构化日志、交互提示和进度条。"""
+
+[global.message.using_config]
+description = "加载到配置文件时打印的提示"
+other = "使用配置文件: {{.Path}}"
+
+[global.error.read_config]
+description = "读取配置文件失败时的错误"
+other = "读取配置失败: {{.Err}}"
+
+[global.error.init_i18n]
+description = "i18n 初始化失败时的错误"
+other = "初始化 i18n 失败: {{.Err}}"
+
+[global.error.init_logger]
+description = "logger 初始化失败时的错误"
+other = "初始化 logger 失败: {{.Err}}"
+
+[help.unknown_topic]
+description = "请求未知帮助主题时打印的提示"
+other = "未知的帮助主题 {{.Args}}"
+
 [global.flag.config]
 description = "--config 标志说明"
 other = "配置文件路径"
@@ -47,10 +92,6 @@ other = "日志级别 (debug, info, warn, error)"
 # ==========================================
 # cmd/enhance.go
 # ==========================================
-
-[enhance.use]
-description = "enhance 命令的 Use 字符串"
-other = "enhance -p <密码> [--salt-suffix <后缀>]"
 
 [enhance.short]
 description = "enhance 命令的简短描述"
@@ -108,10 +149,6 @@ other = "域标签（默认 default-v1，一般不修改）"
 # ==========================================
 # cmd/diceware.go
 # ==========================================
-
-[diceware.use]
-description = "diceware 命令的 Use 字符串"
-other = "diceware [-n <词数>] [--sep <分隔符>]"
 
 [diceware.short]
 description = "diceware 命令的简短描述"
@@ -182,10 +219,6 @@ other = "分隔符: space / hyphen / none"
 # cmd/utils.go
 # ==========================================
 
-[hint_match.use]
-description = "hint-match 命令的 Use 字符串"
-other = "hint-match"
-
 [hint_match.short]
 description = "hint-match 命令的简短描述"
 other = "验证提示和密钥 UUID 是否匹配（对应 validateHintAndKeysUuidMatch）"
@@ -214,10 +247,6 @@ other = "元 hint 文本"
 # cmd/utils.go - hash
 # ==========================================
 
-[hash.use]
-description = "hash 命令的 Use 字符串"
-other = "hash [文本]"
-
 [hash.short]
 description = "hash 命令的简短描述"
 other = "对文本计算哈希值 MD5/SHA1/SHA2/SHA3（对应 CryptoTools.hashText）"
@@ -236,13 +265,15 @@ other = "哈希算法"
 # cmd/utils.go - hmac
 # ==========================================
 
-[hmac.use]
-description = "hmac 命令的 Use 字符串"
-other = "hmac [数据]"
-
 [hmac.short]
 description = "hmac 命令的简短描述"
 other = "计算文本的 HMAC（对应 HmacTools.hashText）"
+
+[hmac.long]
+description = "hmac 命令的详细描述"
+other = """用所选算法和密钥计算给定文本（或单个参数）的 HMAC（带密钥哈希）。
+支持: hmac-md5, hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,
+hmac-sha512, hmac-sha3-224, hmac-sha3-256, hmac-sha3-384, hmac-sha3-512。"""
 
 [hmac.flag.algo]
 description = "--algo 标志的描述"
@@ -255,10 +286,6 @@ other = "HMAC 密钥"
 # ==========================================
 # cmd/utils.go - fuse
 # ==========================================
-
-[fuse.use]
-description = "fuse 命令的 Use 字符串"
-other = "fuse"
 
 [fuse.short]
 description = "fuse 命令的简短描述"
@@ -289,10 +316,6 @@ other = "密码（可重复，1-3 个）"
 # cmd/utils.go - recover
 # ==========================================
 
-[recover.use]
-description = "recover 命令的 Use 字符串"
-other = "recover [生成的密钥]"
-
 [recover.short]
 description = "recover 命令的简短描述"
 other = "验证密钥恢复（对应 validateKeyRecovery）"
@@ -317,10 +340,6 @@ other = "存储的 uuid 列表（可重复）"
 # ==========================================
 # cmd/encrypt.go
 # ==========================================
-
-[encrypt.use]
-description = "encrypt 命令的 Use 字符串"
-other = "encrypt [输入文件]"
 
 [encrypt.short]
 description = "encrypt 命令的简短描述"
@@ -374,10 +393,6 @@ other = "可选的 128 位十六进制盐种子（省略则自动生成）"
 # ==========================================
 # cmd/keygen.go
 # ==========================================
-
-[keygen.use]
-description = "keygen 命令的 Use 字符串"
-other = "keygen"
 
 [keygen.short]
 description = "keygen 命令的简短描述"
@@ -444,10 +459,6 @@ other = "自动生成时仅输出盐值行"
 # cmd/run.go
 # ==========================================
 
-[run.use]
-description = "run 命令的 Use 字符串"
-other = "run"
-
 [run.short]
 description = "run 命令的简短描述"
 other = "运行交互式演示任务"
@@ -484,10 +495,6 @@ other = "操作 {{.Action}} 已完成，目标：{{.Target}}"
 # cmd/version.go
 # ==========================================
 
-[version.use]
-description = "version 命令的 Use 字符串"
-other = "version"
-
 [version.short]
 description = "version 命令的简短描述"
 other = "显示 CLI 版本号"
@@ -495,10 +502,6 @@ other = "显示 CLI 版本号"
 # ==========================================
 # cmd/decrypt.go
 # ==========================================
-
-[decrypt.use]
-description = "decrypt 命令的 Use 字符串"
-other = "decrypt [输入文件]"
 
 [decrypt.short]
 description = "decrypt 命令的简短描述"
@@ -608,10 +611,6 @@ other = "密码错误！"
 # ==========================================
 # cmd/update.go
 # ==========================================
-
-[update.use]
-description = "update 命令使用说明"
-other = "update [--check]"
 
 [update.short]
 description = "update 命令简短描述"

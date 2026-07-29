@@ -3,10 +3,12 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -28,9 +30,8 @@ var (
 
 	rootCmd = &cobra.Command{
 		Use:   "go-cipher-cli",
-		Short: "A simple Go CLI with configuration, logging, prompts, and progress",
-		Long: `go-cipher-cli is a CLI demo project using Cobra, Viper, Zap, Survey, and MPB.
-It demonstrates configuration loading, structured logging, interactive prompts, and progress bars.`,
+		Short: "placeholder",
+		Long:  "placeholder",
 		Run: func(cmd *cobra.Command, args []string) {
 			_ = cmd.Help()
 		},
@@ -38,9 +39,112 @@ It demonstrates configuration loading, structured logging, interactive prompts, 
 )
 
 func Execute() {
+	// Resolve i18n language and refresh command descriptions *before* cobra
+	// executes. cobra's OnInitialize hook (initConfig, which runs the refresh
+	// callbacks) only fires from preRun(), but `--help` and non-runnable
+	// commands return flag.ErrHelp before preRun() is reached, so the
+	// Short/Long fields would otherwise still be "placeholder" on `--help`.
+	// initConfigFromArgs peeks at just the root's global flags (--lang,
+	// --config, --log-level) without consuming subcommand args.
+	initConfigFromArgs()
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+
+// initConfigFromArgs does a minimal pre-parse of the root persistent flags so
+// that i18n language resolution and the description-refresh callbacks run before
+// cobra dispatches (and before --help is rendered). It deliberately parses into
+// a throwaway flag set so it does not disturb cobra's own flag parsing.
+func initConfigFromArgs() {
+	var preCfg, preLang, preLogLevel string
+	fs := pflag.NewFlagSet("preinit", pflag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.StringVar(&preCfg, "config", "", "")
+	fs.StringVar(&preLang, "lang", "", "")
+	fs.StringVar(&preLogLevel, "log-level", "info", "")
+	// Ignore parse errors: unknown flags (subcommand flags, -h, etc.) and bad
+	// values are handled properly by cobra's own parse later.
+	_ = fs.Parse(os.Args[1:])
+
+	// Mirror initConfig's env/config precedence for the three globals.
+	cfgFile = preCfg
+	if preLogLevel != "" {
+		logLevel = preLogLevel
+	}
+	lang = preLang
+
+	// Read the config file (if any) so the `lang` setting it may carry is
+	// honored even on the --help path, where cobra's OnInitialize (and thus
+	// initConfig/viper) never runs. viper is fully (re)loaded later in
+	// initConfig; this is a best-effort peek at `lang`/`log.level` only.
+	if cfgLang := peekConfigValue(preCfg, "lang"); cfgLang != "" && lang == "" {
+		lang = cfgLang
+	}
+
+	// Ensure the help command is registered before refreshing. cobra normally
+	// adds it during ExecuteC()->InitDefaultHelpCmd(), which runs *after* this
+	// pre-parse, so the refresh callback (which walks rootCmd.Commands())
+	// would otherwise miss it and leave its Short stale for `--help`.
+	// InitDefaultHelpCmd reuses the help command already set via SetHelpCommand.
+	rootCmd.InitDefaultHelpCmd()
+
+	applyI18n()
+}
+
+// peekConfigValue reads a single key from the config file resolved the same way
+// initConfig resolves it (--config file, else ./config or ~/.go-cipher-cli/config,
+// yaml by default). It returns "" if no config or the key is absent. Used only
+// to surface config-file `lang` on the --help path before viper is fully loaded.
+func peekConfigValue(configPath, key string) string {
+	v := viper.New()
+	v.SetEnvPrefix("GOCIPHER")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+	if configPath != "" {
+		v.SetConfigFile(configPath)
+	} else {
+		v.SetConfigName("config")
+		v.SetConfigType("yaml")
+		v.AddConfigPath(".")
+		v.AddConfigPath("$HOME/.go-cipher-cli")
+	}
+	if err := v.ReadInConfig(); err != nil {
+		return ""
+	}
+	return v.GetString(key)
+}
+
+// applyI18n initializes the i18n bundle (idempotent) and re-applies every
+// registered command description (Short/Long) and flag usage for the currently
+// resolved language. Called both from initConfig (cobra OnInitialize path) and
+// from the early initConfigFromArgs (pre-help path).
+func applyI18n() {
+	if err := i18n.Init(""); err != nil {
+		fmt.Fprintln(os.Stderr, i18n.TWithData("global.error.init_i18n", map[string]interface{}{
+			"Err": err,
+		}))
+		os.Exit(1)
+	}
+
+	// Resolve language: --lang flag > GOCIPHER_LANG env > LANG env > "en".
+	// (Config-file lang is applied here too once viper has read it, but viper
+	// is only loaded in initConfig; when applyI18n runs early via
+	// initConfigFromArgs the config file has not been read yet. The config
+	// value, if any, is picked up when initConfig runs later via OnInitialize.)
+	resolved := lang
+	if resolved == "" {
+		resolved = os.Getenv("GOCIPHER_LANG")
+	}
+	if resolved != "" {
+		i18n.SetLanguage(resolved)
+	}
+
+	// Re-apply all command descriptions now that the language is final.
+	for _, fn := range refreshCmdDescs {
+		fn()
 	}
 }
 
@@ -55,7 +159,9 @@ func init() {
 		Run: func(c *cobra.Command, args []string) {
 			cmd, _, e := c.Root().Find(args)
 			if cmd == nil || e != nil {
-				c.Printf("Unknown help topic %#q\n", args)
+				c.Println(i18n.TWithData("help.unknown_topic", map[string]interface{}{
+					"Args": fmt.Sprintf("%#q", args),
+				}))
 				_ = c.Root().Usage()
 			} else {
 				cmd.InitDefaultHelpFlag()
@@ -106,6 +212,10 @@ func init() {
 	// Register refresh callback so built-in command Short/Long and root
 	// flag usages stay in sync when language changes.
 	refreshCmdDescs = append(refreshCmdDescs, func() {
+		// Root command's own Short/Long.
+		rootCmd.Short = i18n.T("root.short")
+		rootCmd.Long = i18n.T("root.long")
+
 		for _, sub := range rootCmd.Commands() {
 			switch sub.Name() {
 			case "help":
@@ -114,6 +224,19 @@ func init() {
 			case "completion":
 				sub.Short = i18n.T("completion.short")
 				sub.Long = i18n.T("completion.long")
+				// Refresh the four completion shell subcommands.
+				for _, shell := range sub.Commands() {
+					switch shell.Name() {
+					case "bash":
+						shell.Short = i18n.T("completion.bash.short")
+					case "zsh":
+						shell.Short = i18n.T("completion.zsh.short")
+					case "fish":
+						shell.Short = i18n.T("completion.fish.short")
+					case "powershell":
+						shell.Short = i18n.T("completion.powershell.short")
+					}
+				}
 			}
 		}
 
@@ -159,7 +282,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", i18n.T("global.flag.config"))
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", i18n.T("global.flag.log_level"))
 	rootCmd.PersistentFlags().StringVar(&lang, "lang", "", i18n.T("global.flag.lang"))
-	// rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 
@@ -180,10 +302,14 @@ func initConfig() {
 	}
 
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintf(os.Stderr, "Using config file: %s\n", viper.ConfigFileUsed())
+		fmt.Fprintln(os.Stderr, i18n.TWithData("global.message.using_config", map[string]interface{}{
+			"Path": viper.ConfigFileUsed(),
+		}))
 	} else {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			fmt.Fprintf(os.Stderr, "Failed to read config: %v\n", err)
+			fmt.Fprintln(os.Stderr, i18n.TWithData("global.error.read_config", map[string]interface{}{
+				"Err": err,
+			}))
 		}
 	}
 
@@ -192,32 +318,21 @@ func initConfig() {
 	var err error
 	logger, err = newZapLogger(logLevel)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+		fmt.Fprintln(os.Stderr, i18n.TWithData("global.error.init_logger", map[string]interface{}{
+			"Err": err,
+		}))
 		os.Exit(1)
 	}
 
-	// Initialize i18n (first call loads translations, subsequent are no-op).
-	if err := i18n.Init(""); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize i18n: %v\n", err)
-		os.Exit(1)
+	// Fold the config-file `lang` value into the global so applyI18n sees the
+	// full precedence (--lang > config file > GOCIPHER_LANG env > LANG).
+	if lang == "" {
+		lang = viper.GetString("lang")
 	}
 
-	// Resolve language: --lang flag > config file > GOCIPHER_LANG env > LANG > "en"
-	resolved := lang
-	if resolved == "" {
-		resolved = viper.GetString("lang")
-	}
-	if resolved == "" {
-		resolved = os.Getenv("GOCIPHER_LANG")
-	}
-	if resolved != "" {
-		i18n.SetLanguage(resolved)
-	}
-
-	// Re-apply all command descriptions now that the language is final.
-	for _, fn := range refreshCmdDescs {
-		fn()
-	}
+	// Initialize i18n and refresh command descriptions (also runs early via
+	// initConfigFromArgs for the --help path; re-running here is harmless).
+	applyI18n()
 }
 
 func newZapLogger(level string) (*zap.Logger, error) {
