@@ -11,8 +11,10 @@ builds:
     mod_timestamp: "{{ .CommitTimestamp }}"
     env:
       - CGO_ENABLED=0
+      - GOTOOLCHAIN=local
     flags:
       - -trimpath
+      - -buildvcs=false
     ldflags:
       - -s -w
       - -buildid=
