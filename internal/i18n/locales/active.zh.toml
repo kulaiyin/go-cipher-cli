@@ -2,6 +2,49 @@
 # These are the original Chinese strings from the codebase.
 
 # ==========================================
+# cmd/root.go — built-in help & completion
+# ==========================================
+
+[help.short]
+description = "help 命令简短描述"
+other = "显示命令帮助信息"
+
+[help.long]
+description = "help 命令详细描述"
+other = """显示指定命令的帮助信息。
+输入 go-cipher-cli help [command] 查看完整说明。"""
+
+[completion.short]
+description = "completion 命令简短描述"
+other = "生成指定 Shell 的自动补全脚本"
+
+[completion.long]
+description = "completion 命令详细描述"
+other = """生成指定 Shell 的自动补全脚本。
+
+支持的 Shell: bash, zsh, fish, powershell。"""
+
+[global.flag.config]
+description = "--config 标志说明"
+other = "配置文件路径"
+
+[global.flag.lang]
+description = "--lang 标志说明"
+other = "显示语言 (en, zh); 默认跟随 LANG 环境变量"
+
+[global.label.default]
+description = "默认值标签"
+other = "默认"
+
+[global.flag.help]
+description = "-h/--help 标志说明"
+other = "显示 {{.Command}} 的帮助信息"
+
+[global.flag.log_level]
+description = "--log-level 标志说明"
+other = "日志级别 (debug, info, warn, error)"
+
+# ==========================================
 # cmd/enhance.go
 # ==========================================
 
