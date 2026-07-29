@@ -62,5 +62,6 @@ func init() {
 
 	decryptCmd.Flags().StringSliceVarP(&decryptPasswords, "password", "p", nil, i18n.T("decrypt.flag.password"))
 	_ = decryptCmd.MarkFlagRequired("password")
-	rootCmd.AddCommand(decryptCmd)
+	// Command temporarily disabled.
+	// rootCmd.AddCommand(decryptCmd)
 }

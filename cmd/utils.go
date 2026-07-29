@@ -129,9 +129,10 @@ func init() {
 	_ = hintMatchCmd.MarkFlagRequired("encrypted")
 	_ = hintMatchCmd.MarkFlagRequired("meta")
 
-	rootCmd.AddCommand(hashCmd)
-	rootCmd.AddCommand(hmacCmd)
-	rootCmd.AddCommand(fuseCmd)
-	rootCmd.AddCommand(recoverCmd)
-	rootCmd.AddCommand(hintMatchCmd)
+	// Tool commands temporarily disabled.
+	// rootCmd.AddCommand(hashCmd)
+	// rootCmd.AddCommand(hmacCmd)
+	// rootCmd.AddCommand(fuseCmd)
+	// rootCmd.AddCommand(recoverCmd)
+	// rootCmd.AddCommand(hintMatchCmd)
 }

@@ -69,5 +69,6 @@ func init() {
 		runCmd.Short = i18n.T("run.short")
 		runCmd.Long = i18n.T("run.long")
 	})
-	rootCmd.AddCommand(runCmd)
+	// Command temporarily disabled.
+	// rootCmd.AddCommand(runCmd)
 }
