@@ -2,12 +2,13 @@ version: 2
 
 project_name: go-cipher-cli
 
+gomod:
+  proxy: true
+
 builds:
   - id: default
     main: ./main.go
     binary: go-cipher-cli
-    # Use the commit timestamp for binary & archive file modification times,
-    # so identical source produces identical checksums on every build.
     mod_timestamp: "{{ .CommitTimestamp }}"
     env:
       - CGO_ENABLED=0
@@ -18,6 +19,7 @@ builds:
     ldflags:
       - -s -w
       - -buildid=
+      - -X main.date={{ .CommitDate }}
     goos:
       - linux
       - darwin
@@ -28,13 +30,15 @@ builds:
 
 archives:
   - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
     wrap_in_directory: false
 
 nfpms:
   - id: default
     package_name: go-cipher-cli
     formats: [deb]
-    # Reproducible DEB: freeze file modification times to the commit date.
     mtime: "{{ .CommitDate }}"
     maintainer: kulaiyin <kly0214@163.com>
     homepage: https://github.com/kulaiyin/go-cipher-cli
