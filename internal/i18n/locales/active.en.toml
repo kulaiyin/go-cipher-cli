@@ -615,7 +615,7 @@ other = "wrong password!"
 
 [update.use]
 description = "Use string for update command"
-other = "update [--check] [--yes]"
+other = "update [--check]"
 
 [update.short]
 description = "Short description for update command"
@@ -632,11 +632,11 @@ replacement step uses sudo and may prompt for a password."""
 
 [update.error.check_failed]
 description = "Error when version check fails"
-other = "update check failed: {{.Err}}"
+other = "update check failed"
 
 [update.error.update_failed]
 description = "Error when update fails"
-other = "update failed: {{.Err}}"
+other = "update failed"
 
 [update.up_to_date]
 description = "Message when already on latest version"
@@ -658,6 +658,18 @@ other = "Update cancelled."
 description = "Message during download"
 other = "Downloading update..."
 
+[update.privilege_prompt]
+description = "Shown when the install directory requires elevation"
+other = "Installing to {{.Path}} requires administrator privileges. sudo will be used to complete the installation (you may be prompted for your password)."
+
+[update.privilege_confirm]
+description = "Consent prompt before sudo elevation"
+other = "Grant permission? [y/N]"
+
+[update.privilege_declined]
+description = "Shown when the user declines elevation"
+other = "Update cancelled (permission not granted). To install manually, run the corresponding sudo command."
+
 [update.updated]
 description = "Message after successful update"
 other = "Updated to {{.Version}}."
@@ -665,7 +677,3 @@ other = "Updated to {{.Version}}."
 [update.flag.check]
 description = "Description for --check flag"
 other = "only check for updates, do not install"
-
-[update.flag.yes]
-description = "Description for --yes flag"
-other = "skip confirmation prompt"

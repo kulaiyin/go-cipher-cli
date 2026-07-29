@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 
@@ -12,11 +13,10 @@ import (
 
 var (
 	updateCheckOnly bool
-	updateYes       bool
 )
 
 var updateCmd = &cobra.Command{
-	Use:   "update [--check] [--yes]",
+	Use:   "update [--check]",
 	Short: "placeholder",
 	Long:  "placeholder",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -41,19 +41,36 @@ var updateCmd = &cobra.Command{
 			return nil
 		}
 
-		if !updateYes {
-			fmt.Print(i18n.T("update.confirm_prompt") + " ")
-			var answer string
-			fmt.Scanln(&answer)
-			if answer != "y" && answer != "Y" && answer != "yes" && answer != "YES" {
-				fmt.Println(i18n.T("update.cancelled"))
-				return nil
-			}
+		fmt.Print(i18n.T("update.confirm_prompt") + " ")
+		var answer string
+		fmt.Scanln(&answer)
+		if answer != "y" && answer != "Y" && answer != "yes" && answer != "YES" {
+			fmt.Println(i18n.T("update.cancelled"))
+			return nil
 		}
 
 		fmt.Println(i18n.T("update.downloading"))
 		if err := update.DoUpdate(info, runtime.GOOS, runtime.GOARCH); err != nil {
-			return fmt.Errorf("%s: %w", i18n.T("update.error.update_failed"), err)
+			// The install directory (e.g. /usr/bin) is not writable. Ask the
+			// user for consent before elevating with sudo.
+			var privErr *update.PrivilegeRequiredError
+			if errors.As(err, &privErr) {
+				fmt.Println(i18n.TWithData("update.privilege_prompt", map[string]interface{}{
+					"Path": privErr.ExecPath,
+				}))
+				fmt.Print(i18n.T("update.privilege_confirm") + " ")
+				var answer string
+				fmt.Scanln(&answer)
+				if answer != "y" && answer != "Y" && answer != "yes" && answer != "YES" {
+					fmt.Println(i18n.T("update.privilege_declined"))
+					return nil
+				}
+				if err := update.InstallWithSudo(privErr.StagingPath, privErr.ExecPath); err != nil {
+					return fmt.Errorf("%s: %w", i18n.T("update.error.update_failed"), err)
+				}
+			} else {
+				return fmt.Errorf("%s: %w", i18n.T("update.error.update_failed"), err)
+			}
 		}
 
 		fmt.Println(i18n.TWithData("update.updated", map[string]interface{}{
@@ -69,11 +86,9 @@ func init() {
 		updateCmd.Short = i18n.T("update.short")
 		updateCmd.Long = i18n.T("update.long")
 		updateCmd.Flags().Lookup("check").Usage = i18n.T("update.flag.check")
-		updateCmd.Flags().Lookup("yes").Usage = i18n.T("update.flag.yes")
 	})
 
 	updateCmd.Flags().BoolVar(&updateCheckOnly, "check", false, "")
-	updateCmd.Flags().BoolVarP(&updateYes, "yes", "y", false, "")
 
 	rootCmd.AddCommand(updateCmd)
 }

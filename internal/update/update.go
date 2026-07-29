@@ -92,61 +92,88 @@ func DoUpdate(info *ReleaseInfo, goos, goarch string) error {
 		return fmt.Errorf("cannot resolve executable symlink: %w", err)
 	}
 
-	// Work in the same directory as the executable so the final os.Rename
-	// is atomic (same filesystem).
-	execDir := filepath.Dir(execPath)
-	stagingPath := filepath.Join(execDir, ".go-cipher-cli.new")
-
-	// Clean up staging file on any error.
-	defer os.Remove(stagingPath)
+	stagingDir, err := os.MkdirTemp("", "go-cipher-cli-update-*")
+	if err != nil {
+		return fmt.Errorf("cannot create temp directory: %w", err)
+	}
+	// NOTE: stagingDir is removed manually on each return path rather than via
+	// defer. When privilege is required, the staged binary must survive so the
+	// caller can run InstallWithSudo after the user grants permission.
+	stagingPath := filepath.Join(stagingDir, "go-cipher-cli.new")
 
 	// 1. Download tar.gz
 	tarGzPath := stagingPath + ".tar.gz"
 	defer os.Remove(tarGzPath)
 
 	if err := download(info.AssetURL, tarGzPath); err != nil {
+		os.RemoveAll(stagingDir)
 		return fmt.Errorf("download failed: %w", err)
 	}
 
-	// 2. Extract binary from tar.gz
-	if err := extractBinary(tarGzPath, stagingPath); err != nil {
-		return fmt.Errorf("extract failed: %w", err)
-	}
-
-	// 3. Verify checksum
+	// 2. Verify checksum of the downloaded tar.gz against checksums.txt.
+	// goreleaser's checksums.txt records the SHA256 of each archive (tar.gz/zip),
+	// so we verify the archive before extracting — not the extracted binary.
 	if info.ChecksumURL != "" {
-		if err := verifyChecksum(stagingPath, info.ChecksumURL, goos, goarch, info.Version); err != nil {
+		if err := verifyChecksum(tarGzPath, info.ChecksumURL, goos, goarch, info.Version); err != nil {
+			os.RemoveAll(stagingDir)
 			return fmt.Errorf("checksum verification failed: %w", err)
 		}
 	}
 
+	// 3. Extract binary from tar.gz
+	if err := extractBinary(tarGzPath, stagingPath); err != nil {
+		os.RemoveAll(stagingDir)
+		return fmt.Errorf("extract failed: %w", err)
+	}
+
 	// 4. Make executable
 	if err := os.Chmod(stagingPath, 0o755); err != nil {
+		os.RemoveAll(stagingDir)
 		return fmt.Errorf("chmod failed: %w", err)
 	}
 
-	// 5. Replace current binary (fall back to sudo if permission denied)
+	// 5. Replace current binary. If the install directory is not writable
+	// (e.g. /usr/bin), return ErrPrivilegeRequired so the caller can ask the
+	// user for elevation and resume via InstallWithSudo. The staged binary is
+	// intentionally left in place for that resume.
 	if err := os.Rename(stagingPath, execPath); err != nil {
 		if os.IsPermission(err) {
-			// Binary is in a root-owned directory (e.g. /usr/bin).
-			// Use sudo mv; stdin/stdout/stderr are connected so the
-			// user can type their sudo password interactively.
-			cmd := exec.Command("sudo", "mv", stagingPath, execPath)
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf(
-					"permission denied and sudo failed.\n"+
-						"Run manually:\n  sudo mv %s %s",
-					stagingPath, execPath,
-				)
-			}
-			return nil
+			return &PrivilegeRequiredError{StagingPath: stagingPath, ExecPath: execPath}
 		}
+		os.RemoveAll(stagingDir)
 		return fmt.Errorf("replace failed: %w", err)
 	}
 
+	// Rename succeeded; nothing left to clean (stagingPath moved into place).
+	os.RemoveAll(stagingDir)
+	return nil
+}
+
+// PrivilegeRequiredError is returned by DoUpdate when the install directory is
+// not writable by the current user. The caller should prompt the user for
+// consent and, if granted, call InstallWithSudo with the paths carried here.
+type PrivilegeRequiredError struct {
+	StagingPath string // path to the downloaded/verified new binary
+	ExecPath    string // path of the binary to replace
+}
+
+func (e *PrivilegeRequiredError) Error() string {
+	return fmt.Sprintf("permission denied writing to %s; elevation required", e.ExecPath)
+}
+
+// InstallWithSudo replaces execPath with stagingPath using sudo mv, connecting
+// stdin/stdout/stderr so the user can enter their sudo password interactively.
+// The caller is responsible for obtaining user consent before calling this.
+func InstallWithSudo(stagingPath, execPath string) error {
+	cmd := exec.Command("sudo", "mv", stagingPath, execPath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		// Leave stagingPath in place so the user can retry or move it manually.
+		return fmt.Errorf("sudo failed: %w\nRun manually:\n  sudo mv %s %s",
+			err, stagingPath, execPath)
+	}
 	return nil
 }
 
@@ -302,9 +329,10 @@ func extractBinary(tarGzPath, destPath string) error {
 	return fmt.Errorf("binary %q not found in archive", binaryName)
 }
 
-// verifyChecksum downloads checksums.txt, finds the line for our binary,
-// and verifies the SHA256 of binaryPath matches.
-func verifyChecksum(binaryPath, checksumURL, goos, goarch, version string) error {
+// verifyChecksum downloads checksums.txt, finds the line for our archive
+// (tar.gz), and verifies the SHA256 of archivePath matches. The caller must
+// pass the downloaded archive path, since goreleaser records archive checksums.
+func verifyChecksum(archivePath, checksumURL, goos, goarch, version string) error {
 	checksums, err := downloadString(checksumURL)
 	if err != nil {
 		return fmt.Errorf("cannot download checksums: %w", err)
@@ -316,7 +344,7 @@ func verifyChecksum(binaryPath, checksumURL, goos, goarch, version string) error
 		return fmt.Errorf("checksum entry not found for %s", assetName)
 	}
 
-	actual, err := sha256File(binaryPath)
+	actual, err := sha256File(archivePath)
 	if err != nil {
 		return err
 	}
