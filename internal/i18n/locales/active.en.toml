@@ -677,3 +677,256 @@ other = "Updated to {{.Version}}."
 [update.flag.check]
 description = "Description for --check flag"
 other = "only check for updates, do not install"
+
+# ==========================================
+# cmd/key_derive.go
+# ==========================================
+
+[key_derive.short]
+description = "Short description for key-derive command"
+other = "Derive a key set (3 x 512-bit keys + UUID) from input and password"
+
+[key_derive.long]
+description = "Long description for key-derive command"
+other = """Derive a key set of three independent 512-bit keys (S1/S2/S3) plus a 128-bit
+UUID from an input text and a password, replicating the web tool's key-derivation
+pipeline byte-for-byte.
+
+Algorithm: HKDF(SHA3-512) salt derivation -> Argon2id(strength-tiered) master key ->
+HKDF(SHA3-512) domain separation (S1/S2/S3/UUID).
+
+--mode generate: produce a fresh key set with a new random salt and emit a
+recovery config so the same set can be re-derived later.
+--mode restore:  re-derive using the salt from an existing recovery config and
+verify the result against the stored UUIDs.
+
+Flags take priority; any missing required value is prompted interactively
+(only when stdin is a terminal). Byte-level compatible with the web tool."""
+
+[key_derive.flag.mode]
+description = "Description for --mode flag"
+other = "operation mode: generate (new key set) or restore (verify against --config)"
+
+[key_derive.flag.input]
+description = "Description for --input flag"
+other = "input text (>= 20 non-space chars; combined with password to derive the keys)"
+
+[key_derive.flag.password]
+description = "Description for --password flag"
+other = "password (prompted hidden if not given on the command line)"
+
+[key_derive.flag.hint]
+description = "Description for --hint flag"
+other = "optional hint stored in the recovery config (defaults to the first 10 chars of input)"
+
+[key_derive.flag.strength]
+description = "Description for --strength flag"
+other = "Argon2id strength tier: basic | medium | advanced (default medium; higher = slower + more memory)"
+
+[key_derive.flag.salt]
+description = "Description for --salt flag"
+other = "128-hex salt seed (generate only; defaults to a fresh random salt)"
+
+[key_derive.flag.config]
+description = "Description for --config flag"
+other = "path to recovery config (required for restore; salt is read from it)"
+
+[key_derive.flag.output]
+description = "Description for --output flag"
+other = "write the recovery config to this path instead of stdout"
+
+[key_derive.option.generate]
+description = "Label for generate mode option"
+other = "Generate (new key set)"
+
+[key_derive.option.restore]
+description = "Label for restore mode option"
+other = "Restore (verify against config)"
+
+[key_derive.option.strength_basic]
+description = "Label for basic strength option"
+other = "Basic (fast, lower memory)"
+
+[key_derive.option.strength_medium]
+description = "Label for medium strength option"
+other = "Medium (default)"
+
+[key_derive.option.strength_advanced]
+description = "Label for advanced strength option"
+other = "Advanced (slow, higher memory)"
+
+[key_derive.prompt.mode]
+description = "Interactive prompt for mode"
+other = "Operation mode:"
+
+[key_derive.prompt.strength]
+description = "Interactive prompt for strength"
+other = "Argon2id strength tier:"
+
+[key_derive.prompt.input]
+description = "Interactive prompt for input"
+other = "Input text:"
+
+[key_derive.prompt.multiline_instruction]
+description = "Multiline input finish instruction"
+other = "Enter 2 empty lines to finish"
+
+[key_derive.prompt.input_help]
+description = "Help text for input prompt"
+other = "Any memorable text (>= 20 non-space chars after cleaning). Supports multi-line paste; press Ctrl+D to submit. Combined with the password and salt to derive the keys."
+
+[key_derive.prompt.password]
+description = "Interactive prompt for password"
+other = "Password:"
+
+[key_derive.prompt.hint]
+description = "Interactive prompt for hint"
+other = "Hint (optional, press Enter to skip):"
+
+[key_derive.prompt.hint_help]
+description = "Help text for hint prompt"
+other = "Stored in the recovery config as a reminder. Does not affect the derived keys."
+
+[key_derive.prompt.output]
+description = "Interactive prompt for output file path"
+other = "Save recovery config to:"
+
+[key_derive.prompt.config]
+description = "Interactive prompt for config path"
+other = "Path to recovery config:"
+
+[key_derive.prompt.config_help]
+description = "Help text for config prompt"
+other = "The config file written by a previous 'generate' run; its salt re-derives the same key set."
+
+[key_derive.error.invalid_mode]
+description = "Error for invalid --mode value"
+other = "invalid mode (expected generate or restore): {{.Mode}}"
+
+[key_derive.error.input_required]
+description = "Error when input is missing in non-interactive mode"
+other = "input is required (use -i / --input, or run interactively)"
+
+[key_derive.error.input_too_short]
+description = "Error when input is too short after cleaning"
+other = "input must be at least 20 non-space characters (got {{.Len}})"
+
+[key_derive.error.password_too_short]
+description = "Error when password is shorter than 8 characters"
+other = "password must be at least 8 characters"
+
+[key_derive.error.password_weak]
+description = "Error when password lacks letter, digit, or special character"
+other = "password must contain at least one letter, one digit, and one special character"
+
+[key_derive.error.password_required]
+description = "Error when password is missing in non-interactive mode"
+other = "password is required (use -p / --password, or run interactively)"
+
+[key_derive.error.config_required]
+description = "Error when config is missing in restore mode"
+other = "--config is required in restore mode (or run interactively)"
+
+[key_derive.error.config_read_failed]
+description = "Error when recovery config cannot be read"
+other = "failed to read recovery config"
+
+[key_derive.error.config_missing_salt]
+description = "Error when recovery config has no salt"
+other = "recovery config has no salt field"
+
+[key_derive.error.derive_failed]
+description = "Error when key derivation fails"
+other = "key derivation failed"
+
+[key_derive.error.write_output_failed]
+description = "Error when writing output file fails"
+other = "failed to write output file"
+
+[key_derive.output.strength_label_basic]
+description = "Localized label for basic strength in output"
+other = "basic"
+
+[key_derive.output.strength_label_medium]
+description = "Localized label for medium strength in output"
+other = "medium"
+
+[key_derive.output.strength_label_advanced]
+description = "Localized label for advanced strength in output"
+other = "advanced"
+
+[key_derive.output.algorithm]
+description = "Algorithm/strength label in output"
+other = "Algorithm: Argon2id ({{.Strength}}) + HKDF(SHA3-512)"
+
+[key_derive.output.uuid]
+description = "UUID label in output"
+other = "UUID: {{.UUID}}"
+
+[key_derive.output.key]
+description = "Key label in output"
+other = "{{.Name}}: {{.Key}}"
+
+[key_derive.output.processing_time]
+description = "Processing time label in output"
+other = "Processing time: {{.Ms}} ms"
+
+[key_derive.output.config_label]
+description = "Recovery config label in output"
+other = "Recovery config (save this to restore the same keys later):"
+
+[key_derive.output.config_written]
+description = "Message when config is written to file"
+other = "Recovery config written to: {{.Path}}"
+
+[key_derive.output.restore_success]
+description = "Message when restore verification succeeds"
+other = "Key recovery successful: a derived key matches the stored UUID."
+
+[key_derive.output.restore_failed]
+description = "Message when restore verification fails"
+other = "Key recovery failed: no derived key matches the stored UUID (wrong input/password/strength)."
+
+[key_derive.error.config_decode_data]
+description = "Error when DATA base64 decode fails"
+other = "failed to decode DATA base64"
+
+[key_derive.error.config_parse_data_json]
+description = "Error when DATA JSON parse fails"
+other = "failed to parse DATA JSON"
+
+[key_derive.error.config_parse_frontend]
+description = "Error when frontend config parse fails"
+other = "parse frontend config failed"
+
+[key_derive.error.config_parse_json]
+description = "Error when JSON config parse fails"
+other = "parse JSON config failed"
+
+[key_derive.error.validator_type_assert]
+description = "Internal error when survey answer is not the expected type"
+other = "internal error: unexpected input type"
+
+[key_derive.parse.legacy_hint_prefix]
+description = "Legacy Chinese label prefix for hint in recovery config parser (backward compat with frontend format)"
+other = "提示信息: "
+
+[key_derive.parse.legacy_strength_prefix]
+description = "Legacy Chinese label prefix for strength in recovery config parser (backward compat with frontend format)"
+other = "加密强度: "
+
+[key_derive.parse.legacy_version_prefix]
+description = "Legacy Chinese label prefix for version in recovery config parser (backward compat with frontend format)"
+other = "版本: "
+
+[key_derive.parse.legacy_strength_basic]
+description = "Legacy Chinese label for basic strength in recovery config parser (backward compat with frontend format)"
+other = "基础强度"
+
+[key_derive.parse.legacy_strength_advanced]
+description = "Legacy Chinese label for advanced strength in recovery config parser (backward compat with frontend format)"
+other = "高级强度"
+
+[common.error.required]
+description = "Validation error for required field"
+other = "This field is required"

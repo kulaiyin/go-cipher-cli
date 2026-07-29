@@ -672,3 +672,253 @@ other = "已更新到 {{.Version}}。"
 [update.flag.check]
 description = "--check 标志说明"
 other = "仅检查更新，不安装"
+
+# ==========================================
+# cmd/key_derive.go
+# ==========================================
+
+[key_derive.short]
+description = "key-derive 命令简短描述"
+other = "从输入内容和密码派生一组密钥（3 把 512 位密钥 + UUID）"
+
+[key_derive.long]
+description = "key-derive 命令详细描述"
+other = """从输入文本和密码派生一组密钥：三把相互独立的 512 位密钥（S1/S2/S3）外加一个 128 位
+UUID，与网页端密钥派生流水线逐字节对齐。
+
+算法：HKDF(SHA3-512) 派生盐值 -> Argon2id（按强度档位）生成主密钥 ->
+HKDF(SHA3-512) 域分离（S1/S2/S3/UUID）。
+
+--mode generate：用新的随机盐生成一组密钥，并输出恢复配置，便于日后重新派生出同一组密钥。
+--mode restore：  用已有恢复配置中的盐重新派生，并与配置中存储的 UUID 比对校验。
+
+命令行参数优先；任何缺失的必填项会在交互式下提示输入（仅当 stdin 是终端时）。
+与网页端字节级兼容。"""
+
+[key_derive.flag.mode]
+description = "--mode 标志说明"
+other = "操作模式：generate（生成新密钥集）或 restore（依据 --config 校验）"
+
+[key_derive.flag.input]
+description = "--input 标志说明"
+other = "输入文本（去空格后不少于 20 字符；与密码共同参与派生）"
+
+[key_derive.flag.password]
+description = "--password 标志说明"
+other = "密码（未在命令行提供时以隐藏方式交互输入）"
+
+[key_derive.flag.hint]
+description = "--hint 标志说明"
+other = "可选提示，存入恢复配置（默认取输入内容前 10 个字符）"
+
+[key_derive.flag.strength]
+description = "--strength 标志说明"
+other = "Argon2id 强度档位：basic | medium | advanced（默认 medium；越高越慢、占用内存越大）"
+
+[key_derive.flag.salt]
+description = "--salt 标志说明"
+other = "128 位十六进制盐种子（仅 generate；默认随机生成）"
+
+[key_derive.flag.config]
+description = "--config 标志说明"
+other = "恢复配置路径（restore 必填；盐从其中读取）"
+
+[key_derive.flag.output]
+description = "--output 标志说明"
+other = "将恢复配置写入该路径，而非打印到标准输出"
+
+[key_derive.option.generate]
+description = "生成模式选项标签"
+other = "生成（新密钥集）"
+
+[key_derive.option.restore]
+description = "恢复模式选项标签"
+other = "恢复（依据配置校验）"
+
+[key_derive.option.strength_basic]
+description = "基础强度选项标签"
+other = "基础（快速，低内存）"
+
+[key_derive.option.strength_medium]
+description = "中等强度选项标签"
+other = "中等（默认）"
+
+[key_derive.option.strength_advanced]
+description = "高级强度选项标签"
+other = "高级（慢速，高内存）"
+
+[key_derive.prompt.mode]
+description = "模式交互提示"
+other = "操作模式："
+
+[key_derive.prompt.strength]
+description = "强度交互提示"
+other = "Argon2id 强度档位："
+
+[key_derive.prompt.input]
+description = "输入内容交互提示"
+other = "输入文本："
+
+[key_derive.prompt.multiline_instruction]
+description = "多行输入结束提示"
+other = "连按两次回车结束输入"
+
+[key_derive.prompt.input_help]
+description = "输入内容提示帮助"
+other = "任意易记文本，支持多行粘贴（Ctrl+D 结束输入）。去空格后不少于 20 字符。与密码、盐共同参与派生。"
+
+[key_derive.prompt.password]
+description = "密码交互提示"
+other = "密码："
+
+[key_derive.prompt.hint]
+description = "提示内容交互提示"
+other = "提示（可选，直接回车跳过）："
+
+[key_derive.prompt.hint_help]
+description = "提示内容帮助"
+other = "存入恢复配置作为备忘，不影响派生出的密钥。"
+
+[key_derive.prompt.output]
+description = "输出文件路径交互提示"
+other = "恢复配置保存位置："
+
+[key_derive.prompt.config]
+description = "配置路径交互提示"
+other = "恢复配置路径："
+
+[key_derive.prompt.config_help]
+description = "配置路径帮助"
+other = "由之前 generate 写出的配置文件；其中的盐可重新派生出同一组密钥。"
+
+[key_derive.error.invalid_mode]
+description = "--mode 取值非法时的错误"
+other = "非法的模式（应为 generate 或 restore）：{{.Mode}}"
+
+[key_derive.error.input_required]
+description = "非交互模式下缺少输入内容的错误"
+other = "输入内容必填（使用 -i / --input，或在交互式下运行）"
+
+[key_derive.error.input_too_short]
+description = "输入内容去空格后不足 20 字符的错误"
+other = "输入内容去空格后至少需要 20 个字符（当前 {{.Len}} 个）"
+
+[key_derive.error.password_too_short]
+description = "密码长度不足 8 位的错误"
+other = "密码长度至少需要 8 位"
+
+[key_derive.error.password_weak]
+description = "密码缺少字母、数字或特殊字符的错误"
+other = "密码需包含字母、数字及符号"
+
+[key_derive.error.password_required]
+description = "非交互模式下缺少密码的错误"
+other = "密码必填（使用 -p / --password，或在交互式下运行）"
+
+[key_derive.error.config_required]
+description = "restore 模式下缺少 --config 的错误"
+other = "restore 模式下 --config 必填（或在交互式下运行）"
+
+[key_derive.error.config_read_failed]
+description = "恢复配置读取失败的错误"
+other = "读取恢复配置失败"
+
+[key_derive.error.config_missing_salt]
+description = "恢复配置缺少盐字段的错误"
+other = "恢复配置中没有 salt 字段"
+
+[key_derive.error.derive_failed]
+description = "密钥派生失败的错误"
+other = "密钥派生失败"
+
+[key_derive.error.write_output_failed]
+description = "写入输出文件失败的错误"
+other = "写入输出文件失败"
+
+[key_derive.output.strength_label_basic]
+description = "基础强度本地化标签"
+other = "基础"
+
+[key_derive.output.strength_label_medium]
+description = "中等强度本地化标签"
+other = "中等"
+
+[key_derive.output.strength_label_advanced]
+description = "高级强度本地化标签"
+other = "高级"
+
+[key_derive.output.algorithm]
+description = "算法/强度标签输出"
+other = "算法：Argon2id（{{.Strength}}）+ HKDF(SHA3-512)"
+
+[key_derive.output.uuid]
+description = "UUID 标签输出"
+other = "UUID：{{.UUID}}"
+
+[key_derive.output.key]
+description = "密钥标签输出"
+other = "{{.Name}}：{{.Key}}"
+
+[key_derive.output.processing_time]
+description = "耗时标签输出"
+other = "耗时：{{.Ms}} 毫秒"
+
+[key_derive.output.config_label]
+description = "恢复配置标签输出"
+other = "恢复配置（保存它以便日后还原同一组密钥）："
+
+[key_derive.output.config_written]
+description = "配置写入文件后的提示"
+other = "恢复配置已写入：{{.Path}}"
+
+[key_derive.output.restore_success]
+description = "恢复校验成功提示"
+other = "密钥恢复成功：派生出的某把密钥与存储的 UUID 匹配。"
+
+[key_derive.output.restore_failed]
+description = "恢复校验失败提示"
+other = "密钥恢复失败：没有派生密钥与存储的 UUID 匹配（输入内容/密码/强度不匹配）。"
+
+[key_derive.error.config_decode_data]
+description = "DATA base64 解码失败错误"
+other = "DATA base64 解码失败"
+
+[key_derive.error.config_parse_data_json]
+description = "DATA JSON 解析失败错误"
+other = "DATA JSON 解析失败"
+
+[key_derive.error.config_parse_frontend]
+description = "前端格式配置解析失败错误"
+other = "前端格式配置解析失败"
+
+[key_derive.error.config_parse_json]
+description = "JSON 配置解析失败错误"
+other = "JSON 配置解析失败"
+
+[key_derive.error.validator_type_assert]
+description = "Survey 答案类型异常内部错误"
+other = "内部错误：意外的输入类型"
+
+[key_derive.parse.legacy_hint_prefix]
+description = "前端配置格式的旧版提示信息标签前缀（兼容前端格式解析）"
+other = "提示信息: "
+
+[key_derive.parse.legacy_strength_prefix]
+description = "前端配置格式的旧版加密强度标签前缀（兼容前端格式解析）"
+other = "加密强度: "
+
+[key_derive.parse.legacy_version_prefix]
+description = "前端配置格式的旧版版本标签前缀（兼容前端格式解析）"
+other = "版本: "
+
+[key_derive.parse.legacy_strength_basic]
+description = "前端配置格式的旧版基础强度标签（兼容前端格式解析）"
+other = "基础强度"
+
+[key_derive.parse.legacy_strength_advanced]
+description = "前端配置格式的旧版高级强度标签（兼容前端格式解析）"
+other = "高级强度"
+
+[common.error.required]
+description = "必填字段验证失败"
+other = "此字段必填"
