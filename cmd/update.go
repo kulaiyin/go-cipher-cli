@@ -88,7 +88,7 @@ func init() {
 		updateCmd.Flags().Lookup("check").Usage = i18n.T("update.flag.check")
 	})
 
-	updateCmd.Flags().BoolVar(&updateCheckOnly, "check", false, "")
+	updateCmd.Flags().BoolVar(&updateCheckOnly, "check", false, i18n.T("update.flag.check"))
 
 	rootCmd.AddCommand(updateCmd)
 }

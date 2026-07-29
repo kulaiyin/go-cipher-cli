@@ -78,5 +78,6 @@ func init() {
 	encryptCmd.Flags().StringSliceVarP(&encryptPasswords, "password", "p", nil, i18n.T("encrypt.flag.password"))
 	encryptCmd.Flags().StringVar(&encryptSalt, "salt", "", i18n.T("encrypt.flag.salt"))
 	_ = encryptCmd.MarkFlagRequired("password")
-	rootCmd.AddCommand(encryptCmd)
+	// Command temporarily disabled.
+	// rootCmd.AddCommand(encryptCmd)
 }

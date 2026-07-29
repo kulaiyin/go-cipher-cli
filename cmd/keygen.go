@@ -87,5 +87,6 @@ func init() {
 	keygenCmd.Flags().IntVar(&keygenHashLength, "hash-length", 32, i18n.T("keygen.flag.hash_length"))
 	keygenCmd.Flags().BoolVar(&keygenShowSalt, "show-salt", false, i18n.T("keygen.flag.show_salt"))
 	_ = keygenCmd.MarkFlagRequired("password")
-	rootCmd.AddCommand(keygenCmd)
+	// Command temporarily disabled.
+	// rootCmd.AddCommand(keygenCmd)
 }

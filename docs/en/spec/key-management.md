@@ -25,6 +25,7 @@ Replicate the frontend's key derivation, password fusion, AES-256-GCM encryption
 | `assembleDownloadData` / `extractDecryptedData` | `data-encryption.ts` | `internal/container.AssembleDownloadData` / `ExtractDecryptedData` | `encrypt`/`decrypt` (container) |
 | `validateHintAndKeysUuidMatch` | `data-encryption.ts` | `internal/container.ValidateHintAndKeysUuidMatch` | `hint-match` |
 | `validateKeyRecovery` | `key-recovery.ts` | `internal/kdf.ValidateKeyRecovery` | `recover` |
+| `KeyDerivationForm.deriveKey` (key-set pipeline #1) | `KeyDerivationForm.vue` | `internal/kdf.DeriveKeySet` | `key-derive` |
 
 ## 3. Encryption Pipeline
 
@@ -83,6 +84,8 @@ Offset  Length  Field
 | 3 | argon2 units are KiB | `memorySize` is in KiB; hardening params `t=3, m=32768, p=2, dkLen=64, salt=s1`; the frontend noble's `m/=1024` only takes effect when `NODE_ENV==="test"` — Go does not replicate this |
 | 4 | The base64 quirk in `deriveStrongPassword` | The frontend **misinterprets argon2's hex output as base64** (`base64ToBytes(hashHex)`) and re-encodes to hex into `processedPasswords`. This is the actual frontend behavior (likely a bug) — Go must replicate it |
 | 5 | `deriveNewSalt`'s salt uses ASCII bytes | In `KeyDerivation.argon2(originalSalt, {salt: originalSalt})`, the salt is a string passed as ASCII bytes — do not hex-decode it |
+| 6 | The `[object Object]` coercion in the key-set pipeline | `KeyDerivationForm.vue:697-699` assigns `input_sha3 = CryptoTools.hashText(...)` (a Result **object**) and then builds `combinedPassword = passwordInput + input_sha3`. JS string-coerces the object to `"[object Object]"`, so the SHA3-512 hex is **never** used in `combinedPassword`. Go (`internal/kdf.DeriveKeySet`) must replicate this by using the literal `password + "[object Object]"` — the hash is still computed for parity but its value is discarded |
+| 7 | The `array_buffer_to_string` UTF-8 quirk in the key-set pipeline | `KeyDerivationForm.vue:703` passes the 64-byte `salt_password` HKDF output through `AesGcmTools.array_buffer_to_string`, i.e. a WHATWG `TextDecoder` (error mode = replacement). Illegal byte sequences become U+FFFD, so the re-encoded HMAC key (127 bytes) differs from the raw 64 bytes. Go (`internal/kdf.utf8DecodeBytes`) implements the WHATWG UTF-8 decoder state machine to stay byte-compatible; the standard library has no equivalent of the "replacement" error mode |
 
 ## 6. Golden Vector Verification Mechanism
 
