@@ -565,3 +565,64 @@ other = "invalid input: encrypted data and password array must not be empty"
 [aesgcm.error.wrong_password]
 description = "Wrong password error"
 other = "wrong password!"
+
+# ==========================================
+# cmd/update.go
+# ==========================================
+
+[update.use]
+description = "Use string for update command"
+other = "update [--check] [--yes]"
+
+[update.short]
+description = "Short description for update command"
+other = "Check for updates and install the latest version"
+
+[update.long]
+description = "Long description for update command"
+other = """Check the GitHub Releases for a newer version of go-cipher-cli.
+If a newer version is available, download the matching binary, verify its SHA256 checksum,
+and replace the current executable atomically.
+
+When the binary is installed in a root-owned directory (e.g. /usr/bin), the final
+replacement step uses sudo and may prompt for a password."""
+
+[update.error.check_failed]
+description = "Error when version check fails"
+other = "update check failed: {{.Err}}"
+
+[update.error.update_failed]
+description = "Error when update fails"
+other = "update failed: {{.Err}}"
+
+[update.up_to_date]
+description = "Message when already on latest version"
+other = "Already up-to-date ({{.Version}})."
+
+[update.new_version_available]
+description = "Message when a new version is available"
+other = "Current: {{.Current}}\nLatest:  {{.Latest}}"
+
+[update.confirm_prompt]
+description = "Confirmation prompt before update"
+other = "Install update? [y/N]"
+
+[update.cancelled]
+description = "Message when user cancels update"
+other = "Update cancelled."
+
+[update.downloading]
+description = "Message during download"
+other = "Downloading update..."
+
+[update.updated]
+description = "Message after successful update"
+other = "Updated to {{.Version}}."
+
+[update.flag.check]
+description = "Description for --check flag"
+other = "only check for updates, do not install"
+
+[update.flag.yes]
+description = "Description for --yes flag"
+other = "skip confirmation prompt"

@@ -561,3 +561,64 @@ other = "无效的输入参数，加密数据和密码数组不能为空"
 [aesgcm.error.wrong_password]
 description = "密码错误"
 other = "密码错误！"
+
+# ==========================================
+# cmd/update.go
+# ==========================================
+
+[update.use]
+description = "update 命令使用说明"
+other = "update [--check] [--yes]"
+
+[update.short]
+description = "update 命令简短描述"
+other = "检查并安装最新版本"
+
+[update.long]
+description = "update 命令详细描述"
+other = """从 GitHub Releases 检查是否有新版本。
+如果有新版本，将下载匹配当前系统的二进制文件，验证 SHA256 校验和，
+然后原子替换当前的可执行文件。
+
+如果二进制文件安装在 root 拥有的目录中（例如 /usr/bin），
+最后的替换步骤将使用 sudo，并可能提示输入密码。"""
+
+[update.error.check_failed]
+description = "版本检查失败错误"
+other = "更新检查失败: {{.Err}}"
+
+[update.error.update_failed]
+description = "更新失败错误"
+other = "更新失败: {{.Err}}"
+
+[update.up_to_date]
+description = "已是最新版本提示"
+other = "已是最新版本 ({{.Version}})。"
+
+[update.new_version_available]
+description = "发现新版本提示"
+other = "当前版本: {{.Current}}\n最新版本: {{.Latest}}"
+
+[update.confirm_prompt]
+description = "更新确认提示"
+other = "是否安装更新? [y/N]"
+
+[update.cancelled]
+description = "取消更新提示"
+other = "已取消更新。"
+
+[update.downloading]
+description = "下载中提示"
+other = "正在下载更新..."
+
+[update.updated]
+description = "更新成功提示"
+other = "已更新到 {{.Version}}。"
+
+[update.flag.check]
+description = "--check 标志说明"
+other = "仅检查更新，不安装"
+
+[update.flag.yes]
+description = "--yes 标志说明"
+other = "跳过确认提示"
