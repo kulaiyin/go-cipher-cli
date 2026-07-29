@@ -54,6 +54,10 @@ go-cipher-cli enhance -p "密码" -s google                      # 不同盐后�
 go-cipher-cli diceware                                       # 5 词默认口令（无分隔符）
 go-cipher-cli diceware -n 8 --sep hyphen                     # 8 词连字符分隔
 
+# 更新
+go-cipher-cli update --check                                 # 检查新版本
+go-cipher-cli update                                         # 检查并安装最新版本
+
 # 其他
 go-cipher-cli version                                        # 输出版本号
 go-cipher-cli --help                                         # 查看帮助

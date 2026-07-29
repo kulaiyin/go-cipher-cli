@@ -54,6 +54,10 @@ go-cipher-cli enhance -p "password" -s google             # different salt suffi
 go-cipher-cli diceware                                    # 5-word default passphrase (no separator)
 go-cipher-cli diceware -n 8 --sep hyphen                  # 8 words, hyphen-separated
 
+# Update
+go-cipher-cli update --check                              # check for new versions
+go-cipher-cli update                                      # check and install latest version
+
 # Others
 go-cipher-cli version                                     # prints the version
 go-cipher-cli --help                                      # show help
