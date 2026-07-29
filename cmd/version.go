@@ -8,7 +8,7 @@ import (
 	"go-cipher-cli/internal/i18n"
 )
 
-var version = "v0.4.9"
+var version = "v0.4.10"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
