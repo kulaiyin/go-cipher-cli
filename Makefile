@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := setup
 
-.PHONY: setup check test
+.PHONY: setup check test release
 
 # Install git hooks for this repository.
 # Run once after cloning.
@@ -29,3 +29,8 @@ check:
 test:
 	@echo "==> go test ./..."
 	@go test ./...
+
+# Build release artifacts with goreleaser (local snapshot, no publish).
+# Output lands in dist/ — .deb, .tar.gz, checksums, etc.
+release:
+	goreleaser release --snapshot --clean

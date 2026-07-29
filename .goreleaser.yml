@@ -1,15 +1,21 @@
 version: 2
+
 project_name: go-cipher-cli
 
-# In snapshot mode, use the real version number extracted from the git tag
-# (e.g. v0.1.0 -> 0.1.0) instead of the default 0.0.0-SNAPSHOT-<commit>.
-snapshot:
-  version_template: "{{ .Version }}"
-
 builds:
-  - id: go-cipher-cli
+  - id: default
     main: ./main.go
     binary: go-cipher-cli
+    # Use the commit timestamp for binary & archive file modification times,
+    # so identical source produces identical checksums on every build.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -buildid=
     goos:
       - linux
       - darwin
@@ -17,24 +23,32 @@ builds:
     goarch:
       - amd64
       - arm64
-    env:
-      - CGO_ENABLED=0
+
+archives:
+  - formats: [tar.gz]
+    wrap_in_directory: false
 
 nfpms:
-  - id: deb
+  - id: default
     package_name: go-cipher-cli
-    maintainer: "kulaiyin <kly0214@163.com>"
-    description: |
-      A Go CLI tool for configuration, logging, interactive prompts, and progress.
+    formats: [deb]
+    # Reproducible DEB: freeze file modification times to the commit date.
+    mtime: "{{ .CommitDate }}"
+    maintainer: kulaiyin <kly0214@163.com>
     homepage: https://github.com/kulaiyin/go-cipher-cli
     license: MIT
     section: utils
     priority: optional
-    formats:
-      - deb
+    description: >
+      A Go-based CLI tool for password-to-key derivation
+      and Diceware passphrase generation.
 
-# Publish to GitHub Release: on a tag push, CI uses GITHUB_TOKEN to create the
-# Release automatically and upload .deb / tar.gz / checksums.txt.
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+snapshot:
+  version_template: "{{ .Version }}"
+
 release:
   github:
     owner: kulaiyin
@@ -42,4 +56,3 @@ release:
   draft: false
   prerelease: auto
   name_template: "{{ .Tag }}"
-
