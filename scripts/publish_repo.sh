@@ -16,10 +16,10 @@ cd "$(dirname "$0")/.."
 
 REPO_DIR="repo"
 PACKAGE_DIR="dist"
-DEB_FILE_PATTERN="go-cipher-cli_*.deb"
 DISTRIBUTION="stable"
 COMPONENT="main"
 ARCH="amd64"
+DEB_FILE_PATTERN="go-cipher-cli_*_linux_${ARCH}.deb"
 OUTPUT_DIR=""   # empty: update repo/ in-place; set: copy artifacts to target dir
 
 # ---------- arg parsing ----------
