@@ -36,3 +36,6 @@ coverage.txt
 .claude/
 # Compiled binary
 go-cipher-cli
+
+tmp/
+temp/

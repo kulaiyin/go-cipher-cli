@@ -843,6 +843,38 @@ other = "parse JSON config failed"
 description = "Internal error when survey answer is not the expected type"
 other = "internal error: unexpected input type"
 
+[key_derive.config.derived_keys]
+description = "Recovery config section header for the derived keys list"
+other = "Derived Keys:"
+
+[key_derive.config.key_prefix]
+description = "Prefix for each key line in the recovery config (e.g. 'Key1:', 'Key2:')"
+other = "Key"
+
+[key_derive.config.config_info]
+description = "Recovery config section header for configuration info"
+other = "Config Info:"
+
+[key_derive.config.algorithm]
+description = "Label for the algorithm field in recovery config"
+other = "Algorithm:"
+
+[key_derive.config.website]
+description = "Label for the website field in recovery config"
+other = "Website:"
+
+[key_derive.config.hint]
+description = "Label for the hint field in recovery config"
+other = "Hint:"
+
+[key_derive.config.strength]
+description = "Label for the strength field in recovery config"
+other = "Strength:"
+
+[key_derive.config.version]
+description = "Label for the version field in recovery config"
+other = "Version:"
+
 [key_derive.parse.legacy_hint_prefix]
 description = "Legacy Chinese label prefix for hint in recovery config parser (backward compat with frontend format)"
 other = "提示信息: "

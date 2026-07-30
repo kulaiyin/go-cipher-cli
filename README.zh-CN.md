@@ -50,12 +50,12 @@ go build -o go-cipher-cli ./main.go
 ```bash
 # 数据加密（与 web 工具互通，产出 .zip 包）
 #   先用 key-derive 派生 3 把强密钥，再用它们加密（对应 web 端「派生密钥 → 导入密钥 → 加密」）
-go-cipher-cli key-derive --mode generate -i "助记信息" -p "派生密码"   # 派生密钥集（交互式会显示密钥）
-go-cipher-cli key-derive --mode generate -i "助记信息" -p "派生密码" \
+go-cipher-cli key-derive --mode generate -i "我的seed2024安全密钥派生示例txt" -p "D3rive-P@ss"   # 派生密钥集（交互式会显示密钥）
+go-cipher-cli key-derive --mode generate -i "我的seed2024安全密钥派生示例txt" -p "D3rive-P@ss" \
   --output recovery.txt    # 派生并把恢复配置写入文件（内含盐和密钥 UUID，便于日后校验）
 
 #   restore：用原始 input+password 重新派生，与配置里的 UUID 比对校验是否还原了同一组密钥
-go-cipher-cli key-derive --mode restore -i "助记信息" -p "派生密码" \
+go-cipher-cli key-derive --mode restore -i "我的seed2024安全密钥派生示例txt" -p "D3rive-P@ss" \
   --config recovery.txt    # 匹配→「密钥恢复成功」退出码 0；不匹配→「密钥恢复失败」退出码 1（input/password/强度须与 generate 时一致）
 
 #   加密文本
@@ -91,6 +91,8 @@ go-cipher-cli --help                                         # 查看帮助
 ```
 
 > **`-p` 顺序约定**（`data-cipher`）：前 3 个必须是 128 位十六进制强密钥（由 `key-derive` 派生），第 4 个是密码1；顺序、个数必须与加密时完全一致，否则派生密钥不同、解密失败。密钥1/2/3 强制高强度校验，密码1 需满足复合规则（高强度 或 字母+数字+特殊字符且≥8位）。
+
+> **`key-derive` 校验规则**：`-p`（密码）至少 8 位，须包含字母、数字和特殊字符（或满足高强度校验）。`-i`（输入内容）去空白后至少 20 个字符。flag 传入和交互式输入均受此规则约束。
 
 > 不带任何参数运行 `data-cipher` / `key-derive` 会进入交互模式，按 模式 → 输入类型 → 内容 → 提示 → 密钥/密码 → 输出路径 的顺序逐步引导（与 web 端表单一致）。
 

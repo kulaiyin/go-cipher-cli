@@ -780,15 +780,15 @@ other = "写入输出文件失败"
 
 [key_derive.output.strength_label_basic]
 description = "基础强度本地化标签"
-other = "基础"
+other = "基础强度"
 
 [key_derive.output.strength_label_medium]
 description = "中等强度本地化标签"
-other = "中等"
+other = "中等强度"
 
 [key_derive.output.strength_label_advanced]
 description = "高级强度本地化标签"
-other = "高级"
+other = "高级强度"
 
 [key_derive.output.algorithm]
 description = "算法/强度标签输出"
@@ -841,6 +841,38 @@ other = "JSON 配置解析失败"
 [key_derive.error.validator_type_assert]
 description = "Survey 答案类型异常内部错误"
 other = "内部错误：意外的输入类型"
+
+[key_derive.config.derived_keys]
+description = "恢复配置中派生密钥列表的章节标题"
+other = "派生的密钥："
+
+[key_derive.config.key_prefix]
+description = "恢复配置中每行密钥的前缀（如 Key1: / 密钥1:）"
+other = "密钥"
+
+[key_derive.config.config_info]
+description = "恢复配置中配置信息的章节标题"
+other = "配置信息："
+
+[key_derive.config.algorithm]
+description = "恢复配置中算法字段的标签"
+other = "算法:"
+
+[key_derive.config.website]
+description = "恢复配置中网站字段的标签"
+other = "网站:"
+
+[key_derive.config.hint]
+description = "恢复配置中提示信息字段的标签"
+other = "提示信息:"
+
+[key_derive.config.strength]
+description = "恢复配置中加密强度字段的标签"
+other = "加密强度:"
+
+[key_derive.config.version]
+description = "恢复配置中版本字段的标签"
+other = "版本:"
 
 [key_derive.parse.legacy_hint_prefix]
 description = "前端配置格式的旧版提示信息标签前缀（兼容前端格式解析）"

@@ -51,12 +51,12 @@ go build -o go-cipher-cli ./main.go
 # Data encryption (interoperable with the web tool, produces a .zip bundle)
 #   First derive 3 strong keys with key-derive, then encrypt with them
 #   (mirrors the web tool's "derive keys → import keys → encrypt")
-go-cipher-cli key-derive --mode generate -i "memorable input" -p "derive-password"   # derive a key set
-go-cipher-cli key-derive --mode generate -i "memorable input" -p "derive-password" \
+go-cipher-cli key-derive --mode generate -i "my recovery seed phrase 07" -p "D3rive-P@ss"   # derive a key set
+go-cipher-cli key-derive --mode generate -i "my recovery seed phrase 07" -p "D3rive-P@ss" \
   --output recovery.txt    # derive and write a recovery config (salt + key UUIDs) for later verification
 
 #   restore: re-derive with the original input+password, compare against the UUIDs in the config
-go-cipher-cli key-derive --mode restore -i "memorable input" -p "derive-password" \
+go-cipher-cli key-derive --mode restore -i "my recovery seed phrase 07" -p "D3rive-P@ss" \
   --config recovery.txt    # "key restored successfully" + exit 0 on match, else "key restore failed" + exit 1 (input/password/strength must match generate)
 
 #   Encrypt text
@@ -92,6 +92,8 @@ go-cipher-cli --help                                      # show help
 ```
 
 > **`-p` ordering** (`data-cipher`): the first three must be 128-hex strong keys (from `key-derive`), the fourth is password1; order and count must match the encryption exactly, or the derived key differs and decryption fails. Keys 1/2/3 are enforced high-strength; password1 must satisfy the composite rule (high strength OR letter + digit + special char with length ≥ 8).
+
+> **`key-derive` validation**: `-p` (password) must be at least 8 characters, contain at least one letter, one digit and one special character (or pass the high-strength check). `-i` (input) must be at least 20 non-space characters after whitespace stripping. These rules apply to both flag and interactive input.
 
 > Running `data-cipher` / `key-derive` with no arguments enters interactive mode, guiding you step by step in the order mode → input type → content → hint → keys/passwords → output path (matching the web tool's form).
 

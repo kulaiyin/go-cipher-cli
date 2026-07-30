@@ -92,12 +92,12 @@ func parseStrengthLabel(label string) string {
 	}
 }
 
-// formatFrontendRecoveryConfig produces the recovery config in a language-invariant
-// text+base64 format. The text labels are always English so that the output is
-// parseable regardless of the CLI locale. The parser accepts both English (new)
-// and Chinese (legacy/frontend) labels for backward compatibility.
+// formatFrontendRecoveryConfig produces the recovery config in a multilingual
+// text+base64 format. Labels are generated with i18n.T() so the output respects
+// the CLI locale. The parser accepts English, Chinese, and the current locale's
+// labels for backward compatibility.
 //
-// Format:
+// Format (English shown):
 //
 //	Derived Keys:
 //	Key1: <masked key 1>
@@ -133,18 +133,18 @@ func formatFrontendRecoveryConfig(cfg recoveryConfig, keys []string) string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintln(&b, "Derived Keys:")
+	fmt.Fprintln(&b, i18n.T("key_derive.config.derived_keys"))
 	for i, mk := range maskedDisplayKeys {
-		fmt.Fprintf(&b, "Key%d: %s\n", i+1, mk)
+		fmt.Fprintf(&b, "%s%d: %s\n", i18n.T("key_derive.config.key_prefix"), i+1, mk)
 	}
 	fmt.Fprintln(&b)
-	fmt.Fprintln(&b, "Config Info:")
-	fmt.Fprintln(&b, "Algorithm: Argon2id + HKDF")
-	fmt.Fprintln(&b, "Website: https://tools.wcheer.com/")
-	fmt.Fprintf(&b, "Hint: %s\n", hint)
-	fmt.Fprintf(&b, "Strength: %s\n", cfg.Strength)
+	fmt.Fprintln(&b, i18n.T("key_derive.config.config_info"))
+	fmt.Fprintf(&b, "%s %s\n", i18n.T("key_derive.config.algorithm"), "Argon2id + HKDF")
+	fmt.Fprintf(&b, "%s https://tools.wcheer.com/\n", i18n.T("key_derive.config.website"))
+	fmt.Fprintf(&b, "%s %s\n", i18n.T("key_derive.config.hint"), hint)
+	fmt.Fprintf(&b, "%s %s\n", i18n.T("key_derive.config.strength"), strengthConfigLabel(kdf.Strength(cfg.Strength)))
 	fmt.Fprintf(&b, "DATA: %s\n", dataB64)
-	fmt.Fprintf(&b, "Version: %s\n", cfg.Version)
+	fmt.Fprintf(&b, "%s %s\n", i18n.T("key_derive.config.version"), cfg.Version)
 
 	return b.String()
 }
@@ -160,22 +160,28 @@ func parseFrontendRecoveryConfig(data string) (*recoveryConfig, error) {
 	for _, line := range lines {
 		line = strings.TrimRight(line, "\r")
 		switch {
-		case strings.HasPrefix(line, "Hint: "), strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_hint_prefix")):
+		case strings.HasPrefix(line, "Hint: "), strings.HasPrefix(line, i18n.T("key_derive.config.hint")), strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_hint_prefix")):
 			prefix := "Hint: "
-			if !strings.HasPrefix(line, prefix) {
+			if strings.HasPrefix(line, i18n.T("key_derive.config.hint")) {
+				prefix = i18n.T("key_derive.config.hint")
+			} else if strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_hint_prefix")) {
 				prefix = i18n.T("key_derive.parse.legacy_hint_prefix")
 			}
 			cfg.Hint = strings.TrimSpace(strings.TrimPrefix(line, prefix))
-		case strings.HasPrefix(line, "Strength: "), strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_strength_prefix")):
+		case strings.HasPrefix(line, "Strength: "), strings.HasPrefix(line, i18n.T("key_derive.config.strength")), strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_strength_prefix")):
 			prefix := "Strength: "
-			if !strings.HasPrefix(line, prefix) {
+			if strings.HasPrefix(line, i18n.T("key_derive.config.strength")) {
+				prefix = i18n.T("key_derive.config.strength")
+			} else if strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_strength_prefix")) {
 				prefix = i18n.T("key_derive.parse.legacy_strength_prefix")
 			}
 			label := strings.TrimSpace(strings.TrimPrefix(line, prefix))
 			cfg.Strength = parseStrengthLabel(label)
-		case strings.HasPrefix(line, "Version: "), strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_version_prefix")):
+		case strings.HasPrefix(line, "Version: "), strings.HasPrefix(line, i18n.T("key_derive.config.version")), strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_version_prefix")):
 			prefix := "Version: "
-			if !strings.HasPrefix(line, prefix) {
+			if strings.HasPrefix(line, i18n.T("key_derive.config.version")) {
+				prefix = i18n.T("key_derive.config.version")
+			} else if strings.HasPrefix(line, i18n.T("key_derive.parse.legacy_version_prefix")) {
 				prefix = i18n.T("key_derive.parse.legacy_version_prefix")
 			}
 			cfg.Version = strings.TrimSpace(strings.TrimPrefix(line, prefix))

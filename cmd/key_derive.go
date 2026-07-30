@@ -3,17 +3,15 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
-	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
-	"golang.org/x/text/unicode/norm"
 
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/kdf"
+	"go-cipher-cli/internal/validation"
 )
 
 // keyDeriveKeyDriveVersion mirrors the frontend KEY_DRIVE_VERSION
@@ -114,6 +112,11 @@ func runKeyDerive(cmd *cobra.Command) error {
 
 	// Resolve shared params (flag first, then interactive fallback).
 	if err := resolveKeyDeriveParams(mode); err != nil {
+		return err
+	}
+	// Validate resolved params — covers the flag-provided path which bypasses
+	// interactive survey validators (mirrors data_cipher.go's validateKeys()).
+	if err := validateKeyDeriveParams(); err != nil {
 		return err
 	}
 	// All params resolved OK: from here on, failures are runtime/crypto errors
@@ -350,11 +353,9 @@ func resolveKeyDeriveParams(mode string) error {
 	return nil
 }
 
-// cleanKeyDeriveText strips all whitespace/newlines and NFC-normalizes, matching
-// the frontend (KeyDerivationForm.vue:680-681).
+// cleanKeyDeriveText delegates to validation.CleanText.
 func cleanKeyDeriveText(s string) string {
-	cleaned := whitespaceRe.ReplaceAllString(s, "")
-	return norm.NFC.String(cleaned)
+	return validation.CleanText(s)
 }
 
 // firstNChars returns the first n runes of s (rune-safe, not byte-safe).
@@ -399,60 +400,42 @@ func i18nRequired() survey.Validator {
 	}
 }
 
-// keyDerivePasswordValidator checks password rules matching the frontend
-// (KeyDerivationForm.vue:430-432, regexp.ts:67-71): at least 8 chars after
-// trimming, must contain letter, digit, and special character.
-func keyDerivePasswordValidator(ans interface{}) error {
-	pw, ok := ans.(string)
-	if !ok {
-		return fmt.Errorf("%s", i18n.T("key_derive.error.validator_type_assert"))
-	}
-	// Frontend trims before validating (KeyDerivationForm.vue:633).
-	pw = strings.TrimSpace(pw)
-
-	if len([]rune(pw)) < 8 {
-		return fmt.Errorf("%s", i18n.T("key_derive.error.password_too_short"))
-	}
-
-	hasLetter := false
-	hasDigit := false
-	hasSpecial := false
-	for _, r := range pw {
-		switch {
-		case unicode.IsLetter(r):
-			hasLetter = true
-		case unicode.IsDigit(r):
-			hasDigit = true
-		case unicode.IsPunct(r) || unicode.IsSymbol(r):
-			hasSpecial = true
+// validateKeyDeriveParams validates the package-level keyDeriveInput and
+// keyDerivePassword after resolveKeyDeriveParams, ensuring flag-provided
+// values also pass validation (mirrors data_cipher.go's validateKeys()).
+func validateKeyDeriveParams() error {
+	if keyDeriveInput != "" {
+		if err := validation.ValidateKeyDeriveInput(keyDeriveInput); err != nil {
+			return err
 		}
 	}
-
-	if !hasLetter || !hasDigit || !hasSpecial {
-		return fmt.Errorf("%s", i18n.T("key_derive.error.password_weak"))
+	if keyDerivePassword != "" {
+		if err := validation.ValidateKeyDerivePassword(keyDerivePassword); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// keyDeriveInputValidator checks that input is at least 20 non-space chars
-// after cleaning (frontend: KeyDerivationForm.vue:640-641).
+// keyDerivePasswordValidator wraps validation.ValidateKeyDerivePassword as a
+// survey.Validator.
+func keyDerivePasswordValidator(ans interface{}) error {
+	s, ok := ans.(string)
+	if !ok {
+		return fmt.Errorf("%s", i18n.T("key_derive.error.validator_type_assert"))
+	}
+	return validation.ValidateKeyDerivePassword(s)
+}
+
+// keyDeriveInputValidator wraps validation.ValidateKeyDeriveInput as a
+// survey.Validator.
 func keyDeriveInputValidator(ans interface{}) error {
 	s, ok := ans.(string)
 	if !ok {
 		return fmt.Errorf("%s", i18n.T("key_derive.error.validator_type_assert"))
 	}
-	cleaned := cleanKeyDeriveText(s)
-	if len([]rune(cleaned)) < 20 {
-		return fmt.Errorf("%s", i18n.TWithData("key_derive.error.input_too_short", map[string]interface{}{
-			"Len": len([]rune(cleaned)),
-		}))
-	}
-	return nil
+	return validation.ValidateKeyDeriveInput(s)
 }
-
-// whitespaceRe matches any run of whitespace (including newlines), matching the
-// frontend's /[\s\n]+/g used to clean input/password.
-var whitespaceRe = regexp.MustCompile(`[\s\n]+`)
 
 // isStdinTerminal reports whether stdin is an interactive terminal. Uses
 // golang.org/x/term (already an indirect dependency) so /dev/null and pipes are
