@@ -17,6 +17,7 @@ builds:
       - -s -w
       - -buildid=
       - -X main.date={{ .CommitDate }}
+      - -X go-cipher-cli/cmd.version={{ .Tag }}
     goos:
       - linux
       - darwin
