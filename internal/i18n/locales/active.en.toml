@@ -866,3 +866,276 @@ other = "高级强度"
 [common.error.required]
 description = "Validation error for required field"
 other = "This field is required"
+
+# ==========================================
+# cmd/secret_seal.go
+# ==========================================
+
+[secret_seal.short]
+description = "Short description for secret-seal command"
+other = "Seal a secret with age + AES-256-GCM and Shamir-shared recovery keys"
+
+[secret_seal.long]
+description = "Long description for secret-seal command"
+other = """Seal a secret password P with age + AES-256-GCM, protect the age private key
+with Shamir secret sharing (3-of-5) across encrypted shares, and provide a muscle-memory
+password fallback for the master Diceware passphrase K1.
+
+Recovery paths:
+  1. Primary:   provide K1 → decrypt shares → recover P
+  2. Fallback:  provide muscle password → decrypt K1 → then primary path
+
+Output files:
+  encrypt-d.dat  — age(P) then AES-256-GCM(KD)
+  encrypt-k.dat  — AES-256-GCM(S1, K1) with salt S
+  shares/*.dat   — 5 Shamir shares, each encrypted with K_i"""
+
+[secret_seal.option.encrypt]
+description = "Option label for encrypt mode"
+other = "Encrypt"
+
+[secret_seal.option.decrypt]
+description = "Option label for decrypt mode"
+other = "Decrypt"
+
+[secret_seal.option.unseal_k1]
+description = "Option label for K1 recovery path"
+other = "Recover with K1 (Diceware passphrase)"
+
+[secret_seal.option.unseal_muscle]
+description = "Option label for muscle-password recovery path"
+other = "Recover with muscle-memory password (forgot K1)"
+
+[secret_seal.prompt.mode]
+description = "Prompt for operation mode selection"
+other = "Select operation mode:"
+
+[secret_seal.prompt.password]
+description = "Prompt for the secret P to protect"
+other = "Enter the secret password to protect (P):"
+
+[secret_seal.prompt.generate_k1]
+description = "Prompt to confirm K1 auto-generation"
+other = "Generate a random 7-word Diceware passphrase as the master key (K1)?"
+
+[secret_seal.prompt.k1]
+description = "Prompt for the master Diceware passphrase K1"
+other = "Enter the master Diceware passphrase (K1):"
+
+[secret_seal.prompt.use_hint]
+description = "Prompt to confirm adding a hint"
+other = "Add a plaintext hint for K1 (to help recall later)?"
+
+[secret_seal.prompt.hint]
+description = "Prompt for the hint text"
+other = "Enter a hint for K1 (e.g. \"my dog's name\"):"
+
+[secret_seal.prompt.muscle_pw]
+description = "Prompt for the fallback muscle-memory password"
+other = "Enter a fallback password you can always remember (for K1 recovery):"
+
+[secret_seal.prompt.output_dir]
+description = "Prompt for output directory"
+other = "Output directory for sealed files:"
+
+[secret_seal.prompt.input_dir]
+description = "Prompt for input directory"
+other = "Input directory containing sealed files:"
+
+[secret_seal.prompt.unseal_path]
+description = "Prompt for recovery path selection"
+other = "Choose recovery method:"
+
+[secret_seal.error.mode_required]
+description = "Error when mode flag is not set and not in TTY"
+other = "mode is required (--mode encrypt|decrypt)"
+
+[secret_seal.error.invalid_mode]
+description = "Error for invalid mode"
+other = "invalid mode: {{.Mode}} (must be encrypt or decrypt)"
+
+[secret_seal.error.password_required]
+description = "Error when secret password is not provided"
+other = "secret password is required (--password or -p)"
+
+[secret_seal.error.muscle_pw_required]
+description = "Error when muscle password is not provided"
+other = "fallback muscle password is required (--muscle-password or -m)"
+
+[secret_seal.error.k1_required]
+description = "Error when K1 is not provided"
+other = "master passphrase K1 is required (--k1 or -k)"
+
+[secret_seal.error.input_dir_required]
+description = "Error when input directory is not provided"
+other = "input directory is required (--input or -i)"
+
+[secret_seal.error.unseal_path_required]
+description = "Error when no recovery path is specified in non-TTY"
+other = "specify recovery method (--k1 or --fallback -m)"
+
+[secret_seal.error.generate_k1_failed]
+description = "Error when K1 generation fails"
+other = "generate K1: {{.Err}}"
+
+[secret_seal.error.seal_failed]
+description = "Error when seal operation fails"
+other = "seal failed: {{.Err}}"
+
+[secret_seal.error.unseal_failed]
+description = "Error when unseal operation fails"
+other = "unseal failed: {{.Err}}"
+
+[secret_seal.output.k1_generated]
+description = "Output when K1 is auto-generated"
+other = "Generated master passphrase (K1): {{.K1}}"
+
+[secret_seal.output.k1_warning]
+description = "Warning to save K1 securely"
+other = "⚠ SAVE THIS PHRASE SECURELY. You will need it to unseal your secret."
+
+[secret_seal.output.seal_success]
+description = "Success message for seal operation"
+other = "✅ Secret sealed to {{.Dir}}"
+
+[secret_seal.output.seal_files]
+description = "Header for output file listing"
+other = "Files created:"
+
+[secret_seal.output.seal_next_steps]
+description = "Next steps after seal"
+other = """Next steps:
+  1. Keep K1 safe (memorize or store in a password manager)
+  2. Distribute the 5 share files to different trusted locations
+  3. Store encrypt-d.dat and encrypt-k.dat in a private git repo
+
+Recovery commands:
+  Primary path (when you still remember K1):
+    go-cipher-cli secret-seal --mode decrypt -k "your-K1" -i ./seal-vault
+
+  Fallback path (when you forgot K1, use muscle-memory password):
+    go-cipher-cli secret-seal --mode decrypt -f -m "muscle-password" -i ./seal-vault"""
+
+[secret_seal.output.unseal_success]
+description = "Success message for unseal operation"
+other = "✅ Secret recovered:"
+
+[secret_seal.output.hint]
+description = "Output showing the stored hint"
+other = "💡 Hint: {{.Hint}}"
+
+[secret_seal.flag.mode]
+description = "Description for --mode flag"
+other = "operation mode: encrypt or decrypt"
+
+[secret_seal.flag.k1]
+description = "Description for --k1 flag"
+other = "master Diceware passphrase (K1)"
+
+[secret_seal.flag.password]
+description = "Description for --password flag"
+other = "the secret password to protect (P)"
+
+[secret_seal.flag.hint]
+description = "Description for --hint flag"
+other = "optional plaintext hint for K1 recall"
+
+[secret_seal.flag.muscle_pw]
+description = "Description for --muscle-password flag"
+other = "fallback muscle-memory password for K1 recovery"
+
+[secret_seal.flag.output]
+description = "Description for --output flag"
+other = "output directory for sealed files (default: ./seal-vault)"
+
+[secret_seal.flag.input]
+description = "Description for --input flag"
+other = "input directory containing sealed files (default: ./seal-vault)"
+
+[secret_seal.flag.fallback]
+description = "Description for --fallback flag"
+other = "use fallback muscle-password recovery path"
+
+[secret_seal.flag.num_words]
+description = "Description for --num-words flag"
+other = "number of words for auto-generated Diceware K1 (default: 7)"
+
+# ==========================================
+# internal/seal/seal.go
+# ==========================================
+
+[seal.error.create_dir]
+description = "Error when creating output directory fails"
+other = "failed to create directory"
+
+[seal.error.generate_age_key]
+description = "Error when generating age key pair fails"
+other = "failed to generate age key"
+
+[seal.error.derive_kh]
+description = "Error when deriving KH from K1 fails"
+other = "failed to derive encryption key from K1"
+
+[seal.error.age_encrypt]
+description = "Error when age encryption fails"
+other = "age encryption failed"
+
+[seal.error.aes_encrypt]
+description = "Error when AES-256-GCM encryption fails"
+other = "encryption failed"
+
+[seal.error.write_file]
+description = "Error when writing output file fails"
+other = "failed to write file"
+
+[seal.error.seal_age_priv]
+description = "Error when encrypting age private key"
+other = "failed to encrypt age private key"
+
+[seal.error.shamir_split]
+description = "Error when Shamir secret sharing split fails"
+other = "failed to split secret into shares"
+
+[seal.error.encrypt_share]
+description = "Error when encrypting a Shamir share"
+other = "failed to encrypt share {{.Index}}"
+
+[seal.error.derive_s1]
+description = "Error when deriving S1 from muscle password"
+other = "failed to derive recovery key from muscle password"
+
+[seal.error.read_file]
+description = "Error when reading a sealed file"
+other = "failed to read sealed file"
+
+[seal.error.reconstruct_age]
+description = "Error when reconstructing age private key from shares"
+other = "failed to reconstruct age private key from shares (check K1)"
+
+[seal.error.aes_decrypt]
+description = "Error when AES-256-GCM decryption fails"
+other = "decryption failed"
+
+[seal.error.age_decrypt]
+description = "Error when age decryption fails"
+other = "age decryption failed"
+
+[seal.error.read_shares_dir]
+description = "Error when reading shares directory"
+other = "failed to read shares directory"
+
+[seal.error.insufficient_shares]
+description = "Error when not enough Shamir shares are available"
+other = "need at least {{.Need}} shares, got {{.Got}}"
+
+[seal.error.shamir_combine]
+description = "Error when Shamir secret sharing combine fails"
+other = "failed to combine shares"
+
+[seal.error.data_too_short]
+description = "Error when decrypted data is too short"
+other = "decrypted data is corrupted or too short"
+
+[seal.error.wrong_muscle_password]
+description = "Error when muscle password is incorrect"
+other = "wrong muscle password"

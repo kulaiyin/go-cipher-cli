@@ -14,7 +14,8 @@ A Go-based CLI tool for password-to-key derivation, data encryption and Diceware
 - **Data encryption**: AES-256-GCM encrypt/decrypt of text or files, producing web-interoperable ZIP bundles (`encrypted-data.bin` + `meta-data.json` with dual HMAC integrity), **byte-level interoperable with the web tool**
 - **Key derivation**: derives a set of strong keys (3 × 512-bit keys + UUID) from input + password for use in data encryption, **interoperable with the web tool**
 - **Password-to-key**: hardens a password via Argon2id (64MB / 3 passes) + HKDF-Expand (SHA-256) domain separation into a 256-bit high-entropy key, **byte-level interoperable with the web tool**
-- **Diceware passphrase**: generates memorable yet high-entropy passphrases using the EFF large wordlist (7776 words) with cryptographically secure random dice rolls
+- **Diceware passphrase**: generates memorable yet high-entropy passphrases
+- **Secret seal**: age + AES-256-GCM double encryption with Shamir secret sharing (3-of-5) for distributing recovery keys across trusted locations, plus a muscle-memory password fallback using the EFF large wordlist (7776 words) with cryptographically secure random dice rolls
 
 ## Quick Start
 
@@ -81,6 +82,23 @@ go-cipher-cli enhance -p "password" -s google             # different salt suffi
 # Diceware passphrase
 go-cipher-cli diceware                                    # 5-word default passphrase (no separator)
 go-cipher-cli diceware -n 8 --sep hyphen                  # 8 words, hyphen-separated
+
+# Secret seal — seal a final password with age + AES-256-GCM and Shamir-shared recovery keys
+#   Interactive: run without arguments and follow the prompts.
+go-cipher-cli secret-seal --mode encrypt \
+  --password "my-secret" \
+  --muscle-password "i-remember-this" \
+  --hint "my dog's name" \
+  -o ./seal-vault
+#   → Writes encrypt-d.dat, encrypt-k.dat, and shares/share-1.dat … share-5.dat
+
+#   Recover (primary path: you remember the Diceware K1)
+go-cipher-cli secret-seal --mode decrypt -k "your-7-word-k1" -i ./seal-vault
+#   Recover (fallback path: you forgot K1 but remember the muscle password)
+go-cipher-cli secret-seal --mode decrypt -f -m "i-remember-this" -i ./seal-vault
+#   Interactive decrypt: pick the recovery method from a menu
+go-cipher-cli secret-seal --mode decrypt
+
 
 # Update
 go-cipher-cli update --check                              # check for new versions

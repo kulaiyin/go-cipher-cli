@@ -14,7 +14,8 @@
 - **数据加密**：用 AES-256-GCM 加密/解密文本或文件，产出 web 工具可互通的 ZIP 包（含 `encrypted-data.bin` + `meta-data.json`，双重 HMAC 完整性校验），**与 web 工具字节级互通**
 - **密钥派生**：从输入内容 + 密码派生一组强密钥（3 把 512 位密钥 + UUID），供数据加密使用，**与 web 工具互通**
 - **密码转密钥**：通过 Argon2id(64MB/3轮) + HKDF-Expand(SHA-256) 域分离，把密码加固成 256 位高熵密钥，**与 web 工具字节级互通**
-- **Diceware 助记口令**：使用 EFF 大型词表（7776 词）和密码学安全随机掷骰，生成易记但高熵的口令
+- **Diceware 助记口令**：使用 EFF 大型词表
+- **密码封印**：age + AES-256-GCM 双重加密 + Shamir 秘密共享（5 取 3），将恢复密钥分片分散存储，并提供肌肉记忆密码兜底恢复（7776 词）和密码学安全随机掷骰，生成易记但高熵的口令
 
 ## 快速开始
 
@@ -80,6 +81,23 @@ go-cipher-cli enhance -p "密码" -s google                      # 不同盐后�
 # Diceware 助记口令
 go-cipher-cli diceware                                       # 5 词默认口令（无分隔符）
 go-cipher-cli diceware -n 8 --sep hyphen                     # 8 词连字符分隔
+
+# 密码封印 — 用 age + AES-256-GCM 封印密码，Shamir 分片分散恢复密钥
+#   交互模式：不带参数运行，按提示操作。
+go-cipher-cli secret-seal --mode encrypt \
+  --password "要封印的密码" \
+  --muscle-password "肌肉记忆密码" \
+  --hint "我家狗的名字" \
+  -o ./seal-vault
+#   → 生成 encrypt-d.dat、encrypt-k.dat 和 shares/share-1.dat … share-5.dat
+
+#   恢复（主路径：还记得 K1 时）
+go-cipher-cli secret-seal --mode decrypt -k "你的7词K1" -i ./seal-vault
+#   恢复（兜底路径：忘记 K1，用肌肉记忆密码）
+go-cipher-cli secret-seal --mode decrypt -f -m "肌肉记忆密码" -i ./seal-vault
+#   交互式恢复：从菜单选择 K1 或肌肉密码恢复
+go-cipher-cli secret-seal --mode decrypt
+
 
 # 更新
 go-cipher-cli update --check                                 # 检查新版本

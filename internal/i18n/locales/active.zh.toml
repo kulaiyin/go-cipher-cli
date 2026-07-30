@@ -865,3 +865,275 @@ other = "高级强度"
 [common.error.required]
 description = "必填字段验证失败"
 other = "此字段必填"
+
+# ==========================================
+# cmd/secret_seal.go
+# ==========================================
+
+[secret_seal.short]
+description = "secret-seal 命令简要描述"
+other = "用 age + AES-256-GCM 封印密码，Shamir 分片分散恢复密钥"
+
+[secret_seal.long]
+description = "secret-seal 命令详细描述"
+other = """用 age + AES-256-GCM 将密码 P 双重加密封印，用 Shamir 秘密共享（5 取 3）
+将 age 私钥分片后分散存储，并提供肌肉记忆密码兜底恢复方案。
+
+恢复路径：
+  1. 主路径：提供 K1（Diceware 口令）→ 解密分片 → 恢复 P
+  2. 兜底路径：提供肌肉记忆密码 → 解密 K1 → 走主路径
+
+输出文件：
+  encrypt-d.dat  — age(P) 后用 AES-256-GCM(KD) 加密
+  encrypt-k.dat  — AES-256-GCM(S1, K1)，含随机盐 S
+  shares/*.dat   — 5 个 Shamir 分片，各用 K_i 加密"""
+
+[secret_seal.option.encrypt]
+description = "加密模式选项标签"
+other = "加密 (Encrypt)"
+
+[secret_seal.option.decrypt]
+description = "解密模式选项标签"
+other = "解密 (Decrypt)"
+
+[secret_seal.option.unseal_k1]
+description = "用 K1 恢复选项标签"
+other = "用 K1（Diceware 口令）恢复"
+
+[secret_seal.option.unseal_muscle]
+description = "用肌肉记忆密码恢复选项标签"
+other = "用肌肉记忆密码恢复（忘记 K1 时）"
+
+[secret_seal.prompt.mode]
+description = "选择操作模式提示"
+other = "选择操作模式:"
+
+[secret_seal.prompt.password]
+description = "输入待保护密码 P 提示"
+other = "输入需要保护的密码 (P):"
+
+[secret_seal.prompt.generate_k1]
+description = "确认自动生成 K1 提示"
+other = "自动生成 7 词 Diceware 口令作为主密钥 (K1)？"
+
+[secret_seal.prompt.k1]
+description = "输入主密钥 K1 提示"
+other = "输入 Diceware 主密钥 (K1):"
+
+[secret_seal.prompt.use_hint]
+description = "是否添加提示信息确认"
+other = "为 K1 添加一个纯文本提示（帮助日后回忆）?"
+
+[secret_seal.prompt.hint]
+description = "输入提示信息"
+other = "输入 K1 的提示信息（如「我家狗的名字」）:"
+
+[secret_seal.prompt.muscle_pw]
+description = "输入肌肉记忆密码提示"
+other = "输入一个肌肉记忆密码（用于遗忘 K1 时恢复）:"
+
+[secret_seal.prompt.output_dir]
+description = "输入输出目录提示"
+other = "封印文件输出目录:"
+
+[secret_seal.prompt.input_dir]
+description = "输入目录提示"
+other = "封印文件所在目录:"
+
+[secret_seal.prompt.unseal_path]
+description = "选择恢复路径提示"
+other = "选择恢复方式:"
+
+[secret_seal.error.mode_required]
+description = "未指定模式错误"
+other = "请指定模式 (--mode encrypt|decrypt)"
+
+[secret_seal.error.invalid_mode]
+description = "无效模式错误"
+other = "无效的模式: {{.Mode}}（必须为 encrypt 或 decrypt）"
+
+[secret_seal.error.password_required]
+description = "未提供密码错误"
+other = "请提供待保护的密码 (--password 或 -p)"
+
+[secret_seal.error.muscle_pw_required]
+description = "未提供肌肉记忆密码错误"
+other = "请提供兜底肌肉记忆密码 (--muscle-password 或 -m)"
+
+[secret_seal.error.k1_required]
+description = "未提供 K1 错误"
+other = "请提供主密钥 K1 (--k1 或 -k)"
+
+[secret_seal.error.input_dir_required]
+description = "未提供输入目录错误"
+other = "请提供封印文件所在目录 (--input 或 -i)"
+
+[secret_seal.error.unseal_path_required]
+description = "未指定恢复路径错误"
+other = "请指定恢复方式 (--k1 或 --fallback -m)"
+
+[secret_seal.error.generate_k1_failed]
+description = "K1 生成失败错误"
+other = "生成 K1 失败: {{.Err}}"
+
+[secret_seal.error.seal_failed]
+description = "封印失败错误"
+other = "封印失败: {{.Err}}"
+
+[secret_seal.error.unseal_failed]
+description = "解封失败错误"
+other = "解封失败: {{.Err}}"
+
+[secret_seal.output.k1_generated]
+description = "K1 自动生成输出"
+other = "已生成主密钥 (K1): {{.K1}}"
+
+[secret_seal.output.k1_warning]
+description = "保存 K1 警告"
+other = "⚠ 请安全保存此口令。解封时需要用到。"
+
+[secret_seal.output.seal_success]
+description = "封印成功信息"
+other = "✅ 密码已封印到 {{.Dir}}"
+
+[secret_seal.output.seal_files]
+description = "输出文件列表标题"
+other = "已创建文件:"
+
+[secret_seal.output.seal_next_steps]
+description = "封印后下一步操作"
+other = """后续操作:
+  1. 妥善保存 K1（记忆或存入密码管理器）
+  2. 将 5 个分片文件分发到不同的受信渠道
+  3. 将 encrypt-d.dat 和 encrypt-k.dat 存入私有 Git 仓库
+
+恢复命令:
+  主路径（还记得 K1 时）:
+    go-cipher-cli secret-seal --mode decrypt -k "你的K1" -i ./seal-vault
+
+  兜底路径（忘记 K1 时，用肌肉记忆密码）:
+    go-cipher-cli secret-seal --mode decrypt -f -m "肌肉记忆密码" -i ./seal-vault"""
+
+[secret_seal.output.unseal_success]
+description = "解封成功信息"
+other = "✅ 密码已恢复:"
+
+[secret_seal.output.hint]
+description = "显示提示信息"
+other = "💡 提示: {{.Hint}}"
+
+[secret_seal.flag.mode]
+description = "--mode 标志说明"
+other = "操作模式: encrypt 或 decrypt"
+
+[secret_seal.flag.k1]
+description = "--k1 标志说明"
+other = "主密钥 Diceware 口令 (K1)"
+
+[secret_seal.flag.password]
+description = "--password 标志说明"
+other = "待保护的密码 (P)"
+
+[secret_seal.flag.hint]
+description = "--hint 标志说明"
+other = "K1 的纯文本提示信息（可选）"
+
+[secret_seal.flag.muscle_pw]
+description = "--muscle-password 标志说明"
+other = "兜底肌肉记忆密码"
+
+[secret_seal.flag.output]
+description = "--output 标志说明"
+other = "封印文件输出目录 (默认: ./seal-vault)"
+
+[secret_seal.flag.input]
+description = "--input 标志说明"
+other = "封印文件所在目录 (默认: ./seal-vault)"
+
+[secret_seal.flag.fallback]
+description = "--fallback 标志说明"
+other = "使用肌肉记忆密码兜底恢复路径"
+
+[secret_seal.flag.num_words]
+description = "--num-words 标志说明"
+other = "自动生成 Diceware K1 的词数 (默认: 7)"
+
+# ==========================================
+# internal/seal/seal.go
+# ==========================================
+
+[seal.error.create_dir]
+description = "创建输出目录失败"
+other = "创建目录失败"
+
+[seal.error.generate_age_key]
+description = "生成 age 密钥对失败"
+other = "生成 age 密钥失败"
+
+[seal.error.derive_kh]
+description = "从 K1 派生 KH 失败"
+other = "从 K1 派生加密密钥失败"
+
+[seal.error.age_encrypt]
+description = "age 加密失败"
+other = "age 加密失败"
+
+[seal.error.aes_encrypt]
+description = "AES-256-GCM 加密失败"
+other = "加密失败"
+
+[seal.error.write_file]
+description = "写入输出文件失败"
+other = "写入文件失败"
+
+[seal.error.seal_age_priv]
+description = "加密 age 私钥失败"
+other = "加密 age 私钥失败"
+
+[seal.error.shamir_split]
+description = "Shamir 秘密共享分片失败"
+other = "秘密分片失败"
+
+[seal.error.encrypt_share]
+description = "加密 Shamir 分片失败"
+other = "加密分片 {{.Index}} 失败"
+
+[seal.error.derive_s1]
+description = "从肌肉记忆密码派生 S1 失败"
+other = "从肌肉记忆密码派生恢复密钥失败"
+
+[seal.error.read_file]
+description = "读取封印文件失败"
+other = "读取封印文件失败"
+
+[seal.error.reconstruct_age]
+description = "从分片重建 age 私钥失败"
+other = "无法重建 age 私钥（请检查 K1 是否正确）"
+
+[seal.error.aes_decrypt]
+description = "AES-256-GCM 解密失败"
+other = "解密失败"
+
+[seal.error.age_decrypt]
+description = "age 解密失败"
+other = "age 解密失败"
+
+[seal.error.read_shares_dir]
+description = "读取分片目录失败"
+other = "读取分片目录失败"
+
+[seal.error.insufficient_shares]
+description = "Shamir 分片数量不足"
+other = "需要至少 {{.Need}} 个分片，当前只有 {{.Got}} 个"
+
+[seal.error.shamir_combine]
+description = "Shamir 秘密共享合并失败"
+other = "分片合并失败"
+
+[seal.error.data_too_short]
+description = "解密数据过短"
+other = "解密数据损坏或长度不足"
+
+[seal.error.wrong_muscle_password]
+description = "肌肉记忆密码错误"
+other = "肌肉记忆密码错误"
