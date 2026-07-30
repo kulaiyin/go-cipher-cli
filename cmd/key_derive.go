@@ -116,6 +116,12 @@ func runKeyDerive(cmd *cobra.Command) error {
 	if err := resolveKeyDeriveParams(mode); err != nil {
 		return err
 	}
+	// All params resolved OK: from here on, failures are runtime/crypto errors
+	// (e.g. restore UUID mismatch), not argument errors. Silence the usage dump
+	// so a verification failure doesn't get followed by the full help text —
+	// the error message to stderr is enough. Argument errors (returned above,
+	// before this point) still print usage as usual.
+	cmd.SilenceUsage = true
 
 	// Clean input/password exactly like the frontend (strip whitespace + NFC).
 	cleanedInput := cleanKeyDeriveText(keyDeriveInput)
@@ -232,7 +238,15 @@ func deriveAndEmit(input, password, salt, hint string, strength kdf.Strength, st
 		if restoreOK {
 			fmt.Println(i18n.T("key_derive.output.restore_success"))
 		} else {
-			fmt.Println(i18n.T("key_derive.output.restore_failed"))
+			// Restore verification failed: the re-derived keys do not match the
+			// stored UUIDs. This is a real failure (wrong input/password/strength),
+			// so return an error so cobra exits with a non-zero status — letting
+			// scripts and CI reliably detect it. The message is printed to stderr
+			// by Execute(); we must NOT also fmt.Println it (that would duplicate
+			// the message on stdout). SilenceUsage on the command keeps cobra from
+			// dumping the help text after a verification failure (it's not an
+			// argument error).
+			return fmt.Errorf("%s", i18n.T("key_derive.output.restore_failed"))
 		}
 	}
 	return nil

@@ -107,6 +107,31 @@ type Vectors struct {
 		Uuids []string `json:"uuids"`
 		Out   bool     `json:"out"`
 	} `json:"validateKeyRecovery"`
+
+	AssemblePackageKey []struct {
+		Name              string   `json:"name"`
+		Keys              []string `json:"keys"`
+		AssembledPassword string   `json:"assembledPassword"`
+		Salt              string   `json:"salt"`
+		Iterations        int      `json:"iterations"`
+		MemorySize        int      `json:"memorySize"`
+		Parallelism       int      `json:"parallelism"`
+		HashLength        int      `json:"hashLength"`
+		Info              string   `json:"info"`
+		OutHex            string   `json:"outHex"`
+	} `json:"assemblePackageKey"`
+
+	MetaDataDigest []struct {
+		Name          string   `json:"name"`
+		Version       uint32   `json:"version"`
+		Salt          string   `json:"salt"`
+		CreatedAt     int64    `json:"createdAt"`
+		SelectedHints []string `json:"selectedHints"`
+		SHA256        string   `json:"sha256"`
+		Payload       string   `json:"payload"`
+		MetaHash      string   `json:"metaHash"`
+		IntegrityHash string   `json:"integrityHash"`
+	} `json:"metaDataDigest"`
 }
 
 // FusePasswordCase is one fusePasswords golden case.

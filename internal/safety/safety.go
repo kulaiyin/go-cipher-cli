@@ -17,6 +17,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"go-cipher-cli/internal/i18n"
@@ -160,4 +161,68 @@ func IsPasswordHighStrength(value string) bool {
 		}
 	}
 	return false
+}
+
+// IsPassword1Valid mirrors the web tool's DataEncryptionForm.isPassword1Valid
+// (DataEncryptionForm.vue:723-732): a password1 is valid when it is high
+// strength OR (contains a letter AND a digit AND a special character AND is at
+// least 8 chars long). The web tool's special-char test is the regex
+// /[^A-Za-z0-9]/ (anything that is not an ASCII alphanumeric), so we match that
+// exactly rather than using unicode classes.
+func IsPassword1Valid(value string) bool {
+	if IsPasswordHighStrength(value) {
+		return true
+	}
+	if len([]rune(value)) < 8 {
+		return false
+	}
+	hasLetter, hasDigit, hasSpecial := false, false, false
+	for _, r := range value {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z'):
+			hasLetter = true
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		default:
+			// web: /[^A-Za-z0-9]/ — any non-ASCII-alphanumeric counts as special.
+			hasSpecial = true
+		}
+	}
+	return hasLetter && hasDigit && hasSpecial
+}
+
+// AssemblePackageKey derives the "assemble-package" key used to sign the
+// meta-data.json integrityHash. It mirrors the web tool's derivation
+// (DataEncryptionForm.vue → SafetyUtility.strong_derivate_key):
+//
+//  1. assembledPassword = sort(keys[0:3])[0] + ":" + sort(keys[0:3])[2]
+//     (only the first three strong keys, joined by min and max after sort)
+//  2. argon2id(password=UTF8(assembledPassword), salt=UTF8(saltHex),
+//     t=3, m=32768KiB(32MiB), p=2, dkLen=64)
+//  3. HKDF-SHA3-512-full (empty salt) with info="assemble-package", L=64
+//
+// saltSeedHex is the 128-char hex salt_seed; it is fed to argon2 as its ASCII
+// bytes (matching the web tool's UTF-8 encoding of the hex string).
+// This key does NOT participate in AES-GCM encryption; it is only the HMAC
+// key for the integrityHash strong check.
+func AssemblePackageKey(keys []string, saltSeedHex string) ([]byte, error) {
+	if len(keys) < 3 {
+		return nil, fmt.Errorf("%s", i18n.T("safety.error.assemble_keys"))
+	}
+	assembled := assemblePackagePassword(keys)
+	pwBytes := []byte(assembled)
+	saltBytes := []byte(saltSeedHex)
+	argonOut, err := Argon2id(pwBytes, saltBytes, 3, 32*1024, 2, 64)
+	if err != nil {
+		return nil, err
+	}
+	return HKDFExpand(string(argonOut), []byte("assemble-package"), 64), nil
+}
+
+// assemblePackagePassword sorts the first three keys and joins the min and max
+// with ":". It matches the web tool's process_assemble_keys.
+func assemblePackagePassword(keys []string) string {
+	firstThree := append([]string{}, keys[:3]...)
+	sort.Strings(firstThree)
+	return firstThree[0] + ":" + firstThree[2]
 }

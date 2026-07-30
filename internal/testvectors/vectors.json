@@ -405,5 +405,36 @@
       ],
       "out": true
     }
+  ],
+  "assemblePackageKey": [
+    {
+      "name": "3 strong keys, fixed 128-hex salt",
+      "keys": [
+        "bf804aed3db8eb96c3d7b23eef691732e8f12fdaef7ea3cae1e698e4fdd9ffba0c0b8a1bcc46517e52378f52423024abab606023df7d000d87e063c98be3ec25",
+        "9c739f0e46366a83a9d835c0501c1117486cda418e48c7fda36dd186dc0c4564efca3ce8b9dc64fa1f1e4a752398daf9bb2d51f4f592efe0008c82543661d2ae",
+        "5bf83dd741d8a7206df9deefcb1dbec97a4c7172536222b615ee58c473dd750ac740fcf77cd34a29800e33ded1ebcb9a2a4e988278c0d241b3c273274fa1f3eb"
+      ],
+      "assembledPassword": "5bf83dd741d8a7206df9deefcb1dbec97a4c7172536222b615ee58c473dd750ac740fcf77cd34a29800e33ded1ebcb9a2a4e988278c0d241b3c273274fa1f3eb:bf804aed3db8eb96c3d7b23eef691732e8f12fdaef7ea3cae1e698e4fdd9ffba0c0b8a1bcc46517e52378f52423024abab606023df7d000d87e063c98be3ec25",
+      "salt": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "iterations": 3,
+      "memorySize": 32768,
+      "parallelism": 2,
+      "hashLength": 64,
+      "info": "assemble-package",
+      "outHex": "7c3156de21f18bcc25a2e2e985a1fbaba01b3a7028398336682ebb9520ddb1000f02ce457a4f653901a709e4c9f00b4d5dd540299824c0e7f1aa92da8771dfdd"
+    }
+  ],
+  "metaDataDigest": [
+    {
+      "name": "standard meta-data, unsorted hints",
+      "version": 10000,
+      "salt": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "createdAt": 1690000000000,
+      "selectedHints": ["hint-b", "hint-a", "hint-c"],
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload": "10000|0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef|hint-a,hint-b,hint-c|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|1690000000000",
+      "metaHash": "bd0fbb06a6d3cc0d5596c0b65178340058d5aee560b15378bac910d1b0be02fa6ffdbf5ebf1281faf44c0c8c53094becdcf7601a9762c4535c67f1fe751213df",
+      "integrityHash": "b55bdf6f1aeff8d854a325c2f5a8e06c02989a63422ecc9e91a0fc3780e91c7bae2543389a311779a6488d624bf3bdcdcdc0c1cbdd518277b83cf4c8bd1c2841"
+    }
   ]
 }

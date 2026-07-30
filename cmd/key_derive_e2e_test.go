@@ -203,13 +203,15 @@ func TestKeyDeriveCmd_Restore_NoMatch(t *testing.T) {
 		t.Fatalf("setup generate failed")
 	}
 
-	// restore with WRONG input -> must report failure (but still exit 0; the
-	// command completed, the verification result is just negative).
+	// restore with WRONG input -> must report failure AND exit non-zero, so
+	// scripts and CI can reliably detect a mismatch (not just rely on the
+	// output text). The full re-derived output is still printed to stdout;
+	// the failure message goes to stderr with a non-zero exit code.
 	out, code := runCLI(t, "key-derive", "--mode", "restore",
 		"-i", "WrongInputTextHere1234567890", "-p", kdPassword,
 		"--config", cfgPath)
-	if code != 0 {
-		t.Fatalf("restore should still exit 0 on verification failure: %s", out)
+	if code == 0 {
+		t.Fatalf("restore should exit non-zero on verification failure, got 0: %s", out)
 	}
 	if !strings.Contains(out, "restore failed") && !strings.Contains(out, "failed") {
 		t.Errorf("expected restore failed message, output:\n%s", out)

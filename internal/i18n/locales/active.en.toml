@@ -340,58 +340,212 @@ description = "Description for --uuid flag"
 other = "stored uuid list (repeatable)"
 
 # ==========================================
-# cmd/encrypt.go
+# cmd/data_cipher.go
 # ==========================================
 
-[encrypt.short]
-description = "Short description for encrypt command"
-other = "Encrypt a file with AES-256-GCM (frontend-compatible container)"
+[data_cipher.short]
+description = "Short description for data-cipher command"
+other = "Encrypt/decrypt data with AES-256-GCM (web-compatible ZIP bundle)"
 
-[encrypt.long]
-description = "Long description for encrypt command"
-other = """Encrypt a file using the same key-derivation pipeline as the web tool:
-argon2id -> HMAC-SHA3-512 -> HKDF-SHA3-512 -> AES-256-GCM.
+[data_cipher.long]
+description = "Long description for data-cipher command"
+other = """Encrypt or decrypt data using the same pipeline as the web data-encryption
+tool: argon2id -> HMAC-SHA3-512 -> HKDF -> AES-256-GCM, wrapped in a ZIP bundle
+(encrypted-data.bin + meta-data.json) with dual HMAC integrity checks.
 
-The salt is stored inside the output container so decryption only needs the
-password(s). If --salt is omitted a random one is generated. The output file is
-a binary container (version|reserved|salt_seed|length|ciphertext) that the web
-tool can also decrypt."""
+--mode encrypt  : input file  -> encrypted .zip
+--mode decrypt  : encrypted .zip -> original file
 
-[encrypt.error.read_input]
-description = "Error when reading input file fails"
+Passwords (-p) map to the web tool's keys[]: the first three are the strong
+keys produced by `key-derive` (128-hex each), the fourth is password1."""
+
+[data_cipher.flag.mode]
+description = "Description for --mode flag"
+other = "operation mode: encrypt or decrypt (required)"
+
+[data_cipher.flag.password]
+description = "Description for --password flag"
+other = "password/strong-key (repeatable); first three are 128-hex strong keys, then password1"
+
+[data_cipher.flag.salt]
+description = "Description for --salt flag"
+other = "optional 128-hex salt seed (encrypt only; auto-generated if omitted)"
+
+[data_cipher.flag.hint]
+description = "Description for --hint flag"
+other = "optional hint text written to meta-data.json (encrypt only)"
+
+[data_cipher.flag.output]
+description = "Description for --output flag"
+other = "optional output path (encrypt: .zip; decrypt: restored original)"
+
+[data_cipher.flag.input_type]
+description = "Description for --input-type flag"
+other = "input type: text or file (encrypt only; decrypt is always file)"
+
+[data_cipher.flag.text]
+description = "Description for --text flag"
+other = "text content to encrypt (encrypt + input-type=text)"
+
+[data_cipher.flag.file]
+description = "Description for --file flag"
+other = "input file path (alternative to the positional argument)"
+
+[data_cipher.option.encrypt]
+description = "Interactive encrypt option label"
+other = "encrypt"
+
+[data_cipher.option.decrypt]
+description = "Interactive decrypt option label"
+other = "decrypt"
+
+[data_cipher.option.text]
+description = "Interactive text-input option label"
+other = "text"
+
+[data_cipher.option.file]
+description = "Interactive file-input option label"
+other = "file"
+
+[data_cipher.prompt.mode]
+description = "Interactive mode selection prompt"
+other = "Select an operation mode:"
+
+[data_cipher.prompt.input_type]
+description = "Interactive input-type selection prompt"
+other = "Select an input type:"
+
+[data_cipher.prompt.input]
+description = "Interactive input file path prompt"
+other = "Input file path:"
+
+[data_cipher.prompt.text]
+description = "Interactive text content prompt"
+other = "Enter the text to encrypt:"
+
+[data_cipher.prompt.key_n]
+description = "Interactive strong-key prompt (1-indexed)"
+other = "Key {{.N}} (128-hex strong key):"
+
+[data_cipher.prompt.key_help]
+description = "Help text for the strong-key prompt"
+other = "paste the key produced by `key-derive`"
+
+[data_cipher.prompt.password1]
+description = "Interactive password1 prompt"
+other = "Password1:"
+
+[data_cipher.prompt.password_optional]
+description = "Interactive optional additional password prompt (1-indexed)"
+other = "Password{{.N}} (optional, press Enter to finish):"
+
+[data_cipher.prompt.password_optional_help]
+description = "Help text for the optional password prompt"
+other = "leave empty to stop adding more passwords"
+
+[data_cipher.prompt.hint]
+description = "Interactive hint input asked after passwords (encrypt only)"
+other = "Hint (optional, press Enter to skip):"
+
+[data_cipher.prompt.hint_help]
+description = "Help text for the hint prompt"
+other = "memo stored alongside the ciphertext (e.g. origin, purpose); does not affect key derivation."
+
+[data_cipher.prompt.output_encrypt]
+description = "Encrypt output file path interactive prompt"
+other = "Where to save the encrypted file:"
+
+[data_cipher.prompt.output_decrypt]
+description = "Decrypt output file path interactive prompt"
+other = "Where to save the decrypted file:"
+
+[data_cipher.error.input_required]
+description = "Error when input file is missing in non-interactive mode"
+other = "input file is required (pass it as an argument or --file)"
+
+[data_cipher.error.text_required]
+description = "Error when text content is missing in non-interactive mode"
+other = "text content is required (pass --text)"
+
+[data_cipher.error.mode_required]
+description = "Error when mode is missing and cannot be prompted"
+other = "--mode is required (encrypt or decrypt); pass it explicitly in non-interactive mode"
+
+[data_cipher.error.invalid_mode]
+description = "Error when mode value is invalid"
+other = "invalid --mode {{.Mode}}: must be encrypt or decrypt"
+
+[data_cipher.error.invalid_input_type]
+description = "Error when input-type value is invalid"
+other = "invalid --input-type {{.Type}}: must be text or file"
+
+[data_cipher.error.decrypt_file_only]
+description = "Error when input-type is not file in decrypt mode"
+other = "decrypt mode only supports file input"
+
+[data_cipher.error.password_required]
+description = "Error when passwords are missing"
+other = "at least 4 passwords (-p) are required: 3 strong keys + password1"
+
+[data_cipher.error.key_not_high_strength]
+description = "Error when a strong key fails the high-strength check"
+other = "key {{.N}} must be high strength (at least 128 hex chars, ≥ 15 distinct chars)"
+
+[data_cipher.error.password1_invalid]
+description = "Error when password1 fails the composite check"
+other = "password1 must be high strength, or contain a letter, a digit and a special char with length ≥ 8"
+
+[data_cipher.error.validator_type_assert]
+description = "Error when a survey validator type assertion fails"
+other = "invalid input type"
+
+[data_cipher.error.read_input]
+description = "Error reading input file"
 other = "read input: {{.Err}}"
 
-[encrypt.error.empty_input]
+[data_cipher.error.empty_input]
 description = "Error when input is empty"
 other = "input file is empty"
 
-[encrypt.error.salt_hex]
+[data_cipher.error.file_too_large]
+description = "Error when file exceeds size limit"
+other = "file size exceeds the 512MB limit"
+
+[data_cipher.error.salt_hex]
 description = "Error when salt is not valid hex"
 other = "salt must be a hex string: {{.Err}}"
 
-[encrypt.error.encrypt_failed]
+[data_cipher.error.encrypt_failed]
 description = "Error when encryption fails"
 other = "encrypt: {{.Err}}"
 
-[encrypt.error.assemble_container]
-description = "Error when assembling container fails"
-other = "assemble container: {{.Err}}"
+[data_cipher.error.decrypt_failed]
+description = "Error when decryption fails"
+other = "decrypt: {{.Err}}"
 
-[encrypt.error.write_output]
-description = "Error when writing output fails"
+[data_cipher.error.write_output]
+description = "Error writing output"
 other = "write output: {{.Err}}"
 
-[encrypt.output.success]
+[data_cipher.error.parse_container]
+description = "Error parsing the binary container"
+other = "parse container: {{.Err}}"
+
+[data_cipher.error.sha256_mismatch]
+description = "Error when integrity check fails"
+other = "import failed: integrity check failed (data may have been tampered)"
+
+[data_cipher.error.meta_tampered]
+description = "Error when meta-data is illegally modified"
+other = "imported file is not a valid encrypted file: data illegally modified"
+
+[data_cipher.output.encrypt_success]
 description = "Output on successful encryption"
-other = "Encrypted {{.Size}} bytes -> {{.Path}} (salt embedded, version={{.Version}})"
+other = "Encrypted {{.Size}} bytes -> {{.Path}}"
 
-[encrypt.flag.password]
-description = "Description for --password flag"
-other = "password (repeatable, e.g. -p a -p b); order does not matter"
-
-[encrypt.flag.salt]
-description = "Description for --salt flag"
-other = "optional 128-hex salt seed (auto-generated if omitted)"
+[data_cipher.output.decrypt_success]
+description = "Output on successful decryption"
+other = "Decrypted {{.Size}} bytes -> {{.Path}}"
 
 # ==========================================
 # cmd/keygen.go
@@ -504,44 +658,6 @@ description = "Short description for version command"
 other = "Print the CLI version"
 
 # ==========================================
-# cmd/decrypt.go
-# ==========================================
-
-[decrypt.short]
-description = "Short description for decrypt command"
-other = "Decrypt a container produced by 'encrypt' or the web tool"
-
-[decrypt.long]
-description = "Long description for decrypt command"
-other = """Decrypt an AES-256-GCM container. The salt is read from the container, so
-only the password(s) are required. An auth-tag mismatch (wrong password) is
-reported as a decryption failure."""
-
-[decrypt.error.read_input]
-description = "Error when reading input file fails"
-other = "read input: {{.Err}}"
-
-[decrypt.error.parse_container]
-description = "Error when parsing container fails"
-other = "parse container: {{.Err}}"
-
-[decrypt.error.decrypt_failed]
-description = "Error when decryption fails"
-other = "decrypt: {{.Err}}"
-
-[decrypt.error.write_output]
-description = "Error when writing output fails"
-other = "write output: {{.Err}}"
-
-[decrypt.output.success]
-description = "Output on successful decryption"
-other = "Decrypted {{.Size}} bytes -> {{.Path}}"
-
-[decrypt.flag.password]
-description = "Description for --password flag"
-other = "password (repeatable)"
-
-# ==========================================
 # internal/kdf/kdf.go - password strength feedback
 # ==========================================
 
@@ -585,6 +701,10 @@ other = "Argon2 key derivation failed"
 description = "Hex string length must be even"
 other = "hex string length must be even"
 
+[safety.error.assemble_keys]
+description = "Assemble-package key derivation needs at least 3 keys"
+other = "assemble-package key derivation requires at least 3 keys"
+
 # ==========================================
 # internal/crypto/crypto.go
 # ==========================================
@@ -612,6 +732,50 @@ other = "invalid input: encrypted data and password array must not be empty"
 [aesgcm.error.wrong_password]
 description = "Wrong password error"
 other = "wrong password!"
+
+# ==========================================
+# internal/container/metadata.go
+# ==========================================
+
+[metadata.error.incomplete]
+description = "Meta-data missing required fields"
+other = "encryption file metadata is incomplete"
+
+[metadata.error.parse_failed]
+description = "Meta-data JSON parse failure"
+other = "meta-data parse failed"
+
+[metadata.error.hints_format]
+description = "selectedHints is not an array"
+other = "selectedHints format is invalid"
+
+# ==========================================
+# internal/container/zip.go
+# ==========================================
+
+[zip.error.empty_entries]
+description = "ZIP has empty entries"
+other = "zip entries must not be empty"
+
+[zip.error.write_entry]
+description = "ZIP write entry failure"
+other = "write zip entry failed"
+
+[zip.error.close]
+description = "ZIP close failure"
+other = "close zip failed"
+
+[zip.error.not_zip]
+description = "Not a valid ZIP file"
+other = "not a valid zip file"
+
+[zip.error.missing_core]
+description = "ZIP missing core components"
+other = "imported file is not a valid encrypted file: missing core components"
+
+[zip.error.read_entry]
+description = "ZIP read entry failure"
+other = "read zip entry failed"
 
 # ==========================================
 # cmd/update.go

@@ -338,57 +338,212 @@ description = "--uuid 标志的描述"
 other = "存储的 uuid 列表（可重复）"
 
 # ==========================================
-# cmd/encrypt.go
+# cmd/data_cipher.go
 # ==========================================
 
-[encrypt.short]
-description = "encrypt 命令的简短描述"
-other = "用 AES-256-GCM 加密文件（前端兼容容器）"
+[data_cipher.short]
+description = "data-cipher 命令简短描述"
+other = "用 AES-256-GCM 加密/解密数据（Web 兼容的 ZIP 包）"
 
-[encrypt.long]
-description = "encrypt 命令的详细描述"
-other = """使用与 Web 工具相同的密钥派生管道加密文件：
-argon2id -> HMAC-SHA3-512 -> HKDF-SHA3-512 -> AES-256-GCM。
+[data_cipher.long]
+description = "data-cipher 命令详细描述"
+other = """使用与 Web 数据加密工具相同的管道加密或解密数据：
+argon2id -> HMAC-SHA3-512 -> HKDF -> AES-256-GCM，封装为 ZIP 包
+（encrypted-data.bin + meta-data.json），带双重 HMAC 完整性校验。
 
-盐值存储在输出容器中，解密只需密码。如果省略 --salt 则自动生成。
-输出是一个二进制容器（version|reserved|salt_seed|length|ciphertext），
-Web 工具也可解密。"""
+--mode encrypt  : 输入文件 -> 加密 .zip
+--mode decrypt  : 加密 .zip -> 原始文件
 
-[encrypt.error.read_input]
+密码（-p）对应 Web 工具的 keys[]：前三个为 key-derive 产出的强密钥
+（各 128 位十六进制），第四个为 password1。"""
+
+[data_cipher.flag.mode]
+description = "--mode 标志的描述"
+other = "操作模式：encrypt 或 decrypt（必填）"
+
+[data_cipher.flag.password]
+description = "--password 标志的描述"
+other = "密码/强密钥（可重复）；前三个为 128 位十六进制强密钥，其后为 password1"
+
+[data_cipher.flag.salt]
+description = "--salt 标志的描述"
+other = "可选的 128 位十六进制盐种子（仅加密；省略则自动生成）"
+
+[data_cipher.flag.hint]
+description = "--hint 标志的描述"
+other = "可选提示文本，写入 meta-data.json（仅加密）"
+
+[data_cipher.flag.output]
+description = "--output 标志的描述"
+other = "可选输出路径（加密：.zip；解密：还原原始文件）"
+
+[data_cipher.flag.input_type]
+description = "--input-type 标志的描述"
+other = "输入类型：text 或 file（仅加密；解密固定为 file）"
+
+[data_cipher.flag.text]
+description = "--text 标志的描述"
+other = "要加密的文本内容（加密且 input-type=text）"
+
+[data_cipher.flag.file]
+description = "--file 标志的描述"
+other = "输入文件路径（位置参数的替代写法）"
+
+[data_cipher.option.encrypt]
+description = "交互式加密选项标签"
+other = "加密"
+
+[data_cipher.option.decrypt]
+description = "交互式解密选项标签"
+other = "解密"
+
+[data_cipher.option.text]
+description = "交互式文本输入选项标签"
+other = "文本"
+
+[data_cipher.option.file]
+description = "交互式文件输入选项标签"
+other = "文件"
+
+[data_cipher.prompt.mode]
+description = "交互式模式选择提示"
+other = "请选择操作模式："
+
+[data_cipher.prompt.input_type]
+description = "交互式输入类型选择提示"
+other = "请选择输入类型："
+
+[data_cipher.prompt.input]
+description = "交互式输入文件路径提示"
+other = "请输入文件路径："
+
+[data_cipher.prompt.text]
+description = "交互式文本内容提示"
+other = "请输入要加密的文本："
+
+[data_cipher.prompt.key_n]
+description = "交互式强密钥提示（从 1 开始）"
+other = "密钥{{.N}}（128 位十六进制强密钥）："
+
+[data_cipher.prompt.key_help]
+description = "强密钥提示的帮助文本"
+other = "粘贴 `key-derive` 生成的密钥"
+
+[data_cipher.prompt.password1]
+description = "交互式 password1 提示"
+other = "密码1："
+
+[data_cipher.prompt.password_optional]
+description = "交互式可选额外密码提示（从 1 开始）"
+other = "密码{{.N}}（可选，按回车结束）："
+
+[data_cipher.prompt.password_optional_help]
+description = "可选密码提示的帮助文本"
+other = "留空则停止添加更多密码"
+
+[data_cipher.prompt.hint]
+description = "加密完成后交互式提示内容输入（在密码之后）"
+other = "提示内容（可选，直接回车跳过）："
+
+[data_cipher.prompt.hint_help]
+description = "提示内容帮助"
+other = "随密文一起保存的备忘信息（如来源、用途），不影响密钥派生。"
+
+[data_cipher.prompt.output_encrypt]
+description = "加密输出文件路径交互提示"
+other = "加密文件保存位置："
+
+[data_cipher.prompt.output_decrypt]
+description = "解密输出文件路径交互提示"
+other = "解密文件保存位置："
+
+[data_cipher.error.input_required]
+description = "非交互模式下缺少输入文件的错误"
+other = "必须提供输入文件（作为参数传入或使用 --file）"
+
+[data_cipher.error.text_required]
+description = "非交互模式下缺少文本内容的错误"
+other = "必须提供文本内容（使用 --text）"
+
+[data_cipher.error.mode_required]
+description = "缺少 mode 且无法交互提示时的错误"
+other = "必须指定 --mode（encrypt 或 decrypt）；非交互模式下请显式传入"
+
+[data_cipher.error.invalid_mode]
+description = "mode 值无效的错误"
+other = "--mode {{.Mode}} 无效：必须为 encrypt 或 decrypt"
+
+[data_cipher.error.invalid_input_type]
+description = "input-type 值无效的错误"
+other = "--input-type {{.Type}} 无效：必须为 text 或 file"
+
+[data_cipher.error.decrypt_file_only]
+description = "解密模式下输入类型非 file 的错误"
+other = "解密模式只支持文件输入"
+
+[data_cipher.error.password_required]
+description = "缺少密码的错误"
+other = "至少需要 4 个密码（-p）：3 个强密钥 + password1"
+
+[data_cipher.error.key_not_high_strength]
+description = "强密钥未通过高强度校验的错误"
+other = "密钥{{.N}}必须为高强度（不少于 128 位十六进制，且字符种类 ≥ 15）"
+
+[data_cipher.error.password1_invalid]
+description = "密码1未通过复合校验的错误"
+other = "密码1必须为高强度，或同时包含字母、数字和特殊字符且长度不小于 8 位"
+
+[data_cipher.error.validator_type_assert]
+description = "survey 校验器类型断言失败的错误"
+other = "输入类型无效"
+
+[data_cipher.error.read_input]
 description = "读取输入文件失败的错误"
 other = "读取输入失败: {{.Err}}"
 
-[encrypt.error.empty_input]
+[data_cipher.error.empty_input]
 description = "输入为空时的错误"
 other = "输入文件为空"
 
-[encrypt.error.salt_hex]
+[data_cipher.error.file_too_large]
+description = "文件超过大小限制的错误"
+other = "文件大小超过 512MB 限制"
+
+[data_cipher.error.salt_hex]
 description = "盐值不是有效十六进制的错误"
 other = "盐值必须是十六进制字符串: {{.Err}}"
 
-[encrypt.error.encrypt_failed]
+[data_cipher.error.encrypt_failed]
 description = "加密失败的错误"
 other = "加密失败: {{.Err}}"
 
-[encrypt.error.assemble_container]
-description = "组装容器失败的错误"
-other = "组装容器失败: {{.Err}}"
+[data_cipher.error.decrypt_failed]
+description = "解密失败的错误"
+other = "解密失败: {{.Err}}"
 
-[encrypt.error.write_output]
+[data_cipher.error.write_output]
 description = "写入输出失败的错误"
 other = "写入输出文件失败: {{.Err}}"
 
-[encrypt.output.success]
+[data_cipher.error.parse_container]
+description = "解析二进制容器失败的错误"
+other = "解析容器失败: {{.Err}}"
+
+[data_cipher.error.sha256_mismatch]
+description = "完整性校验失败的错误"
+other = "导入失败：文件完整性校验未通过（数据可能已被篡改）"
+
+[data_cipher.error.meta_tampered]
+description = "元数据被非法修改的错误"
+other = "导入的文件不是合法的加密文件：数据被非法修改"
+
+[data_cipher.output.encrypt_success]
 description = "加密成功时的输出"
-other = "已加密 {{.Size}} 字节 -> {{.Path}}（盐值已嵌入，版本={{.Version}}）"
+other = "已加密 {{.Size}} 字节 -> {{.Path}}"
 
-[encrypt.flag.password]
-description = "--password 标志的描述"
-other = "密码（可重复，如 -p a -p b）；顺序无关"
-
-[encrypt.flag.salt]
-description = "--salt 标志的描述"
-other = "可选的 128 位十六进制盐种子（省略则自动生成）"
+[data_cipher.output.decrypt_success]
+description = "解密成功时的输出"
+other = "已解密 {{.Size}} 字节 -> {{.Path}}"
 
 # ==========================================
 # cmd/keygen.go
@@ -500,43 +655,6 @@ description = "version 命令的简短描述"
 other = "显示 CLI 版本号"
 
 # ==========================================
-# cmd/decrypt.go
-# ==========================================
-
-[decrypt.short]
-description = "decrypt 命令的简短描述"
-other = "解密由 'encrypt' 或 Web 工具生成的容器"
-
-[decrypt.long]
-description = "decrypt 命令的详细描述"
-other = """解密 AES-256-GCM 容器。盐值从容器中读取，因此只需要密码。
-认证标签不匹配（密码错误）将报告为解密失败。"""
-
-[decrypt.error.read_input]
-description = "读取输入文件失败的错误"
-other = "读取输入失败: {{.Err}}"
-
-[decrypt.error.parse_container]
-description = "解析容器失败的错误"
-other = "解析容器失败: {{.Err}}"
-
-[decrypt.error.decrypt_failed]
-description = "解密失败的错误"
-other = "解密失败: {{.Err}}"
-
-[decrypt.error.write_output]
-description = "写入输出失败的错误"
-other = "写入输出文件失败: {{.Err}}"
-
-[decrypt.output.success]
-description = "解密成功时的输出"
-other = "已解密 {{.Size}} 字节 -> {{.Path}}"
-
-[decrypt.flag.password]
-description = "--password 标志的描述"
-other = "密码（可重复）"
-
-# ==========================================
 # internal/kdf/kdf.go
 # ==========================================
 
@@ -580,6 +698,10 @@ other = "Argon2 密钥派生失败"
 description = "十六进制长度错误"
 other = "16 进制字符串长度必须为偶数"
 
+[safety.error.assemble_keys]
+description = "assemble-package 密钥派生至少需要 3 个密钥"
+other = "assemble-package 密钥派生至少需要 3 个密钥"
+
 # ==========================================
 # internal/crypto/crypto.go
 # ==========================================
@@ -607,6 +729,50 @@ other = "无效的输入参数，加密数据和密码数组不能为空"
 [aesgcm.error.wrong_password]
 description = "密码错误"
 other = "密码错误！"
+
+# ==========================================
+# internal/container/metadata.go
+# ==========================================
+
+[metadata.error.incomplete]
+description = "元数据缺少必填字段"
+other = "加密文件元数据不完整"
+
+[metadata.error.parse_failed]
+description = "meta-data 解析失败"
+other = "meta-data 解析失败"
+
+[metadata.error.hints_format]
+description = "selectedHints 不是数组"
+other = "selectedHints 格式不正确"
+
+# ==========================================
+# internal/container/zip.go
+# ==========================================
+
+[zip.error.empty_entries]
+description = "ZIP 条目为空"
+other = "zip 条目不能为空"
+
+[zip.error.write_entry]
+description = "写入 ZIP 条目失败"
+other = "写入 zip 条目失败"
+
+[zip.error.close]
+description = "关闭 ZIP 失败"
+other = "关闭 zip 失败"
+
+[zip.error.not_zip]
+description = "不是合法 ZIP 文件"
+other = "导入的文件不是合法zip压缩文件"
+
+[zip.error.missing_core]
+description = "ZIP 缺失核心组件"
+other = "导入的文件不是合法的加密文件：缺失核心组件"
+
+[zip.error.read_entry]
+description = "读取 ZIP 条目失败"
+other = "读取 zip 条目失败"
 
 # ==========================================
 # cmd/update.go

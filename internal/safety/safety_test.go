@@ -110,3 +110,28 @@ func TestIsPasswordHighStrength(t *testing.T) {
 		t.Error("128-hex string should be high strength")
 	}
 }
+
+// TestIsPassword1Valid locks the web tool's isPassword1Valid composite rule
+// (DataEncryptionForm.vue:723-732): high strength OR (letter AND digit AND
+// special char AND length >= 8).
+func TestIsPassword1Valid(t *testing.T) {
+	highStrength := strings.Repeat("0123456789abcdef", 8) // 128 hex
+	cases := []struct {
+		name string
+		pw   string
+		want bool
+	}{
+		{"high strength", highStrength, true},
+		{"letter+digit+special >=8", "Abc123!@", true},
+		{"too short", "Ab1!", false},
+		{"missing digit", "Abcdefgh!", false},
+		{"missing letter", "1234567!", false},
+		{"missing special", "Abc12345", false},
+		{"empty", "", false},
+	}
+	for _, c := range cases {
+		if got := IsPassword1Valid(c.pw); got != c.want {
+			t.Errorf("IsPassword1Valid(%q) = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
