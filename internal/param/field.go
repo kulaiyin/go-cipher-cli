@@ -25,6 +25,11 @@ type Rule struct {
 	Args []string
 }
 
+// FieldValues is a snapshot of the current parameter values, keyed by flag name.
+// Used by Field.Visible to decide whether a field participates in validation
+// and interactive prompting.
+type FieldValues map[string]string
+
 // Field is a parameter with type metadata, validation, and interactive prompting.
 type Field struct {
 	Type        string
@@ -34,6 +39,10 @@ type Field struct {
 	Interactive bool
 	PromptType  PromptType
 	Rules       []Rule
+	// Visible is an optional predicate. When non-nil and returning false,
+	// the field is skipped during validate() and promptInteractive().
+	// Nil means always visible.
+	Visible func(values FieldValues) bool
 }
 
 func (f *Field) Validate(value string, flagName string) error {

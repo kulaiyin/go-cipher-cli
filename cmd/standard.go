@@ -15,6 +15,16 @@ type standardParams struct {
 	Password param.Field
 	Suffix   param.Field
 	Output   param.Field
+
+	// afterStandardize is called after standardize() (normalize + validate + defaults)
+	// but before promptInteractive(). Use for cross-field default inference,
+	// text cleanup, or mode-dependent preprocessing that Field declarations
+	// cannot express.
+	afterStandardize func(p *standardParams) error
+
+	// afterParamsReady is called after all params are resolved (flags + interactive).
+	// This is where the actual business logic (encrypt, decrypt, derive, etc.) lives.
+	afterParamsReady func(p *standardParams) error
 }
 
 var standardCmd = &cobra.Command{
@@ -26,8 +36,21 @@ var standardCmd = &cobra.Command{
 		if err := stdParams.standardize(); err != nil {
 			return err
 		}
+		// Hook: mode-dependent preprocessing that Field declarations can't express
+		// (cross-field defaults, text cleanup, mode-dependent visibility overrides).
+		if stdParams.afterStandardize != nil {
+			if err := stdParams.afterStandardize(&stdParams); err != nil {
+				return err
+			}
+		}
 		if err := stdParams.promptInteractive(); err != nil {
 			return err
+		}
+		// Hook: business logic after all params are resolved.
+		if stdParams.afterParamsReady != nil {
+			if err := stdParams.afterParamsReady(&stdParams); err != nil {
+				return err
+			}
 		}
 		return nil
 	},
@@ -58,8 +81,24 @@ func (p *standardParams) fieldEntries() []fieldEntry {
 	}
 }
 
+// values returns a snapshot of current parameter values, keyed by flag name.
+// Used by Field.Visible predicates to decide per-field visibility.
+func (p *standardParams) values() param.FieldValues {
+	return param.FieldValues{
+		"mode":     p.Mode.Value,
+		"input":    p.Input.Value,
+		"password": p.Password.Value,
+		"suffix":   p.Suffix.Value,
+		"output":   p.Output.Value,
+	}
+}
+
 func (p *standardParams) validate() error {
+	vals := p.values()
 	for _, e := range p.fieldEntries() {
+		if e.field.Visible != nil && !e.field.Visible(vals) {
+			continue
+		}
 		if err := e.field.Validate(*e.target, e.flagName); err != nil {
 			return err
 		}
@@ -72,6 +111,12 @@ func (p *standardParams) promptInteractive() error {
 		return nil
 	}
 	for _, e := range p.fieldEntries() {
+		// Rebuild values each iteration: a previous prompt may have
+		// changed a value that affects visibility of later fields.
+		vals := p.values()
+		if e.field.Visible != nil && !e.field.Visible(vals) {
+			continue
+		}
 		if !e.field.Interactive {
 			continue
 		}
