@@ -897,3 +897,104 @@ other = "高级强度"
 [common.error.required]
 description = "必填字段验证失败"
 other = "此字段必填"
+
+# ==========================================
+# cmd/mntemp.go
+# ==========================================
+
+[mntemp.short]
+description = "mntemp 命令简短描述"
+other = "挂载内存临时文件系统"
+
+[mntemp.long]
+description = "mntemp 命令详细描述"
+other = "在指定路径挂载一个基于 tmpfs 的 RAM 临时文件系统；平台不支持时回退为普通目录。"
+
+[mntemp.flag.name]
+description = "--name 参数说明"
+other = "挂载点名称"
+
+[mntemp.flag.size]
+description = "--size 参数说明"
+other = "内存大小（MB，1-512）"
+
+[mntemp.flag.path]
+description = "--path 参数说明"
+other = "挂载路径（默认 /tmp/mntemp/<name>/）"
+
+[param.error.required]
+description = "必填参数缺失"
+other = "缺少必填参数 --{{.Flag}}"
+
+[param.error.allowed]
+description = "参数值不在允许范围内"
+other = "无效的 --{{.Flag}}：{{.Value}}，必须是：{{.Allowed}}"
+
+[param.error.min_length]
+description = "参数长度不足"
+other = "--{{.Flag}} 至少需要 {{.Min}} 个字符"
+
+[param.error.has_letter_digit_special]
+description = "参数缺少字母/数字/特殊字符"
+other = "--{{.Flag}} 必须包含至少一个字母、一个数字和一个特殊字符"
+
+[param.error.int_range]
+description = "参数不是范围内整数"
+other = "无效的 --{{.Flag}}：必须是 {{.Min}}-{{.Max}} 之间的整数"
+
+[mntemp.mount.error.path_exists]
+description = "挂载路径已存在"
+other = "挂载路径已存在：{{.Path}}"
+
+[mntemp.mount.success.tmpfs]
+description = "tmpfs 挂载成功"
+other = "已挂载 tmpfs（{{.Size}}MB）：{{.Path}}"
+
+[mntemp.mount.success.ramdisk]
+description = "macOS RAM 磁盘挂载成功"
+other = "已创建 RAM 磁盘（{{.Size}}MB）：{{.Path}}"
+
+[mntemp.mount.success.dir]
+description = "回退为普通目录"
+other = "警告：无法挂载内存文件系统（{{.Err}}），已创建普通目录：{{.Path}}"
+
+[mntemp.mount.hint.start]
+description = "挂载开始前的用途提示"
+other = "此命令将挂载一个临时内存文件系统到 {{.Path}}。后续 key-derive、data-cipher 等命令产生的敏感文件请放置到该路径内；全部完成后执行 mntemp umount --name {{.Name}} 即可一键卸载，数据不留磁盘，比普通文件系统更安全。"
+
+[mntemp.mount.hint.dir]
+description = "回退为普通目录后的用途提示"
+other = "当前为普通目录（不支持内存挂载）。仍可将文件放在此路径（{{.Path}}）内，全部完成后执行 mntemp umount --name {{.Name}} 一键清理。"
+
+[mntemp.mount.prompt.sudo]
+description = "请求使用 sudo 重试挂载"
+other = "tmpfs 挂载需要 root 权限，是否使用 sudo 重试？"
+
+[mntemp.mount.error.sudo_failed]
+description = "sudo 挂载失败"
+other = "sudo 挂载失败：{{.Err}}"
+
+[mntemp.umount.error.not_found]
+description = "卸载路径不存在"
+other = "路径不存在：{{.Path}}"
+
+[mntemp.umount.error.failed]
+description = "卸载失败"
+other = "卸载失败"
+
+[mntemp.umount.prompt.sudo]
+description = "请求使用 sudo 重试卸载"
+other = "卸载需要 root 权限，是否使用 sudo 重试？"
+
+[mntemp.umount.error.sudo_failed]
+description = "sudo 卸载失败"
+other = "sudo 卸载失败：{{.Err}}"
+
+[mntemp.umount.success]
+description = "卸载成功"
+other = "已卸载：{{.Path}}"
+
+# ==========================================
+[standard.error.password]
+description = "密码不满足校验规则时的提示"
+other = "密码不满足要求：至少 8 位，且包含字母、数字和特殊字符。"

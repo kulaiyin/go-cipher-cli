@@ -93,17 +93,22 @@ func (p *standardParams) values() param.FieldValues {
 	}
 }
 
-func (p *standardParams) validate() error {
-	vals := p.values()
-	for _, e := range p.fieldEntries() {
+// validateFields runs each entry's Field.Validate, honoring Visible predicates,
+// against the given values snapshot. Shared by all declarative commands.
+func validateFields(entries []fieldEntry, vals param.FieldValues) error {
+	for _, e := range entries {
 		if e.field.Visible != nil && !e.field.Visible(vals) {
 			continue
 		}
-		if err := e.field.Validate(*e.target, e.flagName); err != nil {
+		if err := e.field.Validate(*e.target, e.flagName, vals); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (p *standardParams) validate() error {
+	return validateFields(p.fieldEntries(), p.values())
 }
 
 func (p *standardParams) promptInteractive() error {
@@ -152,6 +157,7 @@ func init() {
 	stdParams.Password.Required = true
 	stdParams.Password.Interactive = true
 	stdParams.Password.PromptType = param.PromptPassword
+	stdParams.Password.ErrorPrompt = i18n.T("standard.error.password")
 	stdParams.Password.Rules = []param.Rule{
 		{"min_length", []string{"8"}},
 		{"has_letter_digit_special", nil},

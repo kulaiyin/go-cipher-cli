@@ -3,8 +3,8 @@ package param
 import (
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
 	"golang.org/x/term"
 
 	"go-cipher-cli/internal/i18n"
@@ -17,6 +17,7 @@ const (
 	PromptInput PromptType = iota
 	PromptPassword
 	PromptSelect
+	PromptMultiInput
 )
 
 // Rule declares a named validation that a Field must satisfy.
@@ -39,16 +40,34 @@ type Field struct {
 	Interactive bool
 	PromptType  PromptType
 	Rules       []Rule
+	// DefaultValue fills Value when it is empty, applied before validation
+	// via ApplyDefault.
+	DefaultValue string
+	// ErrorPrompt, when non-empty, replaces the validation error shown to
+	// the user when interactive input fails to satisfy the field's rules.
+	ErrorPrompt string
 	// Visible is an optional predicate. When non-nil and returning false,
 	// the field is skipped during validate() and promptInteractive().
 	// Nil means always visible.
 	Visible func(values FieldValues) bool
 }
 
-func (f *Field) Validate(value string, flagName string) error {
+// ApplyDefault sets Value to DefaultValue when Value is empty.
+func (f *Field) ApplyDefault() {
+	if f.Value == "" && f.DefaultValue != "" {
+		f.Value = f.DefaultValue
+	}
+}
+
+// Validate checks value against the field's requiredness, allowed values, and
+// rules. values provides the other parameter values so rules can express
+// cross-field constraints; pass nil when no other values are available.
+func (f *Field) Validate(value string, flagName string, values FieldValues) error {
 	if value == "" {
 		if f.Required && !f.Interactive {
-			return fmt.Errorf("--%s is required", flagName)
+			return fmt.Errorf("%s", i18n.TWithData("param.error.required", map[string]interface{}{
+				"Flag": flagName,
+			}))
 		}
 		return nil
 	}
@@ -61,7 +80,9 @@ func (f *Field) Validate(value string, flagName string) error {
 			}
 		}
 		if !matched {
-			return fmt.Errorf("value %q not allowed, must be one of: %v", value, f.Allowed)
+			return fmt.Errorf("%s", i18n.TWithData("param.error.allowed", map[string]interface{}{
+				"Flag": flagName, "Value": value, "Allowed": strings.Join(f.Allowed, ", "),
+			}))
 		}
 	}
 	for _, r := range f.Rules {
@@ -69,7 +90,7 @@ func (f *Field) Validate(value string, flagName string) error {
 		if !ok {
 			return fmt.Errorf("unknown validation rule %q on --%s", r.Name, flagName)
 		}
-		if err := fn(r.Args, flagName)(value); err != nil {
+		if err := fn(r.Args, flagName, values)(value); err != nil {
 			return err
 		}
 	}
@@ -94,52 +115,37 @@ func (f *Field) Prompt(target *string, flagName string) error {
 				labels[i] = label
 				labelToValue[label] = a
 			}
-			var chosen string
-			p := &survey.Select{
-				Message: promptMsg,
-				Options: labels,
-			}
-			if err := survey.AskOne(p, &chosen, survey.WithValidator(i18nRequired())); err != nil {
+			chosen, err := Select(promptMsg, labels)
+			if err != nil {
 				return err
 			}
 			*target = labelToValue[chosen]
 		case PromptPassword:
-			p := &survey.Password{
-				Message: promptMsg,
-			}
-			if err := survey.AskOne(p, target, survey.WithValidator(i18nRequired())); err != nil {
+			input, err := Password(promptMsg)
+			if err != nil {
 				return err
 			}
+			*target = input
+		case PromptMultiInput:
+			input, err := MultiInput(promptMsg)
+			if err != nil {
+				return err
+			}
+			*target = input
 		default:
-			p := &survey.Input{
-				Message: promptMsg,
-			}
-			if err := survey.AskOne(p, target, survey.WithValidator(i18nRequired())); err != nil {
+			input, err := Input(promptMsg)
+			if err != nil {
 				return err
 			}
+			*target = input
 		}
-		if err := f.Validate(*target, flagName); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+		if err := f.Validate(*target, flagName, nil); err != nil {
+			if f.ErrorPrompt != "" {
+				fmt.Fprintln(os.Stderr, f.ErrorPrompt)
+			} else {
+				fmt.Fprintln(os.Stderr, err)
+			}
 			continue
-		}
-		return nil
-	}
-}
-
-func i18nRequired() survey.Validator {
-	return func(val interface{}) error {
-		if val == nil {
-			return fmt.Errorf("%s", i18n.T("common.error.required"))
-		}
-		switch v := val.(type) {
-		case string:
-			if v == "" {
-				return fmt.Errorf("%s", i18n.T("common.error.required"))
-			}
-		case survey.OptionAnswer:
-			if v.Value == "" {
-				return fmt.Errorf("%s", i18n.T("common.error.required"))
-			}
 		}
 		return nil
 	}

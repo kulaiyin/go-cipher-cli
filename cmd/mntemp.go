@@ -1,0 +1,299 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"go-cipher-cli/internal/i18n"
+	"go-cipher-cli/internal/param"
+	"go-cipher-cli/internal/tmpmount"
+)
+
+const (
+	mntempMaxSizeMB     = 512
+	mntempDefaultSizeMB = 24
+)
+
+// mntempParams declares the parameters of the mntemp command. The operation
+// (mount|umount) is a positional argument; the remaining parameters are flags.
+type mntempParams struct {
+	Action param.Field
+	Name   param.Field
+	Size   param.Field
+	Path   param.Field
+
+	// SizeMB is the parsed size (MB) set during validate().
+	SizeMB int
+
+	// MountPath is the resolved mount path set during afterStandardize.
+	MountPath string
+
+	// afterStandardize is called after standardize() but before
+	// promptInteractive(). Use for cross-field resolution (e.g. default path).
+	afterStandardize func(p *mntempParams) error
+
+	// afterParamsReady is called after all params are resolved (flags +
+	// interactive). Holds the actual mount/umount logic.
+	afterParamsReady func(p *mntempParams) error
+}
+
+var mtParams mntempParams
+
+var mntempCmd = &cobra.Command{
+	Use:          "mntemp <mount|umount>",
+	Short:        "placeholder",
+	Long:         "placeholder",
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			mtParams.Action.Value = strings.TrimSpace(args[0])
+		}
+		if err := mtParams.standardize(); err != nil {
+			return err
+		}
+		if mtParams.afterStandardize != nil {
+			if err := mtParams.afterStandardize(&mtParams); err != nil {
+				return err
+			}
+		}
+		if err := mtParams.promptInteractive(); err != nil {
+			return err
+		}
+		if mtParams.afterParamsReady != nil {
+			if err := mtParams.afterParamsReady(&mtParams); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+}
+
+func (p *mntempParams) standardize() error {
+	p.Action.Value = strings.ToLower(strings.TrimSpace(p.Action.Value))
+	p.Name.Value = strings.TrimSpace(p.Name.Value)
+	p.Size.Value = strings.TrimSpace(p.Size.Value)
+	if err := p.validate(); err != nil {
+		return err
+	}
+	if p.Action.Value == "mount" {
+		p.SizeMB, _ = strconv.Atoi(p.Size.Value)
+	}
+	return nil
+}
+
+func (p *mntempParams) fieldEntries() []fieldEntry {
+	return []fieldEntry{
+		{&p.Action, &p.Action.Value, "action"},
+		{&p.Name, &p.Name.Value, "name"},
+		{&p.Size, &p.Size.Value, "size"},
+		{&p.Path, &p.Path.Value, "path"},
+	}
+}
+
+func (p *mntempParams) values() param.FieldValues {
+	return param.FieldValues{
+		"action": p.Action.Value,
+		"name":   p.Name.Value,
+		"size":   p.Size.Value,
+		"path":   p.Path.Value,
+	}
+}
+
+func (p *mntempParams) validate() error {
+	return validateFields(p.fieldEntries(), p.values())
+}
+
+func (p *mntempParams) promptInteractive() error {
+	if !param.IsStdinTerminal() {
+		return nil
+	}
+	for _, e := range p.fieldEntries() {
+		vals := p.values()
+		if e.field.Visible != nil && !e.field.Visible(vals) {
+			continue
+		}
+		if !e.field.Interactive {
+			continue
+		}
+		if *e.target != "" {
+			continue
+		}
+		if err := e.field.Prompt(e.target, e.flagName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// resolveMntempPath returns the effective mount path: --path if given (with ~
+// expanded), otherwise the platform default /tmp/mntemp/<name>/.
+func resolveMntempPath(name, customPath string) string {
+	if customPath != "" {
+		return expandHomeDir(customPath)
+	}
+	return filepath.Join(os.TempDir(), "mntemp", name)
+}
+
+// expandHomeDir expands a leading ~ to the user's home directory. A bare "~"
+// is expanded too; other paths are returned unchanged.
+func expandHomeDir(path string) string {
+	if path == "~" {
+		if home, err := os.UserHomeDir(); err == nil {
+			return home
+		}
+	}
+	if strings.HasPrefix(path, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, path[2:])
+		}
+	}
+	return path
+}
+
+func mntempMount(p *mntempParams) error {
+	fmt.Println(i18n.TWithData("mntemp.mount.hint.start", map[string]interface{}{
+		"Path": p.MountPath, "Name": p.Name.Value,
+	}))
+
+	if _, err := os.Stat(p.MountPath); err == nil {
+		return fmt.Errorf("%s", i18n.TWithData("mntemp.mount.error.path_exists", map[string]interface{}{
+			"Path": p.MountPath,
+		}))
+	}
+
+	res, err := tmpmount.Mount(p.MountPath, p.SizeMB, p.Name.Value)
+	if err != nil {
+		return err
+	}
+
+	// The native mount failed. When the cause is missing privileges and we're
+	// on a terminal, offer a sudo retry before falling back to a directory.
+	if res.Backend == tmpmount.BackendDir && tmpmount.IsPrivilegeError(res.FallbackErr) && param.IsStdinTerminal() {
+		confirmed, _ := param.Confirm(i18n.T("mntemp.mount.prompt.sudo"))
+		if confirmed {
+			sudoRes, sudoErr := tmpmount.MountWithSudo(p.MountPath, p.SizeMB, p.Name.Value)
+			if sudoErr == nil {
+				res = sudoRes
+			} else {
+				fmt.Fprintln(os.Stderr, i18n.TWithData("mntemp.mount.error.sudo_failed", map[string]interface{}{
+					"Err": sudoErr,
+				}))
+			}
+		}
+	}
+
+	printMntempMountResult(res, p.Name.Value)
+	return nil
+}
+
+func printMntempMountResult(res *tmpmount.Result, name string) {
+	switch res.Backend {
+	case tmpmount.BackendTmpfs:
+		fmt.Println(i18n.TWithData("mntemp.mount.success.tmpfs", map[string]interface{}{
+			"Path": res.Path, "Size": res.SizeMB,
+		}))
+	case tmpmount.BackendRamDisk:
+		fmt.Println(i18n.TWithData("mntemp.mount.success.ramdisk", map[string]interface{}{
+			"Path": res.Path, "Size": res.SizeMB,
+		}))
+	default:
+		reason := "unsupported"
+		if res.FallbackErr != nil {
+			reason = res.FallbackErr.Error()
+		}
+		fmt.Fprintln(os.Stderr, i18n.TWithData("mntemp.mount.success.dir", map[string]interface{}{
+			"Path": res.Path, "Size": res.SizeMB, "Err": reason,
+		}))
+		fmt.Println(i18n.TWithData("mntemp.mount.hint.dir", map[string]interface{}{
+			"Path": res.Path, "Name": name,
+		}))
+	}
+}
+
+func mntempUmount(p *mntempParams) error {
+	if _, err := os.Stat(p.MountPath); os.IsNotExist(err) {
+		return fmt.Errorf("%s", i18n.TWithData("mntemp.umount.error.not_found", map[string]interface{}{
+			"Path": p.MountPath,
+		}))
+	}
+	if err := tmpmount.Umount(p.MountPath); err != nil {
+		// A mount created with sudo needs elevated privileges to detach.
+		// Offer a sudo retry on a terminal before giving up.
+		if tmpmount.IsPrivilegeError(err) && param.IsStdinTerminal() {
+			confirmed, _ := param.Confirm(i18n.T("mntemp.umount.prompt.sudo"))
+			if confirmed {
+				if sudoErr := tmpmount.UmountWithSudo(p.MountPath); sudoErr == nil {
+					fmt.Println(i18n.TWithData("mntemp.umount.success", map[string]interface{}{
+						"Path": p.MountPath,
+					}))
+					return nil
+				} else {
+					fmt.Fprintln(os.Stderr, i18n.TWithData("mntemp.umount.error.sudo_failed", map[string]interface{}{
+						"Err": sudoErr,
+					}))
+				}
+			}
+		}
+		return fmt.Errorf("%s: %w", i18n.TWithData("mntemp.umount.error.failed", map[string]interface{}{
+			"Path": p.MountPath,
+		}), err)
+	}
+	fmt.Println(i18n.TWithData("mntemp.umount.success", map[string]interface{}{
+		"Path": p.MountPath,
+	}))
+	return nil
+}
+
+func init() {
+	i18n.MustInit("")
+	refreshCmdDescs = append(refreshCmdDescs, func() {
+		mntempCmd.Short = i18n.T("mntemp.short")
+		mntempCmd.Long = i18n.T("mntemp.long")
+	})
+
+	// Field declarations: type metadata, requiredness, and validation rules.
+	// The operation is a positional argument whose value must be mount|umount.
+	mtParams.Action.Allowed = []string{"mount", "umount"}
+	mtParams.Action.Required = true
+	mtParams.Action.Interactive = false
+	// name is required for mount, and for umount only when no path was given.
+	mtParams.Name.Required = true
+	mtParams.Name.Interactive = false
+	mtParams.Name.Visible = func(v param.FieldValues) bool {
+		return v["action"] == "mount" || (v["action"] == "umount" && v["path"] == "")
+	}
+	// size must be an integer in [1, mntempMaxSizeMB]; only meaningful for mount.
+	mtParams.Size.Required = true
+	mtParams.Size.Interactive = false
+	mtParams.Size.Rules = []param.Rule{
+		{"int_range", []string{"1", strconv.Itoa(mntempMaxSizeMB)}},
+	}
+	mtParams.Size.Visible = func(v param.FieldValues) bool {
+		return v["action"] == "mount"
+	}
+	mtParams.Path.Interactive = false
+
+	// Hook: resolve the effective mount path (custom or default).
+	mtParams.afterStandardize = func(p *mntempParams) error {
+		p.MountPath = resolveMntempPath(p.Name.Value, p.Path.Value)
+		return nil
+	}
+	// Hook: dispatch to mount or umount.
+	mtParams.afterParamsReady = func(p *mntempParams) error {
+		if p.Action.Value == "umount" {
+			return mntempUmount(p)
+		}
+		return mntempMount(p)
+	}
+
+	mntempCmd.Flags().StringVar(&mtParams.Name.Value, "name", "", i18n.T("mntemp.flag.name"))
+	mntempCmd.Flags().StringVar(&mtParams.Size.Value, "size", strconv.Itoa(mntempDefaultSizeMB), i18n.T("mntemp.flag.size"))
+	mntempCmd.Flags().StringVar(&mtParams.Path.Value, "path", "", i18n.T("mntemp.flag.path"))
+
+	rootCmd.AddCommand(mntempCmd)
+}

@@ -898,3 +898,104 @@ other = "高级强度"
 [common.error.required]
 description = "Validation error for required field"
 other = "This field is required"
+
+# ==========================================
+# cmd/mntemp.go
+# ==========================================
+
+[mntemp.short]
+description = "Short description for mntemp command"
+other = "Mount an in-memory temporary filesystem"
+
+[mntemp.long]
+description = "Long description for mntemp command"
+other = "Mount a RAM-backed temporary filesystem (tmpfs) at the specified path; falls back to a plain directory on unsupported platforms."
+
+[mntemp.flag.name]
+description = "Flag --name"
+other = "Mount name"
+
+[mntemp.flag.size]
+description = "Flag --size"
+other = "Size in MB (1-512)"
+
+[mntemp.flag.path]
+description = "Flag --path"
+other = "Mount path (default /tmp/mntemp/<name>/)"
+
+[param.error.required]
+description = "Missing required argument"
+other = "Missing required flag --{{.Flag}}"
+
+[param.error.allowed]
+description = "Value not in the allowed set"
+other = "Invalid --{{.Flag}}: {{.Value}}, must be one of: {{.Allowed}}"
+
+[param.error.min_length]
+description = "Value shorter than the minimum length"
+other = "--{{.Flag}} must be at least {{.Min}} characters"
+
+[param.error.has_letter_digit_special]
+description = "Value missing a letter, digit, or special character"
+other = "--{{.Flag}} must contain at least one letter, one digit, and one special character"
+
+[param.error.int_range]
+description = "Value not an integer within the range"
+other = "Invalid --{{.Flag}}: must be an integer between {{.Min}} and {{.Max}}"
+
+[mntemp.mount.error.path_exists]
+description = "Mount path already exists"
+other = "Mount path already exists: {{.Path}}"
+
+[mntemp.mount.success.tmpfs]
+description = "tmpfs mounted successfully"
+other = "Mounted tmpfs ({{.Size}}MB): {{.Path}}"
+
+[mntemp.mount.success.ramdisk]
+description = "macOS RAM disk mounted successfully"
+other = "Created RAM disk ({{.Size}}MB): {{.Path}}"
+
+[mntemp.mount.success.dir]
+description = "Fell back to a plain directory"
+other = "Warning: could not mount an in-memory filesystem ({{.Err}}), created a plain directory instead: {{.Path}}"
+
+[mntemp.mount.hint.start]
+description = "Usage hint shown before mounting"
+other = "This command mounts a temporary in-memory filesystem at {{.Path}}. Place sensitive files produced by key-derive, data-cipher, etc. under this path; when done, run mntemp umount --name {{.Name}} to unmount in one go — data never touches the disk, safer than a plain filesystem."
+
+[mntemp.mount.hint.dir]
+description = "Usage hint after falling back to a plain directory"
+other = "This is a plain directory (in-memory mount unsupported). You can still place files under this path ({{.Path}}); when done, run mntemp umount --name {{.Name}} to clean up in one go."
+
+[mntemp.mount.prompt.sudo]
+description = "Ask to retry the mount with sudo"
+other = "tmpfs mounting requires root privileges. Retry with sudo?"
+
+[mntemp.mount.error.sudo_failed]
+description = "sudo mount failed"
+other = "sudo mount failed: {{.Err}}"
+
+[mntemp.umount.error.not_found]
+description = "Unmount path does not exist"
+other = "Path does not exist: {{.Path}}"
+
+[mntemp.umount.error.failed]
+description = "Unmount failed"
+other = "Unmount failed"
+
+[mntemp.umount.prompt.sudo]
+description = "Ask to retry the unmount with sudo"
+other = "Unmounting requires root privileges. Retry with sudo?"
+
+[mntemp.umount.error.sudo_failed]
+description = "sudo unmount failed"
+other = "sudo unmount failed: {{.Err}}"
+
+[mntemp.umount.success]
+description = "Unmounted successfully"
+other = "Unmounted: {{.Path}}"
+
+# ==========================================
+[standard.error.password]
+description = "Prompt shown when the password fails validation rules"
+other = "Password does not meet the requirements: at least 8 characters, containing a letter, a digit, and a special character."
