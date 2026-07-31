@@ -15,12 +15,6 @@ type standardParams struct {
 	Password param.Field
 	Suffix   param.Field
 	Output   param.Field
-
-	// afterStandardize is called after standardize() (normalize + validate + defaults)
-	// but before promptInteractive(). Use for cross-field default inference,
-	// text cleanup, or mode-dependent preprocessing that Field declarations
-	// cannot express.
-	afterStandardize func(p *standardParams) error
 }
 
 var standardCmd = &cobra.Command{
@@ -29,38 +23,11 @@ var standardCmd = &cobra.Command{
 	Long:         "placeholder",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := stdParams.standardize(); err != nil {
-			return err
-		}
-		// Hook: mode-dependent preprocessing that Field declarations can't express
-		// (cross-field defaults, text cleanup, mode-dependent visibility overrides).
-		if stdParams.afterStandardize != nil {
-			if err := stdParams.afterStandardize(&stdParams); err != nil {
-				return err
-			}
-		}
-		if err := stdParams.promptInteractive(); err != nil {
-			return err
-		}
-		// This is a placeholder command: business logic lives in a run<Cmd>
-		// function (see key_derive.go / mntemp.go for the reference pattern).
-		return nil
+		// This is a placeholder command: the shared lifecycle still validates
+		// and prompts, and business logic would live in a run<Cmd> function
+		// (see key_derive.go / mntemp.go for the reference pattern).
+		return stdSet.run(&stdParams)
 	},
-}
-
-func (p *standardParams) standardize() error {
-	p.Mode.Type = strings.ToLower(strings.TrimSpace(p.Mode.Type))
-	if err := p.validate(); err != nil {
-		return err
-	}
-	p.defaultOutput()
-	return nil
-}
-
-type fieldEntry struct {
-	field    *param.Field
-	target   *string
-	flagName string
 }
 
 func (p *standardParams) fieldEntries() []fieldEntry {
@@ -75,62 +42,20 @@ func (p *standardParams) fieldEntries() []fieldEntry {
 
 // values returns a snapshot of current parameter values, keyed by flag name.
 // Used by Field.Visible predicates to decide per-field visibility.
-func (p *standardParams) values() param.FieldValues {
-	return param.FieldValues{
-		"mode":     p.Mode.Value,
-		"input":    p.Input.Value,
-		"password": p.Password.Value,
-		"suffix":   p.Suffix.Value,
-		"output":   p.Output.Value,
-	}
-}
-
-// validateFields runs each entry's Field.Validate, honoring Visible predicates,
-// against the given values snapshot. Shared by all declarative commands.
-func validateFields(entries []fieldEntry, vals param.FieldValues) error {
-	for _, e := range entries {
-		if e.field.Visible != nil && !e.field.Visible(vals) {
-			continue
+// stdSet drives the shared declarative lifecycle for the placeholder standard
+// command. It exercises the same flow as real commands; the command body would
+// be a run<Cmd> function (see key_derive.go / mntemp.go).
+var stdSet = paramSet[standardParams]{
+	fields: func(p *standardParams) []fieldEntry { return p.fieldEntries() },
+	normalize: func(p *standardParams) {
+		p.Mode.Type = strings.ToLower(strings.TrimSpace(p.Mode.Type))
+	},
+	afterStandardize: func(p *standardParams) error {
+		if p.Output.Value == "" {
+			p.Output.Value = "output.bin"
 		}
-		if err := e.field.Validate(*e.target, e.flagName, vals); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (p *standardParams) validate() error {
-	return validateFields(p.fieldEntries(), p.values())
-}
-
-func (p *standardParams) promptInteractive() error {
-	if !param.IsStdinTerminal() {
 		return nil
-	}
-	for _, e := range p.fieldEntries() {
-		// Rebuild values each iteration: a previous prompt may have
-		// changed a value that affects visibility of later fields.
-		vals := p.values()
-		if e.field.Visible != nil && !e.field.Visible(vals) {
-			continue
-		}
-		if !e.field.Interactive {
-			continue
-		}
-		if *e.target != "" {
-			continue
-		}
-		if err := e.field.Prompt(e.target, e.flagName); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (p *standardParams) defaultOutput() {
-	if p.Output.Value == "" {
-		p.Output.Value = "output.bin"
-	}
+	},
 }
 
 func init() {

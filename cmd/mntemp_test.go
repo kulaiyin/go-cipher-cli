@@ -95,7 +95,7 @@ func TestMntempValidate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.op+"_"+tt.name+"_"+tt.size+tt.path, func(t *testing.T) {
 			p := newMntempParams(tt.op, tt.name, tt.size, tt.path)
-			err := p.validate()
+			err := validateFields(p.fieldEntries(), valuesFrom(p.fieldEntries()))
 			if tt.want == "" {
 				if err != nil {
 					t.Fatalf("validate() error = %v, want nil", err)
@@ -134,7 +134,7 @@ func TestMntempValidate(t *testing.T) {
 
 func TestMntempSizeParsed(t *testing.T) {
 	p := newMntempParams("mount", "build-env", "256", "")
-	if err := p.standardize(); err != nil {
+	if err := mtSet.standardize(&p); err != nil {
 		t.Fatalf("standardize() error = %v", err)
 	}
 	if p.SizeMB != 256 {

@@ -32,10 +32,6 @@ type mntempParams struct {
 
 	// MountPath is the resolved mount path set during afterStandardize.
 	MountPath string
-
-	// afterStandardize is called after standardize() but before
-	// promptInteractive(). Use for cross-field resolution (e.g. default path).
-	afterStandardize func(p *mntempParams) error
 }
 
 var mtParams mntempParams
@@ -49,35 +45,13 @@ var mntempCmd = &cobra.Command{
 		if len(args) > 0 {
 			mtParams.Action.Value = strings.TrimSpace(args[0])
 		}
-		if err := mtParams.standardize(); err != nil {
-			return err
-		}
-		if mtParams.afterStandardize != nil {
-			if err := mtParams.afterStandardize(&mtParams); err != nil {
-				return err
-			}
-		}
-		if err := mtParams.promptInteractive(); err != nil {
-			return err
-		}
-		// All params resolved (flags + interactive): run the command.
-		return runMntemp(&mtParams)
+		// Drive the shared declarative lifecycle; runMntemp executes the body.
+		return mtSet.run(&mtParams)
 	},
 }
 
-func (p *mntempParams) standardize() error {
-	p.Action.Value = strings.ToLower(strings.TrimSpace(p.Action.Value))
-	p.Name.Value = strings.TrimSpace(p.Name.Value)
-	p.Size.Value = strings.TrimSpace(p.Size.Value)
-	if err := p.validate(); err != nil {
-		return err
-	}
-	if p.Action.Value == "mount" {
-		p.SizeMB, _ = strconv.Atoi(p.Size.Value)
-	}
-	return nil
-}
-
+// fieldEntries binds each parameter to its flag name and value target, in
+// validation/prompt order.
 func (p *mntempParams) fieldEntries() []fieldEntry {
 	return []fieldEntry{
 		{&p.Action, &p.Action.Value, "action"},
@@ -85,41 +59,6 @@ func (p *mntempParams) fieldEntries() []fieldEntry {
 		{&p.Size, &p.Size.Value, "size"},
 		{&p.Path, &p.Path.Value, "path"},
 	}
-}
-
-func (p *mntempParams) values() param.FieldValues {
-	return param.FieldValues{
-		"action": p.Action.Value,
-		"name":   p.Name.Value,
-		"size":   p.Size.Value,
-		"path":   p.Path.Value,
-	}
-}
-
-func (p *mntempParams) validate() error {
-	return validateFields(p.fieldEntries(), p.values())
-}
-
-func (p *mntempParams) promptInteractive() error {
-	if !param.IsStdinTerminal() {
-		return nil
-	}
-	for _, e := range p.fieldEntries() {
-		vals := p.values()
-		if e.field.Visible != nil && !e.field.Visible(vals) {
-			continue
-		}
-		if !e.field.Interactive {
-			continue
-		}
-		if *e.target != "" {
-			continue
-		}
-		if err := e.field.Prompt(e.target, e.flagName); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // resolveMntempPath returns the effective mount path: --path if given (with ~
@@ -250,6 +189,26 @@ func runMntemp(p *mntempParams) error {
 	return mntempMount(p)
 }
 
+// mtSet drives the shared declarative lifecycle for the mntemp command:
+// normalize + validate, cross-field resolution (size parse + mount path), and
+// the mount/umount dispatch.
+var mtSet = paramSet[mntempParams]{
+	fields: func(p *mntempParams) []fieldEntry { return p.fieldEntries() },
+	normalize: func(p *mntempParams) {
+		p.Action.Value = strings.ToLower(strings.TrimSpace(p.Action.Value))
+		p.Name.Value = strings.TrimSpace(p.Name.Value)
+		p.Size.Value = strings.TrimSpace(p.Size.Value)
+	},
+	afterStandardize: func(p *mntempParams) error {
+		if p.Action.Value == "mount" {
+			p.SizeMB, _ = strconv.Atoi(p.Size.Value)
+		}
+		p.MountPath = resolveMntempPath(p.Name.Value, p.Path.Value)
+		return nil
+	},
+	execute: runMntemp,
+}
+
 func init() {
 	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
@@ -280,10 +239,6 @@ func init() {
 	mtParams.Path.Interactive = false
 
 	// Hook: resolve the effective mount path (custom or default).
-	mtParams.afterStandardize = func(p *mntempParams) error {
-		p.MountPath = resolveMntempPath(p.Name.Value, p.Path.Value)
-		return nil
-	}
 
 	mntempCmd.Flags().StringVar(&mtParams.Name.Value, "name", "", i18n.T("mntemp.flag.name"))
 	mntempCmd.Flags().StringVar(&mtParams.Size.Value, "size", strconv.Itoa(mntempDefaultSizeMB), i18n.T("mntemp.flag.size"))

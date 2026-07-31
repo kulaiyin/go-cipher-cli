@@ -32,12 +32,6 @@ type keyDeriveParams struct {
 	Config   param.Field
 	Output   param.Field
 	Salt     param.Field
-
-	// afterStandardize is called after standardize() but before
-	// promptInteractive(). Used for non-interactive defaults that mirror the
-	// interactive prompt defaults (mode/strength), which cannot be expressed
-	// as Field declarations because they depend on the resolved mode.
-	afterStandardize func(p *keyDeriveParams) error
 }
 
 var kdParams keyDeriveParams
@@ -48,28 +42,9 @@ var keyDeriveCmd = &cobra.Command{
 	Long:         "placeholder",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := kdParams.standardize(); err != nil {
-			return err
-		}
-		if kdParams.afterStandardize != nil {
-			if err := kdParams.afterStandardize(&kdParams); err != nil {
-				return err
-			}
-		}
-		if err := kdParams.promptInteractive(); err != nil {
-			return err
-		}
-		// All params resolved (flags + interactive): run the command.
-		return runKeyDerive(&kdParams)
+		// Drive the shared declarative lifecycle; runKeyDerive executes the body.
+		return kdSet.run(&kdParams)
 	},
-}
-
-func (p *keyDeriveParams) standardize() error {
-	p.Mode.Value = strings.ToLower(strings.TrimSpace(p.Mode.Value))
-	if err := p.validate(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (p *keyDeriveParams) fieldEntries() []fieldEntry {
@@ -85,52 +60,35 @@ func (p *keyDeriveParams) fieldEntries() []fieldEntry {
 	}
 }
 
-func (p *keyDeriveParams) values() param.FieldValues {
-	return param.FieldValues{
-		"mode":     p.Mode.Value,
-		"input":    p.Input.Value,
-		"password": p.Password.Value,
-		"hint":     p.Hint.Value,
-		"strength": p.Strength.Value,
-		"config":   p.Config.Value,
-		"output":   p.Output.Value,
-		"salt":     p.Salt.Value,
-	}
-}
-
-func (p *keyDeriveParams) validate() error {
-	return validateFields(p.fieldEntries(), p.values())
-}
-
-func (p *keyDeriveParams) promptInteractive() error {
-	if !param.IsStdinTerminal() {
+// kdSet drives the shared declarative lifecycle for the key-derive command:
+// normalize + validate, non-interactive defaults, and the derive/verify body.
+var kdSet = paramSet[keyDeriveParams]{
+	fields: func(p *keyDeriveParams) []fieldEntry { return p.fieldEntries() },
+	normalize: func(p *keyDeriveParams) {
+		p.Mode.Value = strings.ToLower(strings.TrimSpace(p.Mode.Value))
+	},
+	afterStandardize: func(p *keyDeriveParams) error {
+		// Non-interactive defaults mirror the interactive prompt defaults for
+		// mode and strength. output is deliberately NOT defaulted in batch
+		// mode: a non-interactive generate prints the recovery config to
+		// stdout unless --output is given, while the interactive prompt offers
+		// "recovery-config.txt" via PromptDefault. restore never defaults
+		// strength/output here so the recovery config can supply them.
+		if !param.IsStdinTerminal() {
+			p.Mode.ApplyPromptDefaultNonInteractive()
+			if p.Mode.Value == "generate" {
+				p.Strength.ApplyPromptDefaultNonInteractive()
+			}
+		}
 		return nil
-	}
-	for _, e := range p.fieldEntries() {
-		// Rebuild values each iteration: a previous prompt may have changed a
-		// value that affects visibility of later fields (e.g. mode).
-		vals := p.values()
-		if e.field.Visible != nil && !e.field.Visible(vals) {
-			continue
-		}
-		if !e.field.Interactive {
-			continue
-		}
-		if *e.target != "" {
-			continue
-		}
-		if err := e.field.Prompt(e.target, e.flagName); err != nil {
-			return err
-		}
-	}
-	return nil
+	},
+	execute: runKeyDerive,
 }
 
 // runKeyDerive executes the command after all params are resolved (flags +
 // interactive): it cleans input/password like the frontend, applies the hint
 // default, and dispatches to generate or restore.
 func runKeyDerive(p *keyDeriveParams) error {
-	// Clean input/password exactly like the frontend (strip whitespace + NFC).
 	input := cleanKeyDeriveText(p.Input.Value)
 	password := cleanKeyDeriveText(p.Password.Value)
 
@@ -235,15 +193,6 @@ func init() {
 	// interactive prompt offers "recovery-config.txt" via PromptDefault.
 	// restore never defaults strength/output here so the recovery config
 	// can supply them (see runKeyDeriveRestore).
-	kdParams.afterStandardize = func(p *keyDeriveParams) error {
-		if !param.IsStdinTerminal() {
-			p.Mode.ApplyPromptDefaultNonInteractive()
-			if p.Mode.Value == "generate" {
-				p.Strength.ApplyPromptDefaultNonInteractive()
-			}
-		}
-		return nil
-	}
 
 	keyDeriveCmd.Flags().StringVar(&kdParams.Mode.Value, "mode", "", i18n.T("key_derive.flag.mode"))
 	keyDeriveCmd.Flags().StringVarP(&kdParams.Input.Value, "input", "i", "", i18n.T("key_derive.flag.input"))
