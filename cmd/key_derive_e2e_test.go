@@ -205,8 +205,8 @@ func TestKeyDeriveCmd_Restore_NoMatch(t *testing.T) {
 
 	// restore with WRONG input -> must report failure AND exit non-zero, so
 	// scripts and CI can reliably detect a mismatch (not just rely on the
-	// output text). The full re-derived output is still printed to stdout;
-	// the failure message goes to stderr with a non-zero exit code.
+	// output text). The failure message goes to stderr with a non-zero exit
+	// code. No re-derived details (UUID/keys/config) may leak to stdout.
 	out, code := runCLI(t, "key-derive", "--mode", "restore",
 		"-i", "WrongInputTextHere1234567890", "-p", kdPassword,
 		"--config", cfgPath)
@@ -215,6 +215,11 @@ func TestKeyDeriveCmd_Restore_NoMatch(t *testing.T) {
 	}
 	if !strings.Contains(out, "restore failed") && !strings.Contains(out, "failed") {
 		t.Errorf("expected restore failed message, output:\n%s", out)
+	}
+	// The error message itself mentions "UUID" but never as a "UUID: " detail
+	// line; require that no derived-key details were printed.
+	if strings.Contains(out, "UUID: ") {
+		t.Errorf("failed restore must not print derived key details, output:\n%s", out)
 	}
 }
 

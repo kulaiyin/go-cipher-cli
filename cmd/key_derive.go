@@ -296,15 +296,23 @@ func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, stren
 		return fmt.Errorf("%s: %s", i18n.T("key_derive.error.derive_failed"), result.Error)
 	}
 
-	// Restore verification: any derived key matching a stored UUID = success.
-	restoreOK := true
+	// Restore verification runs BEFORE any output: a failed restore must not
+	// leak the re-derived keys/details to stdout and must not write the config
+	// file. Only a successful restore (or generate) prints details.
 	if stored != nil && len(stored.UUIDs) > 0 {
-		restoreOK = false
+		restoreOK := false
 		for _, k := range result.Keys {
 			if kdf.ValidateKeyRecovery(k, stored.UUIDs) {
 				restoreOK = true
 				break
 			}
+		}
+		if !restoreOK {
+			// The message is printed to stderr by Execute(); we must NOT also
+			// fmt.Println it (that would duplicate the message on stdout).
+			// SilenceUsage on the command keeps cobra from dumping the help
+			// text after a verification failure (it's not an argument error).
+			return fmt.Errorf("%s", i18n.T("key_derive.output.restore_failed"))
 		}
 	}
 
@@ -351,19 +359,7 @@ func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, stren
 	}
 
 	if stored != nil {
-		if restoreOK {
-			fmt.Println(i18n.T("key_derive.output.restore_success"))
-		} else {
-			// Restore verification failed: the re-derived keys do not match the
-			// stored UUIDs. This is a real failure (wrong input/password/strength),
-			// so return an error so cobra exits with a non-zero status — letting
-			// scripts and CI reliably detect it. The message is printed to stderr
-			// by Execute(); we must NOT also fmt.Println it (that would duplicate
-			// the message on stdout). SilenceUsage on the command keeps cobra from
-			// dumping the help text after a verification failure (it's not an
-			// argument error).
-			return fmt.Errorf("%s", i18n.T("key_derive.output.restore_failed"))
-		}
+		fmt.Println(i18n.T("key_derive.output.restore_success"))
 	}
 	return nil
 }
