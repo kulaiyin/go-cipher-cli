@@ -995,6 +995,135 @@ description = "卸载成功"
 other = "已卸载：{{.Path}}"
 
 # ==========================================
+# cmd/tui_demo.go
+# ==========================================
+
+[tui_demo.short]
+description = "tui-demo 命令的简短描述"
+other = "交互式多步表单演示（测试用）"
+
+[tui_demo.long]
+description = "tui-demo 命令的详细描述"
+other = """运行多步交互表单组件：每步从问题池中翻页选择一个问题并作答，
+最后展示结果汇总。该命令用于验证组件，正式功能将集成到其他命令中。"""
+
+[tui_demo.flag.config]
+description = "问题池配置文件路径"
+other = "问题池配置文件路径"
+
+[tui_demo.error.load_failed]
+description = "读取问题池配置失败时的错误"
+other = "读取问题池配置失败：{{.Err}}"
+
+[tui_demo.error.invalid_config]
+description = "问题池配置格式非法时的错误"
+other = "问题池配置无效：{{.Err}}"
+
+[tui_demo.error.empty_config]
+description = "问题池为空时的错误"
+other = "问题池配置为空"
+
+[tui_demo.error.step]
+description = "标识哪个步骤为空"
+other = "步骤 {{.Step}} 为空"
+
+[tui_demo.error.question]
+description = "标识哪个问题缺少 ID"
+other = "步骤 {{.Step}} 第 {{.Index}} 个问题缺少 ID"
+
+[tui_demo.error.run_failed]
+description = "TUI 程序运行失败时的错误"
+other = "TUI 运行失败：{{.Err}}"
+
+[tui_demo.output.result_line]
+description = "表单退出后打印的每步结果行"
+other = "步骤 {{.Step}} | {{.ID}} | {{.Content}} | {{.Answer}}"
+
+# ==========================================
+# internal/form/form.go
+# ==========================================
+
+[form.title]
+description = "选择阶段的标题"
+other = "请从每个步骤中选择一个问题并回答"
+
+[form.step_indicator]
+description = "当前步骤指示器"
+other = "步骤 {{.Current}}/{{.Total}}"
+
+[form.page_indicator]
+description = "当前步骤内的页码指示器"
+other = "(第 {{.Current}}/{{.Total}} 页)"
+
+[form.footer_select]
+description = "选择阶段的按键帮助栏"
+other = "↑/↓ 选择  ←/→ 翻页  Enter 确认  Esc 返回上一步  Ctrl+C 退出"
+
+[form.selected]
+description = "输入前展示所选问题"
+other = "您选择了：{{.ID}}（{{.Content}}）"
+
+[form.input_prompt]
+description = "文本输入框前的提示"
+other = "请输入："
+
+[form.input_footer]
+description = "输入阶段的按键帮助栏"
+other = "Enter 提交  Esc 取消输入"
+
+[form.summary_title]
+description = "结果汇总的标题"
+other = "结果汇总"
+
+[form.summary_col_step]
+description = "步骤号列表头"
+other = "步骤"
+
+[form.summary_col_id]
+description = "问题 ID 列表头"
+other = "问题 ID"
+
+[form.summary_col_content]
+description = "问题文本列表头"
+other = "问题"
+
+[form.summary_col_answer]
+description = "用户答案列表头"
+other = "输入内容"
+
+[form.summary_footer]
+description = "汇总屏幕的底部提示"
+other = "按 q 退出"
+
+[standard.short]
+description = "standard 命令的简短描述"
+other = "标准命令模板"
+
+[standard.long]
+description = "standard 命令的详细描述"
+other = """通用命令框架：标准化参数解析（mode/input/password/suffix/output），
+参数缺失时通过交互提示补齐。"""
+
+[standard.flag.mode]
+description = "mode 参数的 flag 帮助"
+other = "运行模式：encrypt / decrypt / derive"
+
+[standard.flag.input]
+description = "input 参数的 flag 帮助"
+other = "输入内容（文本或文件路径）"
+
+[standard.flag.password]
+description = "password 参数的 flag 帮助"
+other = "密码"
+
+[standard.flag.suffix]
+description = "suffix 参数的 flag 帮助"
+other = "域分离用的盐后缀"
+
+[standard.flag.output]
+description = "output 参数的 flag 帮助"
+other = "输出路径"
+
 [standard.error.password]
 description = "密码不满足校验规则时的提示"
 other = "密码不满足要求：至少 8 位，且包含字母、数字和特殊字符。"

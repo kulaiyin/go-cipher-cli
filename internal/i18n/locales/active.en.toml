@@ -996,6 +996,135 @@ description = "Unmounted successfully"
 other = "Unmounted: {{.Path}}"
 
 # ==========================================
+# cmd/tui_demo.go
+# ==========================================
+
+[tui_demo.short]
+description = "Short description for tui-demo command"
+other = "Interactive multi-step form demo (test harness)"
+
+[tui_demo.long]
+description = "Long description for tui-demo command"
+other = """Runs the multi-step interactive form component against the question
+pool: pick one question per step, type an answer, and review the summary."""
+
+[tui_demo.flag.config]
+description = "Path to the question-pool config file"
+other = "Path to the question-pool config file"
+
+[tui_demo.error.load_failed]
+description = "Error when the question-pool config cannot be read"
+other = "Failed to read question pool: {{.Err}}"
+
+[tui_demo.error.invalid_config]
+description = "Error when the question-pool config is malformed"
+other = "Invalid question pool config: {{.Err}}"
+
+[tui_demo.error.empty_config]
+description = "Error when the question pool has no steps"
+other = "Question pool config is empty"
+
+[tui_demo.error.step]
+description = "Marks which step is empty"
+other = "step {{.Step}} is empty"
+
+[tui_demo.error.question]
+description = "Marks which question is missing an ID"
+other = "question {{.Index}} in step {{.Step}} has no ID"
+
+[tui_demo.error.run_failed]
+description = "Error when the TUI program fails to run"
+other = "TUI run failed: {{.Err}}"
+
+[tui_demo.output.result_line]
+description = "One result line printed after the form exits"
+other = "Step {{.Step}} | {{.ID}} | {{.Content}} | {{.Answer}}"
+
+# ==========================================
+# internal/form/form.go
+# ==========================================
+
+[form.title]
+description = "Title of the select stage"
+other = "Answer one question from each step"
+
+[form.step_indicator]
+description = "Current step indicator"
+other = "Step {{.Current}}/{{.Total}}"
+
+[form.page_indicator]
+description = "Page indicator within the current step"
+other = "(Page {{.Current}}/{{.Total}})"
+
+[form.footer_select]
+description = "Key-binding help footer of the select stage"
+other = "↑/↓ Select  ←/→ Page  Enter Confirm  Esc Back  Ctrl+C Quit"
+
+[form.selected]
+description = "Shows the chosen question before input"
+other = "You selected: {{.ID}} ({{.Content}})"
+
+[form.input_prompt]
+description = "Prompt shown before the text input"
+other = "Please enter:"
+
+[form.input_footer]
+description = "Key-binding help footer of the input stage"
+other = "Enter Submit  Esc Cancel"
+
+[form.summary_title]
+description = "Title of the result summary"
+other = "Result Summary"
+
+[form.summary_col_step]
+description = "Column header for the step number"
+other = "Step"
+
+[form.summary_col_id]
+description = "Column header for the question ID"
+other = "ID"
+
+[form.summary_col_content]
+description = "Column header for the question text"
+other = "Question"
+
+[form.summary_col_answer]
+description = "Column header for the user answer"
+other = "Answer"
+
+[form.summary_footer]
+description = "Footer of the summary screen"
+other = "Press q to quit"
+
+[standard.short]
+description = "Short description for standard command"
+other = "Standard command template"
+
+[standard.long]
+description = "Long description for standard command"
+other = """Generic command scaffold: normalized parameter parsing with
+interactive prompts for mode, input, password, suffix and output."""
+
+[standard.flag.mode]
+description = "Flag usage for the mode parameter"
+other = "Mode: encrypt / decrypt / derive"
+
+[standard.flag.input]
+description = "Flag usage for the input parameter"
+other = "Input value (text or file path)"
+
+[standard.flag.password]
+description = "Flag usage for the password parameter"
+other = "Password"
+
+[standard.flag.suffix]
+description = "Flag usage for the suffix parameter"
+other = "Salt suffix for domain separation"
+
+[standard.flag.output]
+description = "Flag usage for the output parameter"
+other = "Output path"
+
 [standard.error.password]
 description = "Prompt shown when the password fails validation rules"
 other = "Password does not meet the requirements: at least 8 characters, containing a letter, a digit, and a special character."
