@@ -868,6 +868,76 @@ other = "基础强度"
 description = "Legacy Chinese label for advanced strength in recovery config parser (backward compat with frontend format)"
 other = "高级强度"
 
+[key_derive.flag.use_config_file]
+description = "Description for --use-config-file flag"
+other = "collect input/password/hint/strength via an annotated YAML config file edited in $EDITOR (generate only; needs an interactive terminal)"
+
+[key_derive.flag.config_file]
+description = "Description for --config-file flag"
+other = "path of the YAML config file for --use-config-file (optional: edit an existing file in place; missing files get a generated template; default is a fresh file under <tmp>/mntemp/default)"
+
+[key_derive.config_edit.error_generate_only]
+description = "Error when --use-config-file is used outside generate mode"
+other = "--use-config-file only supports generate mode; restore behaviour is unchanged"
+
+[key_derive.config_edit.error_stdin_closed]
+description = "Error when stdin closes without an answer"
+other = "stdin closed before confirmation; aborting"
+
+[key_derive.config_edit.error_password_required]
+description = "Error when no password is available (-p unset) and stdin is not a terminal"
+other = "password is not part of the config file; supply it with -p (or run interactively to be prompted hidden)"
+
+[key_derive.config_edit.error_parse]
+description = "Error when the edited YAML cannot be parsed"
+other = "failed to parse config file"
+
+[key_derive.config_edit.error_input_required]
+description = "Error when input is empty"
+other = "input must not be empty; please fill in the input field and save the file"
+
+[key_derive.config_edit.error_strength_allowed]
+description = "Error when strength is not a supported value"
+other = "invalid strength {{.Value}}; supported values: {{.Allowed}}"
+
+[key_derive.config_edit.error_mkdir]
+description = "Error when the output directory cannot be created"
+other = "failed to create config directory"
+
+[key_derive.config_edit.error_example]
+description = "Error when generating the diceware example"
+other = "failed to generate diceware example"
+
+[key_derive.config_edit.prompt_edit_path]
+description = "Message printing the config file path for the user to edit"
+other = """Please open this config file in your editor, fill it in, save it, then confirm below:
+
+    {{.Path}}"""
+
+[key_derive.config_edit.output_volatile]
+description = "Warning that the generated recovery config lives in the temporary directory and is lost on reboot"
+other = "Note: this recovery config lives in the temporary directory and is lost after a reboot. Save it somewhere safe — without it the keys cannot be restored."
+
+[key_derive.config_edit.prompt_done]
+description = "Confirmation prompt after editing"
+other = "Done editing? (Y/n) "
+
+[key_derive.config_edit.template_input_warning]
+description = "Annotated YAML comment warning about input backup"
+other = "The key can only be restored with exactly the input you first used. Back it up in a safe place (e.g. a password manager or encrypted note) right now — if lost, the key can never be recovered."
+
+[key_derive.config_edit.template_input_example]
+description = "Annotated YAML comment introducing the diceware example"
+other = "Example input (an 8-word Diceware passphrase you may use directly):"
+
+[key_derive.config_edit.template_hint]
+description = "Annotated YAML comment for the hint field"
+other = "Hint to help you recall the input and password."
+
+[key_derive.config_edit.template_strength]
+description = "Annotated YAML comment for the strength field"
+other = "Strength tier"
+
 [common.error.required]
 description = "Validation error for required field"
 other = "This field is required"

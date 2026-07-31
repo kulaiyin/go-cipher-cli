@@ -867,6 +867,76 @@ other = "基础强度"
 description = "前端配置格式的旧版高级强度标签（兼容前端格式解析）"
 other = "高级强度"
 
+[key_derive.flag.use_config_file]
+description = "--use-config-file 标志说明"
+other = "通过带注释的 YAML 配置文件收集 input/password/hint/strength（用 $EDITOR 编辑；仅 generate，需交互终端）"
+
+[key_derive.flag.config_file]
+description = "--config-file 标志说明"
+other = "--use-config-file 使用的 YAML 配置文件路径（可选：已存在则直接编辑该文件，不存在则生成模板；默认在 <tmp>/mntemp/default 下自动生成）"
+
+[key_derive.config_edit.error_generate_only]
+description = "--use-config-file 用于非 generate 模式的错误"
+other = "--use-config-file 仅支持 generate 模式；restore 行为不变"
+
+[key_derive.config_edit.error_stdin_closed]
+description = "stdin 在确认前关闭的错误"
+other = "确认前 stdin 已关闭；已中止"
+
+[key_derive.config_edit.error_password_required]
+description = "无 -p 且 stdin 非终端时缺少密码的错误"
+other = "密码不包含在配置文件中；请用 -p 提供（或以交互方式运行，将隐藏提示输入）"
+
+[key_derive.config_edit.error_parse]
+description = "编辑后的 YAML 解析失败的错误"
+other = "配置文件解析失败"
+
+[key_derive.config_edit.error_input_required]
+description = "input 为空的错误"
+other = "input 不能为空；请填写 input 字段并保存文件"
+
+[key_derive.config_edit.error_strength_allowed]
+description = "strength 不是支持值的错误"
+other = "无效的 strength {{.Value}}；支持的值：{{.Allowed}}"
+
+[key_derive.config_edit.error_mkdir]
+description = "无法创建配置目录的错误"
+other = "创建配置目录失败"
+
+[key_derive.config_edit.error_example]
+description = "生成 diceware 示例失败的错误"
+other = "生成 diceware 示例失败"
+
+[key_derive.config_edit.prompt_edit_path]
+description = "打印配置文件路径供用户自行编辑的消息"
+other = """请打开以下配置文件，在编辑器中填写并保存，然后确认：
+
+    {{.Path}}"""
+
+[key_derive.config_edit.output_volatile]
+description = "提醒生成的恢复配置位于临时目录、重启后丢失"
+other = "注意：该恢复配置位于临时目录，系统重启后会丢失。请将其单独保存到安全位置，否则无法恢复密钥。"
+
+[key_derive.config_edit.prompt_done]
+description = "编辑完成后的确认提示"
+other = "编辑完成了吗？(Y/n) "
+
+[key_derive.config_edit.template_input_warning]
+description = "YAML 模板中关于 input 备份的注释"
+other = "密钥恢复需要与您首次输入的内容完全一致。请立即将输入内容备份到安全位置（如密码管理器、加密笔记），否则丢失后将永久无法恢复密钥。"
+
+[key_derive.config_edit.template_input_example]
+description = "YAML 模板中引出 diceware 示例的注释"
+other = "输入示例（8 个单词的 Diceware 口令，可直接使用）："
+
+[key_derive.config_edit.template_hint]
+description = "YAML 模板中 hint 字段的注释"
+other = "提示内容，帮助您进行内容、密码的回忆。"
+
+[key_derive.config_edit.template_strength]
+description = "YAML 模板中 strength 字段的注释"
+other = "强度档位"
+
 [common.error.required]
 description = "必填字段验证失败"
 other = "此字段必填"

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -40,11 +41,23 @@ func TestMain(m *testing.M) {
 
 func runCLI(t *testing.T, args ...string) (stdout string, exitCode int) {
 	t.Helper()
+	return runCLIWithInput(t, "", nil, args...)
+}
+
+// runCLIWithInput runs the CLI with the given stdin payload and extra env
+// entries. Tests that must answer an interactive prompt (e.g. the
+// --use-config-file confirmation) or inject a fake $EDITOR use this instead of
+// runCLI.
+func runCLIWithInput(t *testing.T, stdin string, env []string, args ...string) (stdout string, exitCode int) {
+	t.Helper()
 	if testBinary == "" {
 		t.Fatal("testBinary not built")
 	}
 	cmd := exec.Command(testBinary, args...)
-	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")
+	cmd.Env = append(os.Environ(), append(env, "LANG=en_US.UTF-8")...)
+	if stdin != "" {
+		cmd.Stdin = strings.NewReader(stdin)
+	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

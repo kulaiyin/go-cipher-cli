@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -291,5 +292,159 @@ func TestKeyDeriveCmd_Restore_LegacyJSON(t *testing.T) {
 	}
 	if !strings.Contains(out, "restore success") && !strings.Contains(out, "successful") {
 		t.Errorf("expected restore success message, output:\n%s", out)
+	}
+}
+
+// --- --use-config-file flow (path-printing + confirmation) ---
+//
+// No editor is launched (cross-platform): the command prints the config file
+// path, the user edits it in their own editor, then confirms. Tests simulate
+// the user by pre-writing the config file and answering the confirmation.
+
+// validConfigYAML returns a config matching the golden vector (basic tier).
+func validConfigYAML() string {
+	return fmt.Sprintf("input: %q\nhint: \"\"\nstrength: \"basic\"\n", kdInput)
+}
+
+// findGeneratedConfig returns the single generated config under
+// <tmp>/mntemp/default (empty string if none/unexpected count).
+func findGeneratedConfig(t *testing.T, tmp string) string {
+	t.Helper()
+	matches, err := filepath.Glob(filepath.Join(tmp, "mntemp", "default", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("expected exactly 1 generated config under mntemp/default, got %v", matches)
+	}
+	return matches[0]
+}
+
+// TestKeyDeriveConfigFile_AutoPath verifies the no-flag path: a template is
+// generated under mntemp/default, its path is printed for the user to edit,
+// and a closed stdin aborts cleanly instead of hanging.
+func TestKeyDeriveConfigFile_AutoPath(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	dir := t.TempDir()
+	out, code := runCLIWithInput(t, "", []string{"TMPDIR=" + dir},
+		"key-derive", "--use-config-file")
+	if code != 1 {
+		t.Fatalf("expected abort on closed stdin, got code=%d:\n%s", code, out)
+	}
+	cfgPath := findGeneratedConfig(t, dir)
+	if !strings.Contains(out, cfgPath) {
+		t.Errorf("output does not print the config path %q:\n%s", cfgPath, out)
+	}
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "input:") {
+		t.Errorf("generated template missing input field:\n%s", raw)
+	}
+}
+
+// TestKeyDeriveConfigFile_GenerateFromExistingConfig drives the happy path:
+// the user already edited a config file (pre-written here), confirms, and the
+// derivation matches the golden vector.
+func TestKeyDeriveConfigFile_GenerateFromExistingConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "my-config.yaml")
+	if err := os.WriteFile(cfgPath, []byte(validConfigYAML()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, code := runCLIWithInput(t, "Y\n", nil,
+		"key-derive", "--use-config-file", "--config-file", cfgPath, "-p", kdPassword, "--salt", kdSalt)
+	if code != 0 {
+		t.Fatalf("config-file generate failed (%d):\n%s", code, out)
+	}
+	if got := extractUUID(t, out); got != kdWantUUID {
+		t.Errorf("UUID = %q, want %q", got, kdWantUUID)
+	}
+	if got := extractKey(t, out, "S1"); got != kdWantS1 {
+		t.Errorf("S1 = %q, want %q", got, kdWantS1)
+	}
+	// The recovery config must be saved next to the config file and the user
+	// warned it is volatile (temp dir, lost on reboot).
+	rcPath := filepath.Join(dir, "my-config.txt")
+	rcRaw, err := os.ReadFile(rcPath)
+	if err != nil {
+		t.Fatalf("recovery config not auto-saved: %v", err)
+	}
+	if !strings.Contains(string(rcRaw), "DATA:") {
+		t.Errorf("recovery config file missing DATA payload:\n%s", rcRaw)
+	}
+	if !strings.Contains(out, "temporary directory") {
+		t.Errorf("expected volatile warning for the recovery config, got:\n%s", out)
+	}
+}
+
+// TestKeyDeriveConfigFile_InvalidConfigLoop verifies the loop when validation
+// fails: the error and the path hint are shown again, and the flow aborts
+// cleanly when stdin closes (the user never fixes the file).
+func TestKeyDeriveConfigFile_InvalidConfigLoop(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "invalid.yaml")
+	if err := os.WriteFile(cfgPath, []byte("input: \"\"\nhint: \"\"\nstrength: \"basic\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, code := runCLIWithInput(t, "Y\nY\n", nil,
+		"key-derive", "--use-config-file", "--config-file", cfgPath, "-p", kdPassword, "--salt", kdSalt)
+	if code != 1 {
+		t.Fatalf("expected abort after repeated invalid config, got code=%d:\n%s", code, out)
+	}
+	if !strings.Contains(out, "input must not be empty") {
+		t.Errorf("expected empty-input error, got:\n%s", out)
+	}
+	if strings.Count(out, cfgPath) < 2 {
+		t.Errorf("expected the config path to be re-printed after failure:\n%s", out)
+	}
+}
+
+// TestKeyDeriveConfigFile_CustomMissingPath generates a template at the
+// requested path when the file does not exist yet.
+func TestKeyDeriveConfigFile_CustomMissingPath(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "nested", "custom.yaml") // parent missing
+
+	out, code := runCLIWithInput(t, "Y\nY\n", nil,
+		"key-derive", "--use-config-file", "--config-file", cfgPath, "-p", kdPassword, "--salt", kdSalt)
+	if code != 1 {
+		t.Fatalf("expected abort (template input empty), got code=%d:\n%s", code, out)
+	}
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("config not generated at requested path: %v", err)
+	}
+	if !strings.Contains(string(raw), "input:") {
+		t.Errorf("generated template at custom path missing input field:\n%s", raw)
+	}
+	if !strings.Contains(out, cfgPath) {
+		t.Errorf("output does not print the config path %q:\n%s", cfgPath, out)
+	}
+}
+
+// TestKeyDeriveConfigFile_RestoreRejected ensures --use-config-file only
+// applies to generate mode; restore keeps its existing behaviour.
+func TestKeyDeriveConfigFile_RestoreRejected(t *testing.T) {
+	out, code := runCLI(t, "key-derive", "--use-config-file", "--mode", "restore")
+	if code != 1 {
+		t.Fatalf("restore with --use-config-file should fail, got code=%d:\n%s", code, out)
+	}
+	if !strings.Contains(out, "generate") {
+		t.Errorf("expected error mentioning generate mode, got:\n%s", out)
 	}
 }

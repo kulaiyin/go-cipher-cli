@@ -32,6 +32,13 @@ type keyDeriveParams struct {
 	Config   param.Field
 	Output   param.Field
 	Salt     param.Field
+
+	// UseConfigFile / ConfigFile are pure flags (never prompted, not part of
+	// the declarative field lifecycle): they switch key-derive into the
+	// edit-a-YAML-config input flow. ConfigFile optionally pins the config
+	// path; empty means auto-generate under mntemp.
+	UseConfigFile bool
+	ConfigFile    string
 }
 
 var kdParams keyDeriveParams
@@ -42,7 +49,12 @@ var keyDeriveCmd = &cobra.Command{
 	Long:         "placeholder",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Drive the shared declarative lifecycle; runKeyDerive executes the body.
+		// --use-config-file takes a fully custom flow (editor-driven input
+		// collection); otherwise drive the shared declarative lifecycle and
+		// runKeyDerive executes the body.
+		if kdParams.UseConfigFile {
+			return runKeyDeriveWithConfigFile(&kdParams)
+		}
 		return kdSet.run(&kdParams)
 	},
 }
@@ -202,6 +214,8 @@ func init() {
 	keyDeriveCmd.Flags().StringVar(&kdParams.Config.Value, "config", "", i18n.T("key_derive.flag.config"))
 	keyDeriveCmd.Flags().StringVar(&kdParams.Output.Value, "output", "", i18n.T("key_derive.flag.output"))
 	keyDeriveCmd.Flags().StringVar(&kdParams.Salt.Value, "salt", "", i18n.T("key_derive.flag.salt"))
+	keyDeriveCmd.Flags().BoolVar(&kdParams.UseConfigFile, "use-config-file", false, i18n.T("key_derive.flag.use_config_file"))
+	keyDeriveCmd.Flags().StringVar(&kdParams.ConfigFile, "config-file", "", i18n.T("key_derive.flag.config_file"))
 	rootCmd.AddCommand(keyDeriveCmd)
 }
 
