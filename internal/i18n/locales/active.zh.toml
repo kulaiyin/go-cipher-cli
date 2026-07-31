@@ -885,11 +885,11 @@ other = "在指定路径挂载一个基于 tmpfs 的 RAM 临时文件系统；�
 
 [mntemp.flag.name]
 description = "--name 参数说明"
-other = "挂载点名称"
+other = "挂载点名称（默认 default）"
 
 [mntemp.flag.size]
 description = "--size 参数说明"
-other = "内存大小（MB，1-512）"
+other = "内存大小（MB，1-512，默认 24）"
 
 [mntemp.flag.path]
 description = "--path 参数说明"
@@ -933,7 +933,11 @@ other = "警告：无法挂载内存文件系统（{{.Err}}），已创建普通
 
 [mntemp.mount.hint.start]
 description = "挂载开始前的用途提示"
-other = "此命令将挂载一个临时内存文件系统到 {{.Path}}。后续 key-derive、data-cipher 等命令产生的敏感文件请放置到该路径内；全部完成后执行 mntemp umount --name {{.Name}} 即可一键卸载，数据不留磁盘，比普通文件系统更安全。"
+other = "将在 {{.Path}} 挂载临时内存文件系统，数据仅存于内存、{{.Shutdown}}。敏感文件请放置于此路径，完成后执行 {{.Umount}} 一键清理。"
+
+[mntemp.mount.hint.shutdown]
+description = "内存文件系统关机即消失的提示"
+other = "系统关机后即消失"
 
 [mntemp.mount.hint.dir]
 description = "回退为普通目录后的用途提示"

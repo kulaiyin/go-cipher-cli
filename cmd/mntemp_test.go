@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -139,5 +140,22 @@ func TestMntempSizeParsed(t *testing.T) {
 	}
 	if p.SizeMB != 256 {
 		t.Errorf("SizeMB = %d, want 256", p.SizeMB)
+	}
+}
+
+func TestMntempFlagDefaults(t *testing.T) {
+	nameFlag := mntempCmd.Flags().Lookup("name")
+	if nameFlag == nil {
+		t.Fatal("--name flag not registered")
+	}
+	if nameFlag.DefValue != mntempDefaultName {
+		t.Errorf("--name default = %q, want %q", nameFlag.DefValue, mntempDefaultName)
+	}
+	sizeFlag := mntempCmd.Flags().Lookup("size")
+	if sizeFlag == nil {
+		t.Fatal("--size flag not registered")
+	}
+	if want := strconv.Itoa(mntempDefaultSizeMB); sizeFlag.DefValue != want {
+		t.Errorf("--size default = %q, want %q", sizeFlag.DefValue, want)
 	}
 }

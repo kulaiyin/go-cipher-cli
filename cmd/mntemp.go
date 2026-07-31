@@ -12,11 +12,14 @@ import (
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/param"
 	"go-cipher-cli/internal/tmpmount"
+	"go-cipher-cli/internal/util"
 )
 
 const (
 	mntempMaxSizeMB     = 512
 	mntempDefaultSizeMB = 24
+	// mntempDefaultName is the mount point name used when --name is omitted.
+	mntempDefaultName = "default"
 )
 
 // mntempParams declares the parameters of the mntemp command. The operation
@@ -87,8 +90,12 @@ func expandHomeDir(path string) string {
 }
 
 func mntempMount(p *mntempParams) error {
+	// Highlight the mount path, the volatile-memory warning, and the cleanup
+	// command in the start hint so users notice them at a glance.
 	fmt.Println(i18n.TWithData("mntemp.mount.hint.start", map[string]interface{}{
-		"Path": p.MountPath, "Name": p.Name.Value,
+		"Path":     util.Bold(util.Yellow(p.MountPath)),
+		"Shutdown": util.Bold(util.Yellow(i18n.T("mntemp.mount.hint.shutdown"))),
+		"Umount":   util.Bold(util.Yellow(fmt.Sprintf("mntemp umount --name %s", p.Name.Value))),
 	}))
 
 	if _, err := os.Stat(p.MountPath); err == nil {
@@ -240,7 +247,7 @@ func init() {
 
 	// Hook: resolve the effective mount path (custom or default).
 
-	mntempCmd.Flags().StringVar(&mtParams.Name.Value, "name", "", i18n.T("mntemp.flag.name"))
+	mntempCmd.Flags().StringVar(&mtParams.Name.Value, "name", mntempDefaultName, i18n.T("mntemp.flag.name"))
 	mntempCmd.Flags().StringVar(&mtParams.Size.Value, "size", strconv.Itoa(mntempDefaultSizeMB), i18n.T("mntemp.flag.size"))
 	mntempCmd.Flags().StringVar(&mtParams.Path.Value, "path", "", i18n.T("mntemp.flag.path"))
 

@@ -886,11 +886,11 @@ other = "Mount a RAM-backed temporary filesystem (tmpfs) at the specified path; 
 
 [mntemp.flag.name]
 description = "Flag --name"
-other = "Mount name"
+other = "Mount name (default: default)"
 
 [mntemp.flag.size]
 description = "Flag --size"
-other = "Size in MB (1-512)"
+other = "Size in MB (1-512, default: 24)"
 
 [mntemp.flag.path]
 description = "Flag --path"
@@ -934,7 +934,11 @@ other = "Warning: could not mount an in-memory filesystem ({{.Err}}), created a 
 
 [mntemp.mount.hint.start]
 description = "Usage hint shown before mounting"
-other = "This command mounts a temporary in-memory filesystem at {{.Path}}. Place sensitive files produced by key-derive, data-cipher, etc. under this path; when done, run mntemp umount --name {{.Name}} to unmount in one go — data never touches the disk, safer than a plain filesystem."
+other = "This command mounts a temporary in-memory filesystem at {{.Path}}: data lives in memory only and is {{.Shutdown}}. Place sensitive files under this path; when done, run {{.Umount}} to clean up in one go."
+
+[mntemp.mount.hint.shutdown]
+description = "In-memory filesystem is lost on system shutdown"
+other = "gone after system shutdown"
 
 [mntemp.mount.hint.dir]
 description = "Usage hint after falling back to a plain directory"
