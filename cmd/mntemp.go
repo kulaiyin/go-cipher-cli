@@ -36,10 +36,6 @@ type mntempParams struct {
 	// afterStandardize is called after standardize() but before
 	// promptInteractive(). Use for cross-field resolution (e.g. default path).
 	afterStandardize func(p *mntempParams) error
-
-	// afterParamsReady is called after all params are resolved (flags +
-	// interactive). Holds the actual mount/umount logic.
-	afterParamsReady func(p *mntempParams) error
 }
 
 var mtParams mntempParams
@@ -64,12 +60,8 @@ var mntempCmd = &cobra.Command{
 		if err := mtParams.promptInteractive(); err != nil {
 			return err
 		}
-		if mtParams.afterParamsReady != nil {
-			if err := mtParams.afterParamsReady(&mtParams); err != nil {
-				return err
-			}
-		}
-		return nil
+		// All params resolved (flags + interactive): run the command.
+		return runMntemp(&mtParams)
 	},
 }
 
@@ -249,6 +241,15 @@ func mntempUmount(p *mntempParams) error {
 	return nil
 }
 
+// runMntemp executes the command after all params are resolved (flags +
+// interactive): it dispatches to mount or umount based on the action.
+func runMntemp(p *mntempParams) error {
+	if p.Action.Value == "umount" {
+		return mntempUmount(p)
+	}
+	return mntempMount(p)
+}
+
 func init() {
 	i18n.MustInit("")
 	refreshCmdDescs = append(refreshCmdDescs, func() {
@@ -282,13 +283,6 @@ func init() {
 	mtParams.afterStandardize = func(p *mntempParams) error {
 		p.MountPath = resolveMntempPath(p.Name.Value, p.Path.Value)
 		return nil
-	}
-	// Hook: dispatch to mount or umount.
-	mtParams.afterParamsReady = func(p *mntempParams) error {
-		if p.Action.Value == "umount" {
-			return mntempUmount(p)
-		}
-		return mntempMount(p)
 	}
 
 	mntempCmd.Flags().StringVar(&mtParams.Name.Value, "name", "", i18n.T("mntemp.flag.name"))

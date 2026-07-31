@@ -7,11 +7,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/term"
 
 	"go-cipher-cli/internal/i18n"
 )
@@ -37,6 +39,35 @@ var (
 		},
 	}
 )
+
+// i18nRequired is an i18n-aware replacement for survey.Required. Handles both
+// plain strings (Input / Password) and survey.OptionAnswer (Select / MultiSelect).
+func i18nRequired() survey.Validator {
+	return func(val interface{}) error {
+		if val == nil {
+			return fmt.Errorf("%s", i18n.T("common.error.required"))
+		}
+		switch v := val.(type) {
+		case string:
+			if v == "" {
+				return fmt.Errorf("%s", i18n.T("common.error.required"))
+			}
+		case survey.OptionAnswer:
+			if v.Value == "" {
+				return fmt.Errorf("%s", i18n.T("common.error.required"))
+			}
+		}
+		return nil
+	}
+}
+
+// isStdinTerminal reports whether stdin is an interactive terminal. Uses
+// golang.org/x/term (already an indirect dependency) so /dev/null and pipes are
+// correctly distinguished from real TTYs. When stdin is not a TTY the command
+// skips survey prompts and relies on flags (or defaults) instead.
+func isStdinTerminal() bool {
+	return term.IsTerminal(int(os.Stdin.Fd()))
+}
 
 func Execute() {
 	// Resolve i18n language and refresh command descriptions *before* cobra

@@ -25,9 +25,11 @@ func Confirm(message string) (bool, error) {
 }
 
 // Select prompts the user to choose one of the given options and returns the
-// chosen option.
-func Select(message string, options []string) (string, error) {
-	p := &survey.Select{Message: message, Options: options}
+// chosen option. defaultLabel, when non-empty, is pre-selected; the user
+// accepts it by pressing Enter. help, when non-empty, is shown as a hint under
+// the prompt.
+func Select(message string, options []string, defaultLabel string, help string) (string, error) {
+	p := &survey.Select{Message: message, Options: options, Default: defaultLabel, Help: help}
 	var chosen string
 	if err := survey.AskOne(p, &chosen, survey.WithValidator(i18nRequired())); err != nil {
 		return "", err
@@ -36,8 +38,10 @@ func Select(message string, options []string) (string, error) {
 }
 
 // Input prompts the user for a single line of text and returns the input.
-func Input(message string) (string, error) {
-	p := &survey.Input{Message: message}
+// defaultValue, when non-empty, is prefilled; the user accepts it by pressing
+// Enter. help, when non-empty, is shown as a hint under the prompt.
+func Input(message string, defaultValue string, help string) (string, error) {
+	p := &survey.Input{Message: message, Default: defaultValue, Help: help}
 	var input string
 	if err := survey.AskOne(p, &input, survey.WithValidator(i18nRequired())); err != nil {
 		return "", err
@@ -56,9 +60,9 @@ func Password(message string) (string, error) {
 }
 
 // MultiInput prompts the user for multiple lines of text and returns the
-// combined input.
-func MultiInput(message string) (string, error) {
-	p := &survey.Multiline{Message: message}
+// combined input. help, when non-empty, is shown as a hint under the prompt.
+func MultiInput(message string, help string) (string, error) {
+	p := &survey.Multiline{Message: message, Help: help}
 	var input string
 	if err := survey.AskOne(p, &input, survey.WithValidator(i18nRequired())); err != nil {
 		return "", err

@@ -1,10 +1,3 @@
-# Chinese (zh) translations for go-cipher-cli.
-# These are the original Chinese strings from the codebase.
-
-# ==========================================
-# cmd/root.go — built-in help & completion
-# ==========================================
-
 [help.short]
 description = "help 命令简短描述"
 other = "显示命令帮助信息"
@@ -670,23 +663,23 @@ other = "恢复配置路径（restore 必填；盐从其中读取）"
 description = "--output 标志说明"
 other = "将恢复配置写入该路径，而非打印到标准输出"
 
-[key_derive.option.generate]
+[key_derive.option.mode.generate]
 description = "生成模式选项标签"
 other = "生成（新密钥集）"
 
-[key_derive.option.restore]
+[key_derive.option.mode.restore]
 description = "恢复模式选项标签"
 other = "恢复（依据配置校验）"
 
-[key_derive.option.strength_basic]
+[key_derive.option.strength.basic]
 description = "基础强度选项标签"
 other = "基础（快速，低内存）"
 
-[key_derive.option.strength_medium]
+[key_derive.option.strength.medium]
 description = "中等强度选项标签"
 other = "中等（默认）"
 
-[key_derive.option.strength_advanced]
+[key_derive.option.strength.advanced]
 description = "高级强度选项标签"
 other = "高级（慢速，高内存）"
 
@@ -734,14 +727,6 @@ other = "恢复配置路径："
 description = "配置路径帮助"
 other = "由之前 generate 写出的配置文件；其中的盐可重新派生出同一组密钥。"
 
-[key_derive.error.invalid_mode]
-description = "--mode 取值非法时的错误"
-other = "非法的模式（应为 generate 或 restore）：{{.Mode}}"
-
-[key_derive.error.input_required]
-description = "非交互模式下缺少输入内容的错误"
-other = "输入内容必填（使用 -i / --input，或在交互式下运行）"
-
 [key_derive.error.input_too_short]
 description = "输入内容去空格后不足 20 字符的错误"
 other = "输入内容去空格后至少需要 20 个字符（当前 {{.Len}} 个）"
@@ -753,14 +738,6 @@ other = "密码长度至少需要 8 位"
 [key_derive.error.password_weak]
 description = "密码缺少字母、数字或特殊字符的错误"
 other = "密码需包含字母、数字及符号"
-
-[key_derive.error.password_required]
-description = "非交互模式下缺少密码的错误"
-other = "密码必填（使用 -p / --password，或在交互式下运行）"
-
-[key_derive.error.config_required]
-description = "restore 模式下缺少 --config 的错误"
-other = "restore 模式下 --config 必填（或在交互式下运行）"
 
 [key_derive.error.config_read_failed]
 description = "恢复配置读取失败的错误"
@@ -837,10 +814,6 @@ other = "前端格式配置解析失败"
 [key_derive.error.config_parse_json]
 description = "JSON 配置解析失败错误"
 other = "JSON 配置解析失败"
-
-[key_derive.error.validator_type_assert]
-description = "Survey 答案类型异常内部错误"
-other = "内部错误：意外的输入类型"
 
 [key_derive.config.derived_keys]
 description = "恢复配置中派生密钥列表的章节标题"

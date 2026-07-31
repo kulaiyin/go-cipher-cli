@@ -1,10 +1,3 @@
-# English translations for go-cipher-cli.
-# This is the default locale; message IDs are used as fallback when no translation is found.
-
-# ==========================================
-# cmd/root.go — built-in help & completion
-# ==========================================
-
 [help.short]
 description = "Short description for help command"
 other = "Help about any command"
@@ -671,23 +664,23 @@ other = "path to recovery config (required for restore; salt is read from it)"
 description = "Description for --output flag"
 other = "write the recovery config to this path instead of stdout"
 
-[key_derive.option.generate]
+[key_derive.option.mode.generate]
 description = "Label for generate mode option"
 other = "Generate (new key set)"
 
-[key_derive.option.restore]
+[key_derive.option.mode.restore]
 description = "Label for restore mode option"
 other = "Restore (verify against config)"
 
-[key_derive.option.strength_basic]
+[key_derive.option.strength.basic]
 description = "Label for basic strength option"
 other = "Basic (fast, lower memory)"
 
-[key_derive.option.strength_medium]
+[key_derive.option.strength.medium]
 description = "Label for medium strength option"
 other = "Medium (default)"
 
-[key_derive.option.strength_advanced]
+[key_derive.option.strength.advanced]
 description = "Label for advanced strength option"
 other = "Advanced (slow, higher memory)"
 
@@ -735,14 +728,6 @@ other = "Path to recovery config:"
 description = "Help text for config prompt"
 other = "The config file written by a previous 'generate' run; its salt re-derives the same key set."
 
-[key_derive.error.invalid_mode]
-description = "Error for invalid --mode value"
-other = "invalid mode (expected generate or restore): {{.Mode}}"
-
-[key_derive.error.input_required]
-description = "Error when input is missing in non-interactive mode"
-other = "input is required (use -i / --input, or run interactively)"
-
 [key_derive.error.input_too_short]
 description = "Error when input is too short after cleaning"
 other = "input must be at least 20 non-space characters (got {{.Len}})"
@@ -754,14 +739,6 @@ other = "password must be at least 8 characters"
 [key_derive.error.password_weak]
 description = "Error when password lacks letter, digit, or special character"
 other = "password must contain at least one letter, one digit, and one special character"
-
-[key_derive.error.password_required]
-description = "Error when password is missing in non-interactive mode"
-other = "password is required (use -p / --password, or run interactively)"
-
-[key_derive.error.config_required]
-description = "Error when config is missing in restore mode"
-other = "--config is required in restore mode (or run interactively)"
 
 [key_derive.error.config_read_failed]
 description = "Error when recovery config cannot be read"
@@ -838,10 +815,6 @@ other = "parse frontend config failed"
 [key_derive.error.config_parse_json]
 description = "Error when JSON config parse fails"
 other = "parse JSON config failed"
-
-[key_derive.error.validator_type_assert]
-description = "Internal error when survey answer is not the expected type"
-other = "internal error: unexpected input type"
 
 [key_derive.config.derived_keys]
 description = "Recovery config section header for the derived keys list"

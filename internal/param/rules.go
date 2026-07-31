@@ -7,7 +7,21 @@ import (
 	"go-cipher-cli/internal/i18n"
 )
 
-var ruleRegistry = map[string]func(args []string, flagName string, values FieldValues) func(string) error{}
+var ruleRegistry = map[string]RuleFunc{}
+
+// RuleFunc builds a validator for a rule name, given the rule's arguments,
+// the flag being validated (for error messages), and a snapshot of the other
+// parameter values (for cross-field constraints).
+type RuleFunc func(args []string, flagName string, values FieldValues) func(string) error
+
+// RegisterRule adds a named validation rule to the registry. Rules referenced
+// by Field.Rules are looked up here. Command packages may register their own
+// rules (e.g. command-specific password strength checks); registering an
+// existing name replaces it, so declaration order across package inits does
+// not matter.
+func RegisterRule(name string, fn RuleFunc) {
+	ruleRegistry[name] = fn
+}
 
 func init() {
 	ruleRegistry["min_length"] = func(args []string, flagName string, _ FieldValues) func(string) error {

@@ -7,10 +7,10 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/kdf"
+	"go-cipher-cli/internal/param"
 	"go-cipher-cli/internal/validation"
 )
 
@@ -19,24 +19,133 @@ import (
 // incompatible derivation change can be detected.
 const keyDeriveKeyDriveVersion = "1.0.0"
 
-var (
-	keyDeriveMode     string
-	keyDeriveInput    string
-	keyDerivePassword string
-	keyDeriveHint     string
-	keyDeriveStrength string
-	keyDeriveConfig   string
-	keyDeriveOutput   string
-	keyDeriveSalt     string
-)
+// keyDeriveParams declares the parameters of the key-derive command using the
+// declarative standard mode: type metadata, requiredness, validation rules,
+// and interactive prompting are expressed as param.Field declarations instead
+// of hand-written survey code (see mntemp.go for the reference pattern).
+type keyDeriveParams struct {
+	Mode     param.Field
+	Input    param.Field
+	Password param.Field
+	Hint     param.Field
+	Strength param.Field
+	Config   param.Field
+	Output   param.Field
+	Salt     param.Field
+
+	// afterStandardize is called after standardize() but before
+	// promptInteractive(). Used for non-interactive defaults that mirror the
+	// interactive prompt defaults (mode/strength), which cannot be expressed
+	// as Field declarations because they depend on the resolved mode.
+	afterStandardize func(p *keyDeriveParams) error
+}
+
+var kdParams keyDeriveParams
 
 var keyDeriveCmd = &cobra.Command{
-	Use:   "key-derive --mode <generate|restore> -i <input> -p <password> [flags]",
-	Short: "placeholder",
-	Long:  "placeholder",
+	Use:          "key-derive --mode <generate|restore> -i <input> -p <password> [flags]",
+	Short:        "placeholder",
+	Long:         "placeholder",
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runKeyDerive(cmd)
+		if err := kdParams.standardize(); err != nil {
+			return err
+		}
+		if kdParams.afterStandardize != nil {
+			if err := kdParams.afterStandardize(&kdParams); err != nil {
+				return err
+			}
+		}
+		if err := kdParams.promptInteractive(); err != nil {
+			return err
+		}
+		// All params resolved (flags + interactive): run the command.
+		return runKeyDerive(&kdParams)
 	},
+}
+
+func (p *keyDeriveParams) standardize() error {
+	p.Mode.Value = strings.ToLower(strings.TrimSpace(p.Mode.Value))
+	if err := p.validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *keyDeriveParams) fieldEntries() []fieldEntry {
+	return []fieldEntry{
+		{&p.Mode, &p.Mode.Value, "mode"},
+		{&p.Input, &p.Input.Value, "input"},
+		{&p.Password, &p.Password.Value, "password"},
+		{&p.Hint, &p.Hint.Value, "hint"},
+		{&p.Strength, &p.Strength.Value, "strength"},
+		{&p.Config, &p.Config.Value, "config"},
+		{&p.Output, &p.Output.Value, "output"},
+		{&p.Salt, &p.Salt.Value, "salt"},
+	}
+}
+
+func (p *keyDeriveParams) values() param.FieldValues {
+	return param.FieldValues{
+		"mode":     p.Mode.Value,
+		"input":    p.Input.Value,
+		"password": p.Password.Value,
+		"hint":     p.Hint.Value,
+		"strength": p.Strength.Value,
+		"config":   p.Config.Value,
+		"output":   p.Output.Value,
+		"salt":     p.Salt.Value,
+	}
+}
+
+func (p *keyDeriveParams) validate() error {
+	return validateFields(p.fieldEntries(), p.values())
+}
+
+func (p *keyDeriveParams) promptInteractive() error {
+	if !param.IsStdinTerminal() {
+		return nil
+	}
+	for _, e := range p.fieldEntries() {
+		// Rebuild values each iteration: a previous prompt may have changed a
+		// value that affects visibility of later fields (e.g. mode).
+		vals := p.values()
+		if e.field.Visible != nil && !e.field.Visible(vals) {
+			continue
+		}
+		if !e.field.Interactive {
+			continue
+		}
+		if *e.target != "" {
+			continue
+		}
+		if err := e.field.Prompt(e.target, e.flagName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// runKeyDerive executes the command after all params are resolved (flags +
+// interactive): it cleans input/password like the frontend, applies the hint
+// default, and dispatches to generate or restore.
+func runKeyDerive(p *keyDeriveParams) error {
+	// Clean input/password exactly like the frontend (strip whitespace + NFC).
+	input := cleanKeyDeriveText(p.Input.Value)
+	password := cleanKeyDeriveText(p.Password.Value)
+
+	// Hint defaults to the first 10 chars of the input (frontend behaviour).
+	hint := p.Hint.Value
+	if hint == "" {
+		hint = firstNChars(input, 10)
+	}
+
+	strength := kdf.Strength(p.Strength.Value)
+
+	if p.Mode.Value == "restore" {
+		return runKeyDeriveRestore(p, input, password, hint, strength)
+	}
+	return runKeyDeriveGenerate(p, input, password, hint, strength)
 }
 
 func init() {
@@ -58,126 +167,130 @@ func init() {
 		keyDeriveCmd.Long = i18n.T("key_derive.long")
 	})
 
-	keyDeriveCmd.Flags().StringVar(&keyDeriveMode, "mode", "", i18n.T("key_derive.flag.mode"))
-	keyDeriveCmd.Flags().StringVarP(&keyDeriveInput, "input", "i", "", i18n.T("key_derive.flag.input"))
-	keyDeriveCmd.Flags().StringVarP(&keyDerivePassword, "password", "p", "", i18n.T("key_derive.flag.password"))
-	keyDeriveCmd.Flags().StringVar(&keyDeriveHint, "hint", "", i18n.T("key_derive.flag.hint"))
-	keyDeriveCmd.Flags().StringVar(&keyDeriveStrength, "strength", "", i18n.T("key_derive.flag.strength"))
-	keyDeriveCmd.Flags().StringVar(&keyDeriveConfig, "config", "", i18n.T("key_derive.flag.config"))
-	keyDeriveCmd.Flags().StringVar(&keyDeriveOutput, "output", "", i18n.T("key_derive.flag.output"))
-	keyDeriveCmd.Flags().StringVar(&keyDeriveSalt, "salt", "", i18n.T("key_derive.flag.salt"))
-	rootCmd.AddCommand(keyDeriveCmd)
-}
+	// Command-specific validation rules, registered so the declarative Field
+	// rules can reference them (see validateFields in standard.go).
+	param.RegisterRule("key_derive_input", func(args []string, flagName string, _ param.FieldValues) func(string) error {
+		return func(v string) error { return validation.ValidateKeyDeriveInput(v) }
+	})
+	param.RegisterRule("key_derive_password", func(args []string, flagName string, _ param.FieldValues) func(string) error {
+		return func(v string) error { return validation.ValidateKeyDerivePassword(v) }
+	})
 
-// runKeyDerive dispatches between generate and restore after resolving all
-// parameters (flag takes priority; missing values fall back to interactive
-// survey prompts). stdin/stdout are used directly so the function stays testable.
-func runKeyDerive(cmd *cobra.Command) error {
-	mode := keyDeriveMode
-	if mode == "" {
-		// Non-interactive default is generate; interactive prompt only when a TTY
-		// is available (survey degrades otherwise).
-		if isStdinTerminal() {
-			modeOpts := []struct {
-				value string
-				label string
-			}{
-				{"generate", i18n.T("key_derive.option.generate")},
-				{"restore", i18n.T("key_derive.option.restore")},
+	// Namespace the prompt/option i18n keys (key_derive.prompt.* /
+	// key_derive.option.*) so they do not collide with the shared
+	// "standard" namespace used by the placeholder standard command.
+	for _, e := range kdParams.fieldEntries() {
+		e.field.PromptKeyPrefix = "key_derive"
+	}
+
+	kdParams.Mode.Allowed = []string{"generate", "restore"}
+	kdParams.Mode.Interactive = true
+	kdParams.Mode.PromptType = param.PromptSelect
+	kdParams.Mode.PromptDefault = "generate"
+
+	kdParams.Input.Required = true
+	kdParams.Input.Interactive = true
+	kdParams.Input.RequiredNonInteractive = true
+	kdParams.Input.PromptType = param.PromptMultiInput
+	kdParams.Input.PromptHelp = true
+	kdParams.Input.Rules = []param.Rule{{Name: "key_derive_input"}}
+
+	kdParams.Password.Required = true
+	kdParams.Password.Interactive = true
+	kdParams.Password.RequiredNonInteractive = true
+	kdParams.Password.PromptType = param.PromptPassword
+	kdParams.Password.Rules = []param.Rule{{Name: "key_derive_password"}}
+
+	// hint/strength/output are only meaningful for generate; config only for
+	// restore. Their visibility follows the resolved mode.
+	kdParams.Hint.Interactive = true
+	kdParams.Hint.PromptType = param.PromptInput
+	kdParams.Hint.PromptHelp = true
+	kdParams.Hint.Visible = func(v param.FieldValues) bool { return v["mode"] == "generate" }
+
+	kdParams.Strength.Allowed = []string{"basic", "medium", "advanced"}
+	kdParams.Strength.Interactive = true
+	kdParams.Strength.PromptType = param.PromptSelect
+	kdParams.Strength.PromptDefault = "medium"
+	kdParams.Strength.Visible = func(v param.FieldValues) bool { return v["mode"] == "generate" }
+
+	kdParams.Config.Required = true
+	kdParams.Config.Interactive = true
+	kdParams.Config.RequiredNonInteractive = true
+	kdParams.Config.PromptType = param.PromptInput
+	kdParams.Config.PromptHelp = true
+	kdParams.Config.Visible = func(v param.FieldValues) bool { return v["mode"] == "restore" }
+
+	kdParams.Output.Interactive = true
+	kdParams.Output.PromptType = param.PromptInput
+	kdParams.Output.PromptDefault = "recovery-config.txt"
+	kdParams.Output.Visible = func(v param.FieldValues) bool { return v["mode"] == "generate" }
+
+	// salt is a pure flag (reproducible runs), never prompted.
+
+	// Non-interactive defaults mirror the interactive prompt defaults for
+	// mode and strength. output is deliberately NOT defaulted in batch mode:
+	// like the old implementation, a non-interactive generate prints the
+	// recovery config to stdout unless --output is given, while the
+	// interactive prompt offers "recovery-config.txt" via PromptDefault.
+	// restore never defaults strength/output here so the recovery config
+	// can supply them (see runKeyDeriveRestore).
+	kdParams.afterStandardize = func(p *keyDeriveParams) error {
+		if !param.IsStdinTerminal() {
+			p.Mode.ApplyPromptDefaultNonInteractive()
+			if p.Mode.Value == "generate" {
+				p.Strength.ApplyPromptDefaultNonInteractive()
 			}
-			modeLabels := make([]string, len(modeOpts))
-			modeLabelToValue := make(map[string]string, len(modeOpts))
-			for i, o := range modeOpts {
-				modeLabels[i] = o.label
-				modeLabelToValue[o.label] = o.value
-			}
-			p := &survey.Select{
-				Message: i18n.T("key_derive.prompt.mode"),
-				Options: modeLabels,
-				Default: i18n.T("key_derive.option.generate"),
-			}
-			if err := survey.AskOne(p, &mode, survey.WithValidator(i18nRequired())); err != nil {
-				return err
-			}
-			mode = modeLabelToValue[mode]
-		} else {
-			mode = "generate"
 		}
-	}
-	if mode != "generate" && mode != "restore" {
-		return fmt.Errorf("%s", i18n.TWithData("key_derive.error.invalid_mode", map[string]interface{}{
-			"Mode": mode,
-		}))
+		return nil
 	}
 
-	// Resolve shared params (flag first, then interactive fallback).
-	if err := resolveKeyDeriveParams(mode); err != nil {
-		return err
-	}
-	// Validate resolved params — covers the flag-provided path which bypasses
-	// interactive survey validators (mirrors data_cipher.go's validateKeys()).
-	if err := validateKeyDeriveParams(); err != nil {
-		return err
-	}
-	// All params resolved OK: from here on, failures are runtime/crypto errors
-	// (e.g. restore UUID mismatch), not argument errors. Silence the usage dump
-	// so a verification failure doesn't get followed by the full help text —
-	// the error message to stderr is enough. Argument errors (returned above,
-	// before this point) still print usage as usual.
-	cmd.SilenceUsage = true
-
-	// Clean input/password exactly like the frontend (strip whitespace + NFC).
-	cleanedInput := cleanKeyDeriveText(keyDeriveInput)
-	cleanedPassword := cleanKeyDeriveText(keyDerivePassword)
-
-	// Hint defaults to the first 10 chars of the input (frontend behaviour).
-	hint := keyDeriveHint
-	if hint == "" {
-		hint = firstNChars(cleanedInput, 10)
-	}
-
-	strength := kdf.Strength(keyDeriveStrength)
-
-	if mode == "restore" {
-		return runKeyDeriveRestore(cleanedInput, cleanedPassword, hint, strength)
-	}
-	return runKeyDeriveGenerate(cleanedInput, cleanedPassword, hint, strength)
+	keyDeriveCmd.Flags().StringVar(&kdParams.Mode.Value, "mode", "", i18n.T("key_derive.flag.mode"))
+	keyDeriveCmd.Flags().StringVarP(&kdParams.Input.Value, "input", "i", "", i18n.T("key_derive.flag.input"))
+	keyDeriveCmd.Flags().StringVarP(&kdParams.Password.Value, "password", "p", "", i18n.T("key_derive.flag.password"))
+	keyDeriveCmd.Flags().StringVar(&kdParams.Hint.Value, "hint", "", i18n.T("key_derive.flag.hint"))
+	keyDeriveCmd.Flags().StringVar(&kdParams.Strength.Value, "strength", "", i18n.T("key_derive.flag.strength"))
+	keyDeriveCmd.Flags().StringVar(&kdParams.Config.Value, "config", "", i18n.T("key_derive.flag.config"))
+	keyDeriveCmd.Flags().StringVar(&kdParams.Output.Value, "output", "", i18n.T("key_derive.flag.output"))
+	keyDeriveCmd.Flags().StringVar(&kdParams.Salt.Value, "salt", "", i18n.T("key_derive.flag.salt"))
+	rootCmd.AddCommand(keyDeriveCmd)
 }
 
 // runKeyDeriveGenerate derives a fresh key set with a new random salt (or the
 // one provided via --salt, for reproducible runs) and emits the keys + a
 // recovery config (to stdout and/or --output).
-func runKeyDeriveGenerate(input, password, hint string, strength kdf.Strength) error {
-	salt := keyDeriveSalt
+func runKeyDeriveGenerate(p *keyDeriveParams, input, password, hint string, strength kdf.Strength) error {
+	salt := p.Salt.Value
 	if salt == "" {
 		salt = kdf.GenerateSalt(64)
 	}
-	return deriveAndEmit(input, password, salt, hint, strength, nil)
+	return deriveAndEmit(p, input, password, salt, hint, strength, nil)
 }
 
 // runKeyDeriveRestore re-derives the key set using the salt from an existing
 // recovery config and verifies the result against the stored UUIDs.
-func runKeyDeriveRestore(input, password, hint string, strength kdf.Strength) error {
-	cfg, err := loadRecoveryConfig(keyDeriveConfig)
+func runKeyDeriveRestore(p *keyDeriveParams, input, password, hint string, strength kdf.Strength) error {
+	cfg, err := loadRecoveryConfig(p.Config.Value)
 	if err != nil {
 		return fmt.Errorf("%s: %w", i18n.T("key_derive.error.config_read_failed"), err)
 	}
 	if cfg.Salt == "" {
 		return fmt.Errorf("%s", i18n.T("key_derive.error.config_missing_salt"))
 	}
-	// Use the strength from the config if the user did not override it.
-	if keyDeriveStrength == "" && cfg.Strength != "" {
+	// Use the strength from the config if the user did not override it
+	// (restore never applies a non-interactive default to strength).
+	if p.Strength.Value == "" && cfg.Strength != "" {
 		strength = kdf.Strength(cfg.Strength)
 	}
-	if keyDeriveHint == "" && cfg.Hint != "" {
+	if p.Hint.Value == "" && cfg.Hint != "" {
 		hint = cfg.Hint
 	}
-	return deriveAndEmit(input, password, cfg.Salt, hint, strength, cfg)
+	return deriveAndEmit(p, input, password, cfg.Salt, hint, strength, cfg)
 }
 
 // deriveAndEmit runs DeriveKeySet and prints/writes the results. In restore
 // mode (stored != nil) it also checks ValidateKeyRecovery against stored UUIDs.
-func deriveAndEmit(input, password, salt, hint string, strength kdf.Strength, stored *recoveryConfig) error {
+func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, strength kdf.Strength, stored *recoveryConfig) error {
 	result := kdf.DeriveKeySet(input, password, salt, strength)
 	if !result.Success {
 		return fmt.Errorf("%s: %s", i18n.T("key_derive.error.derive_failed"), result.Error)
@@ -225,12 +338,12 @@ func deriveAndEmit(input, password, salt, hint string, strength kdf.Strength, st
 	}
 	configText := formatFrontendRecoveryConfig(rc, result.Keys)
 
-	if keyDeriveOutput != "" {
-		if err := os.WriteFile(keyDeriveOutput, []byte(configText), 0o600); err != nil {
+	if p.Output.Value != "" {
+		if err := os.WriteFile(p.Output.Value, []byte(configText), 0o600); err != nil {
 			return fmt.Errorf("%s: %w", i18n.T("key_derive.error.write_output_failed"), err)
 		}
 		fmt.Println(i18n.TWithData("key_derive.output.config_written", map[string]interface{}{
-			"Path": keyDeriveOutput,
+			"Path": p.Output.Value,
 		}))
 	} else {
 		fmt.Println(i18n.T("key_derive.output.config_label"))
@@ -250,104 +363,6 @@ func deriveAndEmit(input, password, salt, hint string, strength kdf.Strength, st
 			// dumping the help text after a verification failure (it's not an
 			// argument error).
 			return fmt.Errorf("%s", i18n.T("key_derive.output.restore_failed"))
-		}
-	}
-	return nil
-}
-
-// resolveKeyDeriveParams fills in missing params interactively. strength and hint
-// are optional (they have internal defaults); input/password/config are prompted
-// only when missing AND stdin is a TTY. In non-interactive runs, optional params
-// fall back to their defaults and required params produce an error.
-//
-// In restore mode, strength is NOT prompted here: it is read from the recovery
-// config later (unless the user explicitly passed --strength).
-func resolveKeyDeriveParams(mode string) error {
-	if keyDeriveStrength == "" && mode == "generate" && isStdinTerminal() {
-		strengthOpts := []struct {
-			value string
-			label string
-		}{
-			{"basic", i18n.T("key_derive.option.strength_basic")},
-			{"medium", i18n.T("key_derive.option.strength_medium")},
-			{"advanced", i18n.T("key_derive.option.strength_advanced")},
-		}
-		strengthLabels := make([]string, len(strengthOpts))
-		strengthLabelToValue := make(map[string]string, len(strengthOpts))
-		for i, o := range strengthOpts {
-			strengthLabels[i] = o.label
-			strengthLabelToValue[o.label] = o.value
-		}
-		p := &survey.Select{
-			Message: i18n.T("key_derive.prompt.strength"),
-			Options: strengthLabels,
-			Default: i18n.T("key_derive.option.strength_medium"),
-		}
-		if err := survey.AskOne(p, &keyDeriveStrength, survey.WithValidator(i18nRequired())); err != nil {
-			return err
-		}
-		keyDeriveStrength = strengthLabelToValue[keyDeriveStrength]
-	}
-	// restore: leave strength empty so it is taken from the config (or defaults to medium).
-
-	if keyDeriveInput == "" {
-		if !isStdinTerminal() {
-			return fmt.Errorf("%s", i18n.T("key_derive.error.input_required"))
-		}
-		p := &survey.Multiline{
-			Message: i18n.T("key_derive.prompt.input"),
-			Help:    i18n.T("key_derive.prompt.input_help"),
-		}
-		if err := survey.AskOne(p, &keyDeriveInput, survey.WithValidator(i18nRequired()), survey.WithValidator(keyDeriveInputValidator)); err != nil {
-			return err
-		}
-	}
-
-	if keyDeriveHint == "" && mode == "generate" && isStdinTerminal() {
-		p := &survey.Input{
-			Message: i18n.T("key_derive.prompt.hint"),
-			Help:    i18n.T("key_derive.prompt.hint_help"),
-		}
-		// Optional field: no Required validator, empty value falls back to
-		// first 10 chars of input (set later in runKeyDerive).
-		if err := survey.AskOne(p, &keyDeriveHint); err != nil {
-			return err
-		}
-	}
-
-	if keyDerivePassword == "" {
-		if !isStdinTerminal() {
-			return fmt.Errorf("%s", i18n.T("key_derive.error.password_required"))
-		}
-		p := &survey.Password{
-			Message: i18n.T("key_derive.prompt.password"),
-		}
-		if err := survey.AskOne(p, &keyDerivePassword, survey.WithValidator(i18nRequired()), survey.WithValidator(keyDerivePasswordValidator)); err != nil {
-			return err
-		}
-	}
-
-	if keyDeriveOutput == "" && mode == "generate" && isStdinTerminal() {
-		p := &survey.Input{
-			Message: i18n.T("key_derive.prompt.output"),
-			Default: "recovery-config.txt",
-		}
-		// Press Enter to accept the default; the file is written after derivation.
-		if err := survey.AskOne(p, &keyDeriveOutput); err != nil {
-			return err
-		}
-	}
-
-	if mode == "restore" && keyDeriveConfig == "" {
-		if !isStdinTerminal() {
-			return fmt.Errorf("%s", i18n.T("key_derive.error.config_required"))
-		}
-		p := &survey.Input{
-			Message: i18n.T("key_derive.prompt.config"),
-			Help:    i18n.T("key_derive.prompt.config_help"),
-		}
-		if err := survey.AskOne(p, &keyDeriveConfig, survey.WithValidator(i18nRequired())); err != nil {
-			return err
 		}
 	}
 	return nil
@@ -377,70 +392,4 @@ func strengthConfigLabel(s kdf.Strength) string {
 	default:
 		return i18n.T("key_derive.output.strength_label_medium")
 	}
-}
-
-// i18nRequired is an i18n-aware replacement for survey.Required. Handles both
-// plain strings (Input / Password) and survey.OptionAnswer (Select / MultiSelect).
-func i18nRequired() survey.Validator {
-	return func(val interface{}) error {
-		if val == nil {
-			return fmt.Errorf("%s", i18n.T("common.error.required"))
-		}
-		switch v := val.(type) {
-		case string:
-			if v == "" {
-				return fmt.Errorf("%s", i18n.T("common.error.required"))
-			}
-		case survey.OptionAnswer:
-			if v.Value == "" {
-				return fmt.Errorf("%s", i18n.T("common.error.required"))
-			}
-		}
-		return nil
-	}
-}
-
-// validateKeyDeriveParams validates the package-level keyDeriveInput and
-// keyDerivePassword after resolveKeyDeriveParams, ensuring flag-provided
-// values also pass validation (mirrors data_cipher.go's validateKeys()).
-func validateKeyDeriveParams() error {
-	if keyDeriveInput != "" {
-		if err := validation.ValidateKeyDeriveInput(keyDeriveInput); err != nil {
-			return err
-		}
-	}
-	if keyDerivePassword != "" {
-		if err := validation.ValidateKeyDerivePassword(keyDerivePassword); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// keyDerivePasswordValidator wraps validation.ValidateKeyDerivePassword as a
-// survey.Validator.
-func keyDerivePasswordValidator(ans interface{}) error {
-	s, ok := ans.(string)
-	if !ok {
-		return fmt.Errorf("%s", i18n.T("key_derive.error.validator_type_assert"))
-	}
-	return validation.ValidateKeyDerivePassword(s)
-}
-
-// keyDeriveInputValidator wraps validation.ValidateKeyDeriveInput as a
-// survey.Validator.
-func keyDeriveInputValidator(ans interface{}) error {
-	s, ok := ans.(string)
-	if !ok {
-		return fmt.Errorf("%s", i18n.T("key_derive.error.validator_type_assert"))
-	}
-	return validation.ValidateKeyDeriveInput(s)
-}
-
-// isStdinTerminal reports whether stdin is an interactive terminal. Uses
-// golang.org/x/term (already an indirect dependency) so /dev/null and pipes are
-// correctly distinguished from real TTYs. When stdin is not a TTY the command
-// skips survey prompts and relies on flags (or defaults) instead.
-func isStdinTerminal() bool {
-	return term.IsTerminal(int(os.Stdin.Fd()))
 }

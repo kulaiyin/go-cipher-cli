@@ -43,6 +43,28 @@ type Field struct {
 	// DefaultValue fills Value when it is empty, applied before validation
 	// via ApplyDefault.
 	DefaultValue string
+	// PromptDefault is the interactive prompt's default: the pre-selected
+	// option (PromptSelect) or prefilled text (PromptInput) the user accepts
+	// by pressing Enter. It never fills Value itself, so an interactive prompt
+	// is still shown even when a default exists. For a non-interactive run,
+	// apply the same default explicitly (e.g. in afterStandardize).
+	PromptDefault string
+	// PromptKeyPrefix namespaces the i18n keys used for prompt messages and
+	// option labels, which default to "standard" (standard.prompt.<flag> and
+	// standard.option.<flag>.<value>). Commands whose flags collide with the
+	// shared namespace set their own prefix (e.g. "key_derive").
+	PromptKeyPrefix string
+	// RequiredNonInteractive makes the field mandatory even when stdin is not
+	// a terminal (no interactive prompt can backfill it). Unlike Required, it
+	// does not suppress prompting on a TTY: the field is still prompted when
+	// Interactive is set. Use it for fields that are required in batch/CI runs
+	// but should not error before an interactive prompt gets a chance.
+	RequiredNonInteractive bool
+	// PromptHelp shows a help hint under the interactive prompt. The help
+	// text is looked up under the prompt message key plus "_help"
+	// (e.g. "key_derive.prompt.input_help"); the key must exist in the
+	// locales when the field is prompted.
+	PromptHelp bool
 	// ErrorPrompt, when non-empty, replaces the validation error shown to
 	// the user when interactive input fails to satisfy the field's rules.
 	ErrorPrompt string
@@ -59,15 +81,30 @@ func (f *Field) ApplyDefault() {
 	}
 }
 
+// ApplyPromptDefaultNonInteractive fills Value from PromptDefault when stdin is
+// not a terminal and the value is still empty. On a TTY the interactive prompt
+// would supply the default (via PromptDefault); this mirrors that behaviour for
+// batch/CI runs where no prompt is shown.
+func (f *Field) ApplyPromptDefaultNonInteractive() {
+	if !IsStdinTerminal() && f.Value == "" && f.PromptDefault != "" {
+		f.Value = f.PromptDefault
+	}
+}
+
 // Validate checks value against the field's requiredness, allowed values, and
 // rules. values provides the other parameter values so rules can express
 // cross-field constraints; pass nil when no other values are available.
 func (f *Field) Validate(value string, flagName string, values FieldValues) error {
 	if value == "" {
 		if f.Required && !f.Interactive {
-			return fmt.Errorf("%s", i18n.TWithData("param.error.required", map[string]interface{}{
-				"Flag": flagName,
-			}))
+			return requiredError(flagName)
+		}
+		// Required fields that are Interactive are exempt here because they
+		// are backfilled by promptInteractive() afterwards. A field that must
+		// also hold a value in non-interactive (batch) runs opts into
+		// RequiredNonInteractive, which errors when no prompt will run.
+		if f.RequiredNonInteractive && !IsStdinTerminal() {
+			return requiredError(flagName)
 		}
 		return nil
 	}
@@ -97,17 +134,64 @@ func (f *Field) Validate(value string, flagName string, values FieldValues) erro
 	return nil
 }
 
+func requiredError(flagName string) error {
+	return fmt.Errorf("%s", i18n.TWithData("param.error.required", map[string]interface{}{
+		"Flag": flagName,
+	}))
+}
+
+// promptKeyPrefix returns the i18n key namespace for prompt/option messages.
+func (f *Field) promptKeyPrefix() string {
+	if f.PromptKeyPrefix != "" {
+		return f.PromptKeyPrefix
+	}
+	return "standard"
+}
+
+// promptMessageKey returns the i18n key for the prompt message of a flag.
+func (f *Field) promptMessageKey(flagName string) string {
+	return fmt.Sprintf("%s.prompt.%s", f.promptKeyPrefix(), flagName)
+}
+
+// optionLabelKey returns the i18n key for a select option label.
+func (f *Field) optionLabelKey(flagName, value string) string {
+	return fmt.Sprintf("%s.option.%s.%s", f.promptKeyPrefix(), flagName, value)
+}
+
+// promptHelp returns the i18n help text shown under the prompt, or "" when the
+// field does not opt into help.
+func (f *Field) promptHelp(flagName string) string {
+	if !f.PromptHelp {
+		return ""
+	}
+	return i18n.T(f.promptMessageKey(flagName) + "_help")
+}
+
+// defaultOptionLabel maps PromptDefault (a value) to the matching option label,
+// or "" when there is no default or no match.
+func (f *Field) defaultOptionLabel(labelToValue map[string]string) string {
+	if f.PromptDefault == "" {
+		return ""
+	}
+	for label, value := range labelToValue {
+		if value == f.PromptDefault {
+			return label
+		}
+	}
+	return ""
+}
+
 // Prompt runs an interactive survey for the field, collects input into target,
 // then validates the result — looping on failure until valid input is received.
 func (f *Field) Prompt(target *string, flagName string) error {
-	promptMsg := i18n.T(fmt.Sprintf("standard.prompt.%s", flagName))
+	promptMsg := i18n.T(f.promptMessageKey(flagName))
 	for {
 		switch f.PromptType {
 		case PromptSelect:
 			labels := make([]string, len(f.Allowed))
 			labelToValue := make(map[string]string, len(f.Allowed))
 			for i, a := range f.Allowed {
-				key := fmt.Sprintf("standard.option.%s.%s", flagName, a)
+				key := f.optionLabelKey(flagName, a)
 				label := i18n.T(key)
 				if label == key {
 					label = a
@@ -115,7 +199,7 @@ func (f *Field) Prompt(target *string, flagName string) error {
 				labels[i] = label
 				labelToValue[label] = a
 			}
-			chosen, err := Select(promptMsg, labels)
+			chosen, err := Select(promptMsg, labels, f.defaultOptionLabel(labelToValue), f.promptHelp(flagName))
 			if err != nil {
 				return err
 			}
@@ -127,13 +211,13 @@ func (f *Field) Prompt(target *string, flagName string) error {
 			}
 			*target = input
 		case PromptMultiInput:
-			input, err := MultiInput(promptMsg)
+			input, err := MultiInput(promptMsg, f.promptHelp(flagName))
 			if err != nil {
 				return err
 			}
 			*target = input
 		default:
-			input, err := Input(promptMsg)
+			input, err := Input(promptMsg, f.PromptDefault, f.promptHelp(flagName))
 			if err != nil {
 				return err
 			}

@@ -21,10 +21,6 @@ type standardParams struct {
 	// text cleanup, or mode-dependent preprocessing that Field declarations
 	// cannot express.
 	afterStandardize func(p *standardParams) error
-
-	// afterParamsReady is called after all params are resolved (flags + interactive).
-	// This is where the actual business logic (encrypt, decrypt, derive, etc.) lives.
-	afterParamsReady func(p *standardParams) error
 }
 
 var standardCmd = &cobra.Command{
@@ -46,12 +42,8 @@ var standardCmd = &cobra.Command{
 		if err := stdParams.promptInteractive(); err != nil {
 			return err
 		}
-		// Hook: business logic after all params are resolved.
-		if stdParams.afterParamsReady != nil {
-			if err := stdParams.afterParamsReady(&stdParams); err != nil {
-				return err
-			}
-		}
+		// This is a placeholder command: business logic lives in a run<Cmd>
+		// function (see key_derive.go / mntemp.go for the reference pattern).
 		return nil
 	},
 }

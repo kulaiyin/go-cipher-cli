@@ -16,8 +16,36 @@ import (
 	"strings"
 )
 
+// paramKeys are i18n keys generated at runtime by internal/param.Field.Prompt
+// from field declarations (pattern "<prefix>.prompt.<flag>",
+// "<prefix>.option.<flag>.<value>", and prompt keys + "_help" for help text),
+// so they never appear as literal i18n.T() calls in source. They are treated
+// like code keys: each must exist in both locales and counts as used. Add a
+// key here when a declarative (standard-mode) command prompts a new flag or
+// select option.
+var paramKeys = []string{
+	"key_derive.prompt.mode",
+	"key_derive.prompt.input",
+	"key_derive.prompt.input_help",
+	"key_derive.prompt.password",
+	"key_derive.prompt.hint",
+	"key_derive.prompt.hint_help",
+	"key_derive.prompt.strength",
+	"key_derive.prompt.output",
+	"key_derive.prompt.config",
+	"key_derive.prompt.config_help",
+	"key_derive.option.mode.generate",
+	"key_derive.option.mode.restore",
+	"key_derive.option.strength.basic",
+	"key_derive.option.strength.medium",
+	"key_derive.option.strength.advanced",
+}
+
 func main() {
 	codeKeys := collectCodeKeys()
+	for _, k := range paramKeys {
+		codeKeys[k] = true
+	}
 	enKeys := collectLocaleKeys("internal/i18n/locales/active.en.toml")
 	zhKeys := collectLocaleKeys("internal/i18n/locales/active.zh.toml")
 
