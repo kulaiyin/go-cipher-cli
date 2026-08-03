@@ -416,17 +416,17 @@
     },
     {
       "id": "Q23",
-      "content": "Describe an action with an arrow or slash between the steps, plus the target object? (e.g., walk/go/library or push->wooden door)",
+      "content": "Describe an action with an arrow \"->\" between the steps, plus the target object? (e.g., push->wooden door)",
       "validate": "special"
     },
     {
       "id": "Q24",
-      "content": "Choose a favorite four-character phrase and insert an asterisk or hyphen between each character? (e.g., L*I*F*E)",
+      "content": "Choose a favorite four-character phrase and insert an asterisk between each character? (e.g., Shang*Shan*Ruo*Shui)",
       "validate": "special"
     },
     {
       "id": "Q25",
-      "content": "The length and width of your first bedroom, joined with \"x\" or \"*\", plus the color? (e.g., 4*5 White)",
+      "content": "The length and width of your first bedroom, joined with \"*\", plus the color? (e.g., 4*5 White)",
       "validate": "special"
     },
     {
