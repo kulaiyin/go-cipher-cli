@@ -62,6 +62,9 @@ func runKeyDeriveWithConfigFile(p *keyDeriveParams) error {
 	if mode != "generate" {
 		return fmt.Errorf("%s", i18n.T("key_derive.config_edit.error_generate_only"))
 	}
+	// Write the resolved mode back so the question-answer password prompt
+	// (promptPasswordWithQuestionAnswer) and preGenerateSaltSeed see generate.
+	p.Mode.Value = mode
 
 	path, err := resolveConfigPath(p.ConfigFile, p.Hint.Value)
 	if err != nil {
@@ -99,6 +102,11 @@ func runKeyDeriveWithConfigFile(p *keyDeriveParams) error {
 		data = d
 		break
 	}
+
+	// Seed the salt up front so a question-answer generated password (collected
+	// below) and the key derivation share the same salt, mirroring the standard
+	// generate flow (preGenerateSaltSeed + promptPasswordWithQuestionAnswer).
+	preGenerateSaltSeed(p)
 
 	password, err := collectConfigPassword(p)
 	if err != nil {
@@ -146,13 +154,11 @@ func collectConfigPassword(p *keyDeriveParams) (string, error) {
 	if !param.IsStdinTerminal() {
 		return "", fmt.Errorf("%s", i18n.T("key_derive.config_edit.error_password_required"))
 	}
-	// Reuse the declarative password field: hidden prompt, same
-	// validation rule as the standard generate flow, loops on invalid input.
-	field := param.Field{
-		PromptType:      param.PromptPassword,
-		PromptKeyPrefix: "key_derive",
-		Rules:           []param.Rule{{Name: "key_derive_password"}},
-	}
+	// Reuse the declarative password field configured in init() (hidden prompt,
+	// key_derive_password rule, question-answer high-strength flow) so the two
+	// generate paths share one definition.
+	field := kdParams.Password
+	field.Value = ""
 	var pw string
 	if err := field.Prompt(&pw, "password"); err != nil {
 		return "", err

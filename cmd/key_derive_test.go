@@ -288,3 +288,72 @@ func TestRestoreQuestionAnswerSeedChain(t *testing.T) {
 		t.Fatalf("restored key does not match stored UUIDs")
 	}
 }
+
+// TestConfigFileReusesQuestionAnswerPasswordField ensures the --use-config-file
+// password prompt reuses the standard generate password field (see
+// collectConfigPassword), so it offers the same question-answer high-strength
+// flow instead of a plain hidden password.
+func TestConfigFileReusesQuestionAnswerPasswordField(t *testing.T) {
+	f := kdParams.Password
+	if f.PromptFn == nil {
+		t.Fatal("reused password field must offer the question-answer high-strength prompt")
+	}
+	if len(f.Rules) != 1 || f.Rules[0].Name != "key_derive_password" {
+		t.Fatalf("rules = %+v, want key_derive_password", f.Rules)
+	}
+}
+
+// TestConfigFileQuestionAnswerSeedChain drives the --use-config-file generate
+// entry through the question-answer password flow: mode is resolved to generate,
+// the salt is pre-seeded before the password prompt, and the QnA password shares
+// that salt with the derivation. The saved recovery config must store the same
+// salt and question IDs so restore re-answers the questions and reproduces the
+// keys.
+func TestConfigFileQuestionAnswerSeedChain(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	p := &keyDeriveParams{}
+	p.Mode.Value = "generate"
+	preGenerateSaltSeed(p)
+	if len(p.Salt.Value) != 128 {
+		t.Fatalf("expected pre-seeded 128-hex salt, got %q (len %d)", p.Salt.Value, len(p.Salt.Value))
+	}
+
+	answers := []string{"20240101", "shanghai", "@abc"}
+	pw, err := password.ComputeFinalPassword(p.Salt.Value, answers)
+	if err != nil {
+		t.Fatalf("generate password: %v", err)
+	}
+	input := "ThisIsAFixedProbeInputForGoldenVector2026"
+
+	outPath := filepath.Join(t.TempDir(), "recovery.txt")
+	p.Output.Value = outPath
+	p.answerIDs = []string{"Q01", "Q06", "Q23"}
+	if err := runKeyDeriveGenerate(p, input, pw, "hint", kdf.StrengthBasic); err != nil {
+		t.Fatalf("config-file generate: %v", err)
+	}
+
+	cfg, err := loadRecoveryConfig(outPath)
+	if err != nil {
+		t.Fatalf("load saved recovery config: %v", err)
+	}
+	if cfg.Salt != p.Salt.Value {
+		t.Fatalf("config salt %q != pre-seeded salt %q", cfg.Salt, p.Salt.Value)
+	}
+	if !reflect.DeepEqual(cfg.HintIDs, p.answerIDs) {
+		t.Fatalf("config hint IDs %v != answer IDs %v", cfg.HintIDs, p.answerIDs)
+	}
+
+	pw2, err := password.ComputeFinalPassword(cfg.Salt, answers)
+	if err != nil {
+		t.Fatalf("restore password: %v", err)
+	}
+	res := kdf.DeriveKeySet(input, pw2, cfg.Salt, kdf.StrengthBasic)
+	if !res.Success {
+		t.Fatalf("restore derive: %s", res.Error)
+	}
+	if !kdf.ValidateKeyRecovery(res.Keys[0], cfg.UUIDs) {
+		t.Fatalf("restored key does not match stored UUIDs")
+	}
+}
