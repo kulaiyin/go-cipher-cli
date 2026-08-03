@@ -1,0 +1,368 @@
+[
+  [
+    {
+      "id": "Q01",
+      "content": "The date of your first independent long-distance trip (or trip abroad)? (e.g., 20120601)"
+    },
+    {
+      "id": "Q02",
+      "content": "The year/month/day you acquired your first phone or computer? (e.g., 20100615)"
+    },
+    {
+      "id": "Q03",
+      "content": "An anniversary that means a lot to you but cannot be found on social media? (e.g., 20080912)"
+    },
+    {
+      "id": "Q04",
+      "content": "The date (year/month/day) you received your first formal salary? (e.g., 20150710)"
+    },
+    {
+      "id": "Q05",
+      "content": "The exact birthday of your best childhood friend? (e.g., 19980324)"
+    },
+    {
+      "id": "Q06",
+      "content": "The date of your first hotel stay or long-distance move? (e.g., 20110818)"
+    },
+    {
+      "id": "Q07",
+      "content": "The most special age reached by one of your parents or elders (with the year)? (e.g., 103+2015)"
+    },
+    {
+      "id": "Q08",
+      "content": "The approximate date (year/month/day) you first learned to swim, ride a bike, or master a skill? (e.g., 20040716)"
+    },
+    {
+      "id": "Q09",
+      "content": "The house number of an old house you once lived in (padded to 8 digits)? (e.g., 00001234)"
+    },
+    {
+      "id": "Q10",
+      "content": "The release/publication date of your favorite movie or book? (e.g., 19971219)"
+    },
+    {
+      "id": "Q11",
+      "content": "What was the landline number (with area code) of the home where you spent your childhood? (e.g., 010+87654321)"
+    },
+    {
+      "id": "Q12",
+      "content": "What are the first 8 digits of the first line on page 100 of your favorite book (if any)? (e.g., 23071968)"
+    },
+    {
+      "id": "Q13",
+      "content": "What is the full number of the parcel locker / pickup point you use most often? (e.g., 0317485269)"
+    },
+    {
+      "id": "Q14",
+      "content": "What was the employee ID you received when you first started work (pad with leading zeros to 8 digits if shorter)? (e.g., 00004567)"
+    },
+    {
+      "id": "Q15",
+      "content": "What digit sequence do you get when typing your favorite poem or song using the T9 keypad? (e.g., 54649374)"
+    },
+    {
+      "id": "Q16",
+      "content": "Your alma mater's (university) founding anniversary date plus the last few digits of your student ID? (e.g., 20100520+386)"
+    },
+    {
+      "id": "Q17",
+      "content": "The birth date (with year) of the celebrity or idol you admire most? (e.g., 19690811)"
+    },
+    {
+      "id": "Q18",
+      "content": "The phone number of the first contact (non-relative) in your phone's contact list? (e.g., 13912345678)"
+    },
+    {
+      "id": "Q19",
+      "content": "The combined date and time (year/month/day hour:minute:second) of a secret anniversary only you know (e.g., first meeting, confession)? (e.g., 20120601 18:30:05)"
+    },
+    {
+      "id": "Q20",
+      "content": "A landline number (with area code) you remember most vividly from childhood, with the year you graduated from elementary school appended at the end? (e.g., 0108765432+2006)"
+    },
+    {
+      "id": "Q21",
+      "content": "If you were to text yourself 20 years from now, what is your preset 6-digit verification code plus your desired height (in cm)? (e.g., 999886+190)"
+    },
+    {
+      "id": "Q22",
+      "content": "The exact amount of your first salary (in cents), plus what you ate for your first meal after receiving it? (e.g., 350000+Malatang)"
+    },
+    {
+      "id": "Q23",
+      "content": "The last 4 digits of your first phone number, plus the color and brand of that phone? (e.g., 5678+Silver Nokia)"
+    },
+    {
+      "id": "Q24",
+      "content": "The year and month of your first solo train ride or flight, plus the name of the destination city? (e.g., 201206+Chengdu)"
+    },
+    {
+      "id": "Q25",
+      "content": "The name of your childhood secret base, plus roughly how far it was from your home (in meters)? (e.g., Back Hill Bunker+500)"
+    },
+    {
+      "id": "Q26",
+      "content": "The name of the thickest book on your bookshelf, plus its position counting from left to right? (e.g., Modern Chinese Dictionary+5)"
+    },
+    {
+      "id": "Q27",
+      "content": "The first alarm time you set every morning, plus the first thing you do after waking up? (e.g., 0715+open the curtains)"
+    },
+    {
+      "id": "Q28",
+      "content": "The size and color of the shoes you wear most often, plus which shelf level (counting from the top) they sit on? (e.g., 37+Red+3)"
+    },
+    {
+      "id": "Q29",
+      "content": "A digit fragment from the ID of your first anonymous social account, plus a description of your avatar at the time? (e.g., 789+Cat on black background)"
+    },
+    {
+      "id": "Q30",
+      "content": "The last 4 digits of your admission ticket number for an important exam (high school / college / graduate entrance exam), plus a description of your exam room location? (e.g., 8015+Red Building 3)"
+    }
+  ],
+  [
+    {
+      "id": "Q01",
+      "content": "The pinyin initials of your third-grade desk mate's name? (e.g., LXY)"
+    },
+    {
+      "id": "Q02",
+      "content": "The \"secret nickname\" you gave your most cherished childhood toy? (e.g., xiaohei)"
+    },
+    {
+      "id": "Q03",
+      "content": "A \"secret code phrase\" that only you and a particular best friend understand? (e.g., XOXO)"
+    },
+    {
+      "id": "Q04",
+      "content": "A unique symbol you often engrave on easy-to-lose items like umbrellas or water bottles, plus the color of the item? (e.g., Triangle+Fluorescent Green)"
+    },
+    {
+      "id": "Q05",
+      "content": "The pinyin of the vegetable or food you dislike the most? (e.g., kugua)"
+    },
+    {
+      "id": "Q06",
+      "content": "The abbreviation of the street name near your childhood home? (e.g., JFL)"
+    },
+    {
+      "id": "Q07",
+      "content": "The nickname of your first pet (or the animal you most want to own)? (e.g., Mimi)"
+    },
+    {
+      "id": "Q08",
+      "content": "If you were to give yourself a spy code name, what would it be? (e.g., NightFox)"
+    },
+    {
+      "id": "Q09",
+      "content": "The \"nickname\" classmates gave your favorite teacher behind their back? (e.g., yanjing)"
+    },
+    {
+      "id": "Q10",
+      "content": "A remote place you have been to but never mentioned again? (e.g., Qingxi)"
+    },
+    {
+      "id": "Q11",
+      "content": "The English abbreviation of the most eye-catching building (e.g., skyscraper, hotel) you pass on your daily commute? (e.g., ICC)"
+    },
+    {
+      "id": "Q12",
+      "content": "The first three letters of a professional term or software you use most often (e.g., Python, CAD, SAP)? (e.g., PYT)"
+    },
+    {
+      "id": "Q13",
+      "content": "The first two letters of the English name your first English teacher gave you (or the first English name you gave yourself)? (e.g., Al)"
+    },
+    {
+      "id": "Q14",
+      "content": "The pinyin/English initials of your current job title or position? (e.g., PM)"
+    },
+    {
+      "id": "Q15",
+      "content": "The combination of the brand name and model initials of an electronic device you frequently operate? (e.g., MacPro)"
+    },
+    {
+      "id": "Q16",
+      "content": "The pinyin initials of the beverage you drink most often (e.g., Coca-Cola)? (e.g., KKKL)"
+    },
+    {
+      "id": "Q17",
+      "content": "The pinyin initials of the name of your first mentor or honored teacher? (e.g., LCF)"
+    },
+    {
+      "id": "Q18",
+      "content": "The abbreviation of the skill or equipment you use most often in games? (e.g., AK)"
+    },
+    {
+      "id": "Q19",
+      "content": "The name of the mountain or island where you would most like to live in seclusion? (e.g., Penglai)"
+    },
+    {
+      "id": "Q20",
+      "content": "Where did you first see the sea? (e.g., Sanya)"
+    },
+    {
+      "id": "Q21",
+      "content": "The location of your first live concert or theater performance? (e.g., Beijing)"
+    },
+    {
+      "id": "Q22",
+      "content": "The first scenic spot you visited on your high school graduation trip? (e.g., Huangshan)"
+    },
+    {
+      "id": "Q23",
+      "content": "If you could own a fantasy creature as a mount, what would it be called? (e.g., Pegasus)"
+    },
+    {
+      "id": "Q24",
+      "content": "The name of your favorite niche song that only you listen to often? (e.g., Hush)"
+    },
+    {
+      "id": "Q25",
+      "content": "Which historical figure or scientist do you admire the most? (e.g., Sunzi)"
+    },
+    {
+      "id": "Q26",
+      "content": "The name of the distant planet you most want to visit but have not yet? (e.g., Mars)"
+    },
+    {
+      "id": "Q27",
+      "content": "A specific food you crave the most when you are under stress? (e.g., Pizza)"
+    },
+    {
+      "id": "Q28",
+      "content": "Which two seemingly unrelated words sound most harmonious when combined, in your opinion? (e.g., Marble and Cotton Candy)"
+    },
+    {
+      "id": "Q29",
+      "content": "If you could define a new color, what name would you give it? (e.g., Twilight Purple)"
+    },
+    {
+      "id": "Q30",
+      "content": "What completely harmless object were you most afraid of during your childhood? (e.g., The peephole of an old wooden door)"
+    }
+  ],
+  [
+    {
+      "id": "Q01",
+      "content": "The pinyin of your first love's surname plus a punctuation mark you like most? (e.g., Zhang?)"
+    },
+    {
+      "id": "Q02",
+      "content": "Your college dormitory number joined with the @ symbol? (e.g., 5@106)"
+    },
+    {
+      "id": "Q03",
+      "content": "The first pinyin letter of your name plus your lucky number and an exclamation mark? (e.g., L7!)"
+    },
+    {
+      "id": "Q04",
+      "content": "Pick two \"combo punctuation marks\" you love to use at the end of messages? (e.g., ??)"
+    },
+    {
+      "id": "Q05",
+      "content": "Pick two symbols that represent \"money\" or \"value\"? (e.g., $$)"
+    },
+    {
+      "id": "Q06",
+      "content": "The amount of your first bonus, with a comma or period manually typed at the thousands place, plus the currency abbreviation? (e.g., $1,200)"
+    },
+    {
+      "id": "Q07",
+      "content": "The pinyin initials of your favorite catchphrase plus a question mark? (e.g., ZDL?)"
+    },
+    {
+      "id": "Q08",
+      "content": "Two asterisks \"**\" with your two favorite digits in between? (e.g., *42*)"
+    },
+    {
+      "id": "Q09",
+      "content": "A greater-than sign \">\" plus the abbreviation of your dream city? (e.g., >SH)"
+    },
+    {
+      "id": "Q10",
+      "content": "The domain suffix of the email address you commonly use? (e.g., @gmail)"
+    },
+    {
+      "id": "Q11",
+      "content": "The abbreviation of your hometown and your current residence, joined with \"~\"? (e.g., JS~BJ)"
+    },
+    {
+      "id": "Q12",
+      "content": "Your favorite movie and its year, joined with a hyphen \"-\", with square brackets \"[]\" around the year? (e.g., Crisis-[2024])"
+    },
+    {
+      "id": "Q13",
+      "content": "The brand and color of your first bicycle, joined with an underscore \"_\", with \"!\" at the end? (e.g., Feiyue_Black!)"
+    },
+    {
+      "id": "Q14",
+      "content": "Your ideal vacation destination and year, joined with a plus \"+\", with the whole thing wrapped in parentheses \"()\"? (e.g., (Sanya+2026))"
+    },
+    {
+      "id": "Q15",
+      "content": "Your favorite band and their founding year, joined with a tilde \"~\"? (e.g., Coldplay~1998)"
+    },
+    {
+      "id": "Q16",
+      "content": "Your favorite dish and its main spice level, joined with an equals sign \"=\"? (e.g., Mapo Tofu=5)"
+    },
+    {
+      "id": "Q17",
+      "content": "The brand of your first phone and the year you bought it, joined with an asterisk \"*\"? (e.g., Xiaomi*2023)"
+    },
+    {
+      "id": "Q18",
+      "content": "The pinyin abbreviation of the first dish you learned to cook and its difficulty rating (1-5 stars), joined with a hyphen \"-\"? (e.g., SCJD-4)"
+    },
+    {
+      "id": "Q19",
+      "content": "The country of your first trip abroad and the year, joined with an arrow \"->\"? (e.g., Thailand->2015)"
+    },
+    {
+      "id": "Q20",
+      "content": "Your \"online nickname\" plus the year you created it, wrapped in curly braces \"{}\"? (e.g., {Phoenix2020})"
+    },
+    {
+      "id": "Q21",
+      "content": "The train number of your first solo trip joined with \"-\" and the date digits of your departure? (e.g., G102-20150715)"
+    },
+    {
+      "id": "Q22",
+      "content": "A fragment of a math or physics formula you remember best from your school days, which must include its symbols? (e.g., E=mc^2 or a+b>c)"
+    },
+    {
+      "id": "Q23",
+      "content": "Describe an action with an arrow or slash between the steps, plus the target object? (e.g., walk/go/library or push->wooden door)"
+    },
+    {
+      "id": "Q24",
+      "content": "Choose a favorite four-character phrase and insert an asterisk or hyphen between each character? (e.g., L*I*F*E)"
+    },
+    {
+      "id": "Q25",
+      "content": "The length and width of your first bedroom, joined with \"x\" or \"*\", plus the color? (e.g., 4*5 White)"
+    },
+    {
+      "id": "Q26",
+      "content": "Type a symbol pair you find most comfortable, with the pinyin of your first love's surname in the middle? (e.g., [zhang] or {li})"
+    },
+    {
+      "id": "Q27",
+      "content": "The first letter of your birth city, plus a \"*\" symbol, plus the floor number of your childhood home? (e.g., SH*12)"
+    },
+    {
+      "id": "Q28",
+      "content": "A favorite two-character word with \"!\" in the middle or at the end, plus a two-digit number? (e.g., Fight!88)"
+    },
+    {
+      "id": "Q29",
+      "content": "A currency symbol you wish you had (e.g., $, ¥, €), plus an ideal number you have in mind? (e.g., $88888888)"
+    },
+    {
+      "id": "Q30",
+      "content": "Wrap the first two characters of your first online nickname in < >, with the registration year after it? (e.g., <Breeze>2003)"
+    }
+  ]
+]

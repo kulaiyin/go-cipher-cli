@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -41,8 +42,25 @@ func loadFormSteps(path string) ([][]form.Step, error) {
 	return steps, nil
 }
 
+// localizedConfigPath returns the config path matching the current i18n language, falling back to the default.
+func localizedConfigPath() string {
+	lang := i18n.CurrentLanguage()
+	if lang == "" || lang == "en" {
+		return tuiDemoConfig
+	}
+	candidate := strings.TrimSuffix(tuiDemoConfig, "_en.json") + "_" + lang + ".json"
+	if _, err := os.Stat(candidate); err == nil {
+		return candidate
+	}
+	return tuiDemoConfig
+}
+
 func runTuiDemo(cmd *cobra.Command, args []string) error {
-	steps, err := loadFormSteps(tuiDemoConfig)
+	configPath := tuiDemoConfig
+	if !cmd.Flags().Changed("config") {
+		configPath = localizedConfigPath()
+	}
+	steps, err := loadFormSteps(configPath)
 	if err != nil {
 		return err
 	}
@@ -71,7 +89,7 @@ var tuiDemoCmd = &cobra.Command{
 
 func init() {
 	i18n.MustInit("")
-	tuiDemoCmd.Flags().StringVar(&tuiDemoConfig, "config", "configs/hint-word-pools.json", i18n.T("tui_demo.flag.config"))
+	tuiDemoCmd.Flags().StringVar(&tuiDemoConfig, "config", "configs/hint-word-pools_en.json", i18n.T("tui_demo.flag.config"))
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		tuiDemoCmd.Short = i18n.T("tui_demo.short")
 		tuiDemoCmd.Long = i18n.T("tui_demo.long")
