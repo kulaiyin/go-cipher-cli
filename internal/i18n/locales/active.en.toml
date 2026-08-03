@@ -804,6 +804,10 @@ other = "Recovery config written to: {{.Path}}"
 description = "Message when restore verification succeeds"
 other = "Key recovery successful: a derived key matches the stored UUID."
 
+[key_derive.output.restore_hint]
+description = "Hint stored in the recovery config, shown to help recall input and password"
+other = "Hint to recall your input and password: {{.Hint}}"
+
 [key_derive.output.restore_failed]
 description = "Message when restore verification fails"
 other = "Key recovery failed: no derived key matches the stored UUID (wrong input/password/strength)."
@@ -1169,7 +1173,7 @@ other = "Answer"
 
 [form.summary_footer]
 description = "Footer of the summary screen"
-other = "q Quit  Hold r to show answers"
+other = "Enter Continue  Hold r to show answers"
 
 [form.summary_final_password]
 description = "Label of the generated final password on the summary screen"

@@ -408,6 +408,11 @@ func promptKeyDeriveRestoreConfig(p *keyDeriveParams) error {
 		return err
 	}
 	p.loadedCfg = cfg
+	if cfg.Hint != "" {
+		fmt.Println(i18n.TWithData("key_derive.output.restore_hint", map[string]interface{}{
+			"Hint": cfg.Hint,
+		}))
+	}
 	if len(cfg.HintIDs) > 0 {
 		steps, err := buildRestoreSteps(cfg.HintIDs)
 		if err != nil {

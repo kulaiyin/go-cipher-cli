@@ -148,10 +148,11 @@ func (m *Model) Update(key tui.Key) (tui.Model, tui.Cmd) {
 			m.cursor = 0
 			return m, nil
 		}
+		if key.Type == tui.KeyEnter {
+			return m, tui.Quit()
+		}
 		if key.Type == tui.KeyRunes && len(key.Runes) > 0 {
 			switch key.Runes[0] {
-			case 'q':
-				return m, tui.Quit()
 			case 'r':
 				return m.showAnswers()
 			}

@@ -264,15 +264,19 @@ func TestSummaryQuitAndCtrlC(t *testing.T) {
 	initTestI18n()
 	m := newSmall()
 	m = drive(t, m,
-		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter),
-		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter),
+		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter),
+		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter),
 	)
 
-	// On the summary: normal keys do not quit, q quits, Ctrl+C quits.
-	m = drive(t, m, key(tui.KeyRunes, 'x'))
+	// On the summary: normal keys do not quit, Enter quits, Ctrl+C quits.
 	_, cmd := m.Update(key(tui.KeyRunes, 'q'))
+	if cmd != nil {
+		t.Fatal("q on summary must not quit")
+	}
+	m = drive(t, m, key(tui.KeyRunes, 'x'))
+	_, cmd = m.Update(key(tui.KeyEnter))
 	if cmd == nil {
-		t.Fatal("q on summary must quit")
+		t.Fatal("Enter on summary must quit")
 	}
 	_, cmd = m.Update(key(tui.KeyCtrlC))
 	if cmd == nil {
@@ -317,7 +321,7 @@ func TestViewStages(t *testing.T) {
 	m = drive(t, m, key(tui.KeyRunes, 'h', 'i'), key(tui.KeyEnter),
 		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter))
 	view = m.View()
-	for _, want := range []string{"Result Summary", "Step | ID | Question | Answer", "1 | Q01 | First question | **", "q Quit  Hold r to show answers"} {
+	for _, want := range []string{"Result Summary", "Step | ID | Question | Answer", "1 | Q01 | First question | **", "Enter Continue  Hold r to show answers"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("summary view missing %q:\n%s", want, view)
 		}

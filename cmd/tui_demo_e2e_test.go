@@ -14,7 +14,7 @@ import (
 
 // TestTuiDemoFullFlow drives the real question pool (configs/hint-word-pools_en.json,
 // 3 steps x 30 questions) through the whole interaction: page -> select -> type
-// -> next step, then the summary screen, then quit with q.
+// -> next step, then the summary screen, then quit with Enter.
 func TestTuiDemoFullFlow(t *testing.T) {
 	i18n.MustInit("")
 	i18n.SetLanguage("en")
@@ -65,7 +65,7 @@ func TestTuiDemoFullFlow(t *testing.T) {
 	feed("\r")       // -> confirm password
 	feed("abc123!")  // confirm
 	feed("\r")       // submit -> summary
-	feed("q")        // quit
+	feed("\r")       // quit summary
 
 	var m *form.Model
 	select {
@@ -106,7 +106,7 @@ func TestTuiDemoFullFlow(t *testing.T) {
 		"1 | Q01 |",
 		"2 | Q06 |",
 		"3 | Q01 |",
-		"q Quit  Hold r to show answers",
+		"Enter Continue  Hold r to show answers",
 	} {
 		if !strings.Contains(rendered, wantStr) {
 			t.Errorf("rendered output missing %q\n--- output ---\n%s", wantStr, rendered)

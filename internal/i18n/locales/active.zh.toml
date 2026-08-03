@@ -803,6 +803,10 @@ other = "恢复配置已写入：{{.Path}}"
 description = "恢复校验成功提示"
 other = "密钥恢复成功：派生出的某把密钥与存储的 UUID 匹配。"
 
+[key_derive.output.restore_hint]
+description = "恢复配置中存储的提示，用于帮助回忆输入内容和密码"
+other = "回忆提示（用于回忆输入内容和密码）：{{.Hint}}"
+
 [key_derive.output.restore_failed]
 description = "恢复校验失败提示"
 other = "密钥恢复失败：没有派生密钥与存储的 UUID 匹配（输入内容/密码/强度不匹配）。"
@@ -1168,7 +1172,7 @@ other = "输入内容"
 
 [form.summary_footer]
 description = "汇总屏幕的底部提示"
-other = "q 退出  按住 r 显示答案"
+other = "Enter 继续  按住 r 显示答案"
 
 [form.summary_final_password]
 description = "汇总屏幕上生成的高强度密码标签"
