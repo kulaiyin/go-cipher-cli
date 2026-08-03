@@ -9,6 +9,7 @@ import (
 
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/param"
+	"go-cipher-cli/internal/tmpmount"
 )
 
 func TestResolveMntempPath(t *testing.T) {
@@ -157,5 +158,52 @@ func TestMntempFlagDefaults(t *testing.T) {
 	}
 	if want := strconv.Itoa(mntempDefaultSizeMB); sizeFlag.DefValue != want {
 		t.Errorf("--size default = %q, want %q", sizeFlag.DefValue, want)
+	}
+}
+
+// TestMntempSaveDefaultFallbackNonInteractive verifies that mntempSaveDefault
+// falls back to the caller's path when stdin is not a terminal (no prompt, no
+// mount attempt) — the CI/batch behaviour. It assumes /tmp/mntemp/default is not
+// mounted in the test environment.
+func TestMntempSaveDefaultFallbackNonInteractive(t *testing.T) {
+	if tmpmount.IsMounted(tmpmount.DefaultMountPath(mntempDefaultName)) {
+		t.Skip("volatile mntemp mount active in test environment")
+	}
+	got := mntempSaveDefault("data-cipher", "decrypted-x.txt")
+	if got != "decrypted-x.txt" {
+		t.Errorf("mntempSaveDefault() = %q, want fallback %q", got, "decrypted-x.txt")
+	}
+}
+
+// TestMntempSaveDefaultMounted verifies that when the volatile mount is active
+// the default path points into the per-command directory. Skipped when no mount
+// exists, so it only exercises the mounted branch in environments with one.
+func TestMntempSaveDefaultMounted(t *testing.T) {
+	root := tmpmount.DefaultMountPath(mntempDefaultName)
+	if !tmpmount.IsMounted(root) {
+		t.Skip("no volatile mntemp mount in test environment")
+	}
+	got := mntempSaveDefault("data-cipher", "decrypted-x.txt")
+	wantPrefix := filepath.Join(root, "data-cipher", "decrypted-x.txt")
+	if got != wantPrefix {
+		t.Errorf("mntempSaveDefault() = %q, want %q", got, wantPrefix)
+	}
+}
+
+// TestIsVolatilePath checks path-inside-mount detection. The mounted case only
+// runs when a real mount is present.
+func TestIsVolatilePath(t *testing.T) {
+	if isVolatilePath(filepath.Join(t.TempDir(), "x.txt")) {
+		t.Error("isVolatilePath true for a plain temp path")
+	}
+	root := tmpmount.DefaultMountPath(mntempDefaultName)
+	if !tmpmount.IsMounted(root) {
+		return
+	}
+	if !isVolatilePath(filepath.Join(root, "data-cipher", "x.zip")) {
+		t.Errorf("isVolatilePath false for %q inside the mount", root)
+	}
+	if isVolatilePath(filepath.Join(root, "..", "outside.txt")) {
+		t.Error("isVolatilePath true for a path escaping the mount")
 	}
 }

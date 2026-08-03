@@ -137,6 +137,54 @@ func mountVolatile(path string, sizeMB int, name string) error {
 	return nil
 }
 
+// mntempSaveDefault returns the default save path for a command's output: the
+// volatile mntemp command directory when mounted (or after the user accepts
+// mounting on a terminal), otherwise fallback. Declining or a failed mount
+// returns fallback silently; the volatile notice is printed when the mount is
+// used. Shared by commands that default their output into the volatile
+// filesystem (e.g. key-derive, data-cipher decrypt).
+func mntempSaveDefault(command, fallback string) string {
+	root := tmpmount.DefaultMountPath(mntempDefaultName)
+	if !tmpmount.IsMounted(root) {
+		if !param.IsStdinTerminal() {
+			return fallback
+		}
+		confirmed, err := param.Confirm(i18n.T("mntemp.prompt.mount_confirm"), true)
+		if err != nil || !confirmed {
+			return fallback
+		}
+		if err := mountVolatile(root, mntempDefaultSizeMB, mntempDefaultName); err != nil {
+			fmt.Fprintln(os.Stderr, i18n.TWithData("mntemp.error.mount_failed", map[string]interface{}{
+				"Err": err,
+			}))
+			return fallback
+		}
+	}
+	dir, err := tmpmount.CommandDir(mntempDefaultName, command)
+	if err != nil {
+		return fallback
+	}
+	defaultPath := filepath.Join(dir, filepath.Base(fallback))
+	fmt.Println(i18n.TWithData("mntemp.output.note", map[string]interface{}{
+		"Path": defaultPath,
+	}))
+	return defaultPath
+}
+
+// isVolatilePath reports whether p points inside the active volatile mntemp
+// mount, used to decide whether a saved file needs a "move it elsewhere" hint.
+func isVolatilePath(p string) bool {
+	root := tmpmount.DefaultMountPath(mntempDefaultName)
+	if !tmpmount.IsMounted(root) {
+		return false
+	}
+	rel, err := filepath.Rel(root, p)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (!strings.HasPrefix(rel, "..") && rel != "")
+}
+
 func printMntempMountResult(res *tmpmount.Result, name string) {
 	switch res.Backend {
 	case tmpmount.BackendTmpfs:

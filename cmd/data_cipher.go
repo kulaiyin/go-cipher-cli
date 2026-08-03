@@ -304,6 +304,9 @@ func runEncrypt(in *cipherInput) error {
 		"Size": len(data),
 		"Path": dataCipherOutput,
 	}))
+	if isVolatilePath(dataCipherOutput) {
+		fmt.Println(i18n.T("data_cipher.output.volatile_reminder"))
+	}
 	return nil
 }
 
@@ -563,8 +566,10 @@ func validateKeys() error {
 	return nil
 }
 
-// available and --output was not given. The default shown is the caller-provided
-// fallback (encrypt: timestamped zip; decrypt: decrypted-<originalname>). In a
+// resolveOutputPath resolves the output path when -o/--output was not given.
+// The default shown is the caller-provided fallback (encrypt: timestamped zip;
+// decrypt: decrypted-<originalname>), pointing into the volatile mntemp
+// filesystem via mntempSaveDefault so nothing sensitive persists on disk. In a
 // non-interactive run the fallback is applied silently — matches key_derive's
 // behaviour where the default is used without prompting.
 func resolveOutputPath(message, fallback string) error {
@@ -575,12 +580,13 @@ func resolveOutputPath(message, fallback string) error {
 		dataCipherOutput = fallback
 		return nil
 	}
-	out, err := param.Input(message, fallback, "", param.WithoutRequired())
+	def := mntempSaveDefault("data-cipher", fallback)
+	out, err := param.Input(message, def, "", param.WithoutRequired())
 	if err != nil {
 		return err
 	}
 	if strings.TrimSpace(out) == "" {
-		out = fallback
+		out = def
 	}
 	dataCipherOutput = out
 	return nil

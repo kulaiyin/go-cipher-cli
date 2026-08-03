@@ -412,6 +412,10 @@ other = "导入的文件不是合法的加密文件：数据被非法修改"
 description = "加密成功时的输出"
 other = "已加密 {{.Size}} 字节 -> {{.Path}}"
 
+[data_cipher.output.volatile_reminder]
+description = "保存到易失 RAM 文件系统后提示将文件移动到其他位置"
+other = "已保存到易失 RAM 文件系统 —— 请在系统关闭前将该文件移动到其他位置。"
+
 [data_cipher.output.decrypt_hint]
 description = "解密时提示加密时填写的 hint，帮助回忆输入内容与密码"
 other = "加密时填写的提示: {{.Hint}}"
@@ -722,18 +726,6 @@ other = "存入恢复配置作为备忘，不影响派生出的密钥。"
 [key_derive.prompt.output]
 description = "输出文件路径交互提示"
 other = "恢复配置保存位置："
-
-[key_derive.prompt.mount_confirm]
-description = "是否挂载易失 RAM 文件系统以安全保存的确认提示"
-other = "是否保存到易失 RAM 文件系统（mntemp）？系统关闭时文件将被清除。"
-
-[key_derive.output.mntemp_note]
-description = "提示恢复配置已保存到易失 RAM 文件系统"
-other = "正在将恢复配置保存到易失 RAM 文件系统：{{.Path}}（系统关闭时移除）"
-
-[key_derive.error.mount_failed]
-description = "易失 RAM 文件系统挂载失败的错误"
-other = "挂载易失 RAM 文件系统失败：{{.Err}}"
 
 [key_derive.prompt.config]
 description = "配置路径交互提示"
@@ -1068,6 +1060,18 @@ other = "sudo 卸载失败：{{.Err}}"
 [mntemp.umount.success]
 description = "卸载成功"
 other = "已卸载：{{.Path}}"
+
+[mntemp.prompt.mount_confirm]
+description = "是否挂载易失 RAM 文件系统以安全保存的确认提示"
+other = "是否保存到易失 RAM 文件系统（mntemp）？系统关闭时文件将被清除。"
+
+[mntemp.output.note]
+description = "提示输出文件已保存到易失 RAM 文件系统"
+other = "正在将输出保存到易失 RAM 文件系统：{{.Path}}（系统关闭时移除）"
+
+[mntemp.error.mount_failed]
+description = "易失 RAM 文件系统挂载失败的错误"
+other = "挂载易失 RAM 文件系统失败：{{.Err}}"
 
 # ==========================================
 # cmd/tui_demo.go

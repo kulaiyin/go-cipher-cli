@@ -411,6 +411,10 @@ other = "imported file is not a valid encrypted file: data illegally modified"
 description = "Output on successful encryption"
 other = "Encrypted {{.Size}} bytes -> {{.Path}}"
 
+[data_cipher.output.volatile_reminder]
+description = "Reminder shown after saving to the volatile RAM filesystem"
+other = "Saved to the volatile RAM filesystem — remember to move the file to a permanent location before the system shuts down."
+
 [data_cipher.output.decrypt_hint]
 description = "Hint stored during encryption, shown on decrypt to recall the input and password"
 other = "Hint from encryption: {{.Hint}}"
@@ -723,18 +727,6 @@ other = "Stored in the recovery config as a reminder. Does not affect the derive
 [key_derive.prompt.output]
 description = "Interactive prompt for output file path"
 other = "Save recovery config to:"
-
-[key_derive.prompt.mount_confirm]
-description = "Confirmation to mount the volatile RAM filesystem for a secure save"
-other = "Save to a volatile RAM filesystem (mntemp)? Files are removed on shutdown."
-
-[key_derive.output.mntemp_note]
-description = "Notice that the recovery config is saved to the volatile RAM filesystem"
-other = "Saving recovery config to volatile RAM filesystem: {{.Path}} (removed on shutdown)"
-
-[key_derive.error.mount_failed]
-description = "Error when the volatile RAM filesystem mount fails"
-other = "failed to mount volatile RAM filesystem: {{.Err}}"
 
 [key_derive.prompt.config]
 description = "Interactive prompt for config path"
@@ -1069,6 +1061,18 @@ other = "sudo unmount failed: {{.Err}}"
 [mntemp.umount.success]
 description = "Unmounted successfully"
 other = "Unmounted: {{.Path}}"
+
+[mntemp.prompt.mount_confirm]
+description = "Confirmation to mount the volatile RAM filesystem for a secure save"
+other = "Save to a volatile RAM filesystem (mntemp)? Files are removed on shutdown."
+
+[mntemp.output.note]
+description = "Notice that an output file is saved to the volatile RAM filesystem"
+other = "Saving output to volatile RAM filesystem: {{.Path}} (removed on shutdown)"
+
+[mntemp.error.mount_failed]
+description = "Error when the volatile RAM filesystem mount fails"
+other = "failed to mount volatile RAM filesystem: {{.Err}}"
 
 # ==========================================
 # cmd/tui_demo.go
