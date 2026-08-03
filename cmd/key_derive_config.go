@@ -27,7 +27,7 @@ type recoveryConfig struct {
 // buildRecoveryConfig constructs the config from a derivation result. UUIDs is
 // populated with the masked (first8 + last8) form of each derived key plus the
 // UUID itself (matching the frontend's download format exactly).
-func buildRecoveryConfig(r kdf.KeySetResult, hint string) recoveryConfig {
+func buildRecoveryConfig(r kdf.KeySetResult, hint string, hintIDs []string) recoveryConfig {
 	uuids := make([]string, 0, len(r.Keys)+1)
 	for _, k := range r.Keys {
 		uuids = append(uuids, maskedKey(k))
@@ -41,7 +41,7 @@ func buildRecoveryConfig(r kdf.KeySetResult, hint string) recoveryConfig {
 		Salt:     r.SaltSeed,
 		UUID:     r.UUID,
 		Hint:     hint,
-		HintIDs:  []string{},
+		HintIDs:  hintIDs,
 		UUIDs:    uuids,
 	}
 }

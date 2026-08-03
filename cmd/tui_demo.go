@@ -71,11 +71,7 @@ func runTuiDemo(cmd *cobra.Command, args []string) error {
 	// web tool's per-visit salt.
 	salt := kdf.GenerateSalt(64)
 	_, err = form.Run(steps, form.WithFinalPassword(func(results []form.Result) string {
-		answers := make([]string, len(results))
-		for i, r := range results {
-			answers[i] = r.Answer
-		}
-		pw, err := password.ComputeFinalPassword(salt, answers)
+		pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
 		if err != nil {
 			return ""
 		}

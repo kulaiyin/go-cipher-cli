@@ -8,9 +8,11 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 
+	"go-cipher-cli/internal/form"
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/kdf"
 	"go-cipher-cli/internal/param"
+	"go-cipher-cli/internal/password"
 	"go-cipher-cli/internal/validation"
 )
 
@@ -39,6 +41,17 @@ type keyDeriveParams struct {
 	// path; empty means auto-generate under mntemp.
 	UseConfigFile bool
 	ConfigFile    string
+
+	// loadedCfg caches the recovery config loaded during the restore prompt
+	// pass so execute does not read the file twice.
+	loadedCfg *recoveryConfig
+
+	// answerIDs records the question IDs chosen during a question-answer
+	// password generation so they can be written into the recovery config.
+	answerIDs []string
+	// restoreSteps caches the questions reconstructed from the config's hint
+	// IDs so restore can re-answer them to regenerate the password.
+	restoreSteps [][]form.Step
 }
 
 var kdParams keyDeriveParams
@@ -55,7 +68,16 @@ var keyDeriveCmd = &cobra.Command{
 		if kdParams.UseConfigFile {
 			return runKeyDeriveWithConfigFile(&kdParams)
 		}
-		return kdSet.run(&kdParams)
+		// Standardize first, then a key-derive-specific prompt pass that loads
+		// the recovery config up front in restore mode, then the shared prompt
+		// loop for the remaining fields.
+		if err := kdSet.standardize(&kdParams); err != nil {
+			return err
+		}
+		if err := promptKeyDerive(&kdParams); err != nil {
+			return err
+		}
+		return runKeyDerive(&kdParams)
 	},
 }
 
@@ -92,6 +114,11 @@ var kdSet = paramSet[keyDeriveParams]{
 				p.Strength.ApplyPromptDefaultNonInteractive()
 			}
 		}
+		// Pre-generate the salt seed for generate mode so the question-answer
+		// password flow (prompted later) shares the same salt used for key
+		// derivation, mirroring the web tool where salt_seed is created up
+		// front and reused by both the password modal and deriveKey.
+		preGenerateSaltSeed(p)
 		return nil
 	},
 	execute: runKeyDerive,
@@ -170,6 +197,7 @@ func init() {
 	kdParams.Password.RequiredNonInteractive = true
 	kdParams.Password.PromptType = param.PromptPassword
 	kdParams.Password.Rules = []param.Rule{{Name: "key_derive_password"}}
+	kdParams.Password.PromptFn = promptPasswordWithQuestionAnswer
 
 	// hint/strength/output are only meaningful for generate; config only for
 	// restore. Their visibility follows the resolved mode.
@@ -233,18 +261,18 @@ func runKeyDeriveGenerate(p *keyDeriveParams, input, password, hint string, stre
 // runKeyDeriveRestore re-derives the key set using the salt from an existing
 // recovery config and verifies the result against the stored UUIDs.
 func runKeyDeriveRestore(p *keyDeriveParams, input, password, hint string, strength kdf.Strength) error {
-	cfg, err := loadRecoveryConfig(p.Config.Value)
-	if err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("key_derive.error.config_read_failed"), err)
+	cfg := p.loadedCfg
+	if cfg == nil {
+		var err error
+		cfg, err = loadAndApplyRecoveryConfig(p)
+		if err != nil {
+			return err
+		}
 	}
-	if cfg.Salt == "" {
-		return fmt.Errorf("%s", i18n.T("key_derive.error.config_missing_salt"))
-	}
-	// Use the strength from the config if the user did not override it
-	// (restore never applies a non-interactive default to strength).
-	if p.Strength.Value == "" && cfg.Strength != "" {
-		strength = kdf.Strength(cfg.Strength)
-	}
+	// loadAndApplyRecoveryConfig backfilled strength/hint from the config when
+	// the user did not override them, so recompute strength from the resolved
+	// value (restore never applies a non-interactive default to strength).
+	strength = kdf.Strength(p.Strength.Value)
 	if p.Hint.Value == "" && cfg.Hint != "" {
 		hint = cfg.Hint
 	}
@@ -298,7 +326,7 @@ func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, stren
 
 	// Build the recovery config to print/save. In restore mode we preserve the
 	// originally stored uuids/hint_ids so the saved file stays self-consistent.
-	rc := buildRecoveryConfig(result, hint)
+	rc := buildRecoveryConfig(result, hint, p.answerIDs)
 	if stored != nil {
 		if len(stored.UUIDs) > 0 {
 			rc.UUIDs = stored.UUIDs
@@ -330,6 +358,203 @@ func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, stren
 // cleanKeyDeriveText delegates to validation.CleanText.
 func cleanKeyDeriveText(s string) string {
 	return validation.CleanText(s)
+}
+
+// preGenerateSaltSeed sets a fresh 64-byte salt seed for generate mode unless
+// one was already provided via --salt, so the question-answer password flow
+// and the key derivation share the same salt.
+func preGenerateSaltSeed(p *keyDeriveParams) {
+	if p.Mode.Value == "generate" && p.Salt.Value == "" {
+		p.Salt.Value = kdf.GenerateSalt(64)
+	}
+}
+
+// promptKeyDerive drives the interactive prompt pass. Restore mode loads the
+// recovery config before any input is collected so failures surface early and
+// strength/hint are backfilled from the config.
+func promptKeyDerive(p *keyDeriveParams) error {
+	if !param.IsStdinTerminal() {
+		return nil
+	}
+	if p.Mode.Value == "" {
+		if err := p.Mode.Prompt(&p.Mode.Value, "mode"); err != nil {
+			return err
+		}
+	}
+	// The mode is only known after the interactive prompt, so (re)generate the
+	// salt for generate mode now: the QnA password and the derivation must
+	// share the same salt, otherwise restore cannot reproduce the password.
+	preGenerateSaltSeed(p)
+	if p.Mode.Value == "restore" {
+		if err := promptKeyDeriveRestoreConfig(p); err != nil {
+			return err
+		}
+	}
+	return promptInteractive(p.fieldEntries())
+}
+
+// promptKeyDeriveRestoreConfig collects the config path and loads it, caching
+// the parsed config and backfilling strength/hint for the rest of the flow.
+// When the config stores question IDs, the questions are reconstructed so the
+// password can be regenerated from answers instead of typed directly.
+func promptKeyDeriveRestoreConfig(p *keyDeriveParams) error {
+	if p.Config.Value == "" {
+		if err := p.Config.Prompt(&p.Config.Value, "config"); err != nil {
+			return err
+		}
+	}
+	cfg, err := loadAndApplyRecoveryConfig(p)
+	if err != nil {
+		return err
+	}
+	p.loadedCfg = cfg
+	if len(cfg.HintIDs) > 0 {
+		steps, err := buildRestoreSteps(cfg.HintIDs)
+		if err != nil {
+			return err
+		}
+		p.restoreSteps = steps
+	}
+	return nil
+}
+
+// loadAndApplyRecoveryConfig parses the config file, requires a salt, and
+// backfills strength/hint into the params when not already set.
+func loadAndApplyRecoveryConfig(p *keyDeriveParams) (*recoveryConfig, error) {
+	cfg, err := loadRecoveryConfig(p.Config.Value)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", i18n.T("key_derive.error.config_read_failed"), err)
+	}
+	if cfg.Salt == "" {
+		return nil, fmt.Errorf("%s", i18n.T("key_derive.error.config_missing_salt"))
+	}
+	if p.Strength.Value == "" && cfg.Strength != "" {
+		p.Strength.Value = cfg.Strength
+	}
+	if p.Hint.Value == "" && cfg.Hint != "" {
+		p.Hint.Value = cfg.Hint
+	}
+	return cfg, nil
+}
+
+// promptPasswordWithQuestionAnswer is the password field's custom interactive
+// prompt. In generate mode it offers the web-style "question-answer" flow to
+// generate a high-strength password. Restore mode re-answers the questions
+// reconstructed from the config when the password was generated that way, and
+// falls back to the plain hidden password prompt otherwise.
+func promptPasswordWithQuestionAnswer(promptMsg string, target *string, flagName string) error {
+	if kdParams.Mode.Value == "restore" {
+		if len(kdParams.restoreSteps) > 0 {
+			return promptRestoreAnswers(kdParams.loadedCfg, target)
+		}
+		return promptDefaultPassword(promptMsg, target)
+	}
+	useQnA, err := param.Confirm(i18n.T("key_derive.prompt.use_question_answer"))
+	if err != nil {
+		return err
+	}
+	if !useQnA {
+		return promptDefaultPassword(promptMsg, target)
+	}
+
+	steps, err := loadFormSteps(localizedConfigPath())
+	if err != nil {
+		return err
+	}
+	salt := kdParams.Salt.Value
+	results, err := form.Run(steps, form.WithFinalPassword(func(results []form.Result) string {
+		pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
+		if err != nil {
+			return ""
+		}
+		return pw
+	}))
+	if err != nil {
+		return err
+	}
+	kdParams.answerIDs = resultIDs(results)
+	pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
+	if err != nil {
+		return err
+	}
+	*target = pw
+	return nil
+}
+
+// promptRestoreAnswers re-answers the questions restored from the config so the
+// original high-strength password can be regenerated from the answers and salt.
+func promptRestoreAnswers(cfg *recoveryConfig, target *string) error {
+	results, err := form.Run(kdParams.restoreSteps, form.WithSkipConfirm(), form.WithFinalPassword(func(results []form.Result) string {
+		pw, err := password.ComputeFinalPassword(cfg.Salt, finalAnswers(results))
+		if err != nil {
+			return ""
+		}
+		return pw
+	}))
+	if err != nil {
+		return err
+	}
+	pw, err := password.ComputeFinalPassword(cfg.Salt, finalAnswers(results))
+	if err != nil {
+		return err
+	}
+	*target = pw
+	return nil
+}
+
+// buildRestoreSteps reconstructs one fixed question per step from the stored
+// hint IDs so restore re-answers the same questions that generated the password.
+func buildRestoreSteps(hintIDs []string) ([][]form.Step, error) {
+	steps, err := loadFormSteps(localizedConfigPath())
+	if err != nil {
+		return nil, err
+	}
+	restore := make([][]form.Step, 0, len(hintIDs))
+	for i, id := range hintIDs {
+		if i >= len(steps) {
+			break
+		}
+		found := -1
+		for j := range steps[i] {
+			if steps[i][j].ID == id {
+				found = j
+				break
+			}
+		}
+		if found < 0 {
+			return nil, fmt.Errorf("%s", i18n.TWithData("key_derive.error.hint_missing", map[string]interface{}{"ID": id}))
+		}
+		restore = append(restore, []form.Step{steps[i][found]})
+	}
+	return restore, nil
+}
+
+// promptDefaultPassword runs the standard hidden password prompt.
+func promptDefaultPassword(promptMsg string, target *string) error {
+	input, err := param.Password(promptMsg)
+	if err != nil {
+		return err
+	}
+	*target = input
+	return nil
+}
+
+// finalAnswers extracts the per-step answers from form results, in step order.
+func finalAnswers(results []form.Result) []string {
+	answers := make([]string, len(results))
+	for i, r := range results {
+		answers[i] = r.Answer
+	}
+	return answers
+}
+
+// resultIDs extracts the per-step question IDs from form results, in step order.
+func resultIDs(results []form.Result) []string {
+	ids := make([]string, len(results))
+	for i, r := range results {
+		ids[i] = r.ID
+	}
+	return ids
 }
 
 // firstNChars returns the first n runes of s (rune-safe, not byte-safe).

@@ -72,6 +72,14 @@ type Field struct {
 	// the field is skipped during validate() and promptInteractive().
 	// Nil means always visible.
 	Visible func(values FieldValues) bool
+	// PromptFn, when set, replaces the default survey-based prompt for the
+	// field. It runs inside the same validation loop as the default prompt:
+	// it collects a value into target, and the result is validated against
+	// the field's rules (re-prompting on failure). Use it for fields whose
+	// interactive input needs custom logic (e.g. a question-answer flow that
+	// fills the value programmatically). promptMsg is the localized prompt
+	// message, for reuse when falling back to the default prompt helpers.
+	PromptFn func(promptMsg string, target *string, flagName string) error
 }
 
 // ApplyDefault sets Value to DefaultValue when Value is empty.
@@ -186,42 +194,48 @@ func (f *Field) defaultOptionLabel(labelToValue map[string]string) string {
 func (f *Field) Prompt(target *string, flagName string) error {
 	promptMsg := i18n.T(f.promptMessageKey(flagName))
 	for {
-		switch f.PromptType {
-		case PromptSelect:
-			labels := make([]string, len(f.Allowed))
-			labelToValue := make(map[string]string, len(f.Allowed))
-			for i, a := range f.Allowed {
-				key := f.optionLabelKey(flagName, a)
-				label := i18n.T(key)
-				if label == key {
-					label = a
+		if f.PromptFn != nil {
+			if err := f.PromptFn(promptMsg, target, flagName); err != nil {
+				return err
+			}
+		} else {
+			switch f.PromptType {
+			case PromptSelect:
+				labels := make([]string, len(f.Allowed))
+				labelToValue := make(map[string]string, len(f.Allowed))
+				for i, a := range f.Allowed {
+					key := f.optionLabelKey(flagName, a)
+					label := i18n.T(key)
+					if label == key {
+						label = a
+					}
+					labels[i] = label
+					labelToValue[label] = a
 				}
-				labels[i] = label
-				labelToValue[label] = a
+				chosen, err := Select(promptMsg, labels, f.defaultOptionLabel(labelToValue), f.promptHelp(flagName))
+				if err != nil {
+					return err
+				}
+				*target = labelToValue[chosen]
+			case PromptPassword:
+				input, err := Password(promptMsg)
+				if err != nil {
+					return err
+				}
+				*target = input
+			case PromptMultiInput:
+				input, err := MultiInput(promptMsg, f.promptHelp(flagName))
+				if err != nil {
+					return err
+				}
+				*target = input
+			default:
+				input, err := Input(promptMsg, f.PromptDefault, f.promptHelp(flagName))
+				if err != nil {
+					return err
+				}
+				*target = input
 			}
-			chosen, err := Select(promptMsg, labels, f.defaultOptionLabel(labelToValue), f.promptHelp(flagName))
-			if err != nil {
-				return err
-			}
-			*target = labelToValue[chosen]
-		case PromptPassword:
-			input, err := Password(promptMsg)
-			if err != nil {
-				return err
-			}
-			*target = input
-		case PromptMultiInput:
-			input, err := MultiInput(promptMsg, f.promptHelp(flagName))
-			if err != nil {
-				return err
-			}
-			*target = input
-		default:
-			input, err := Input(promptMsg, f.PromptDefault, f.promptHelp(flagName))
-			if err != nil {
-				return err
-			}
-			*target = input
 		}
 		if err := f.Validate(*target, flagName, nil); err != nil {
 			if f.ErrorPrompt != "" {

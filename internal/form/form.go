@@ -85,6 +85,8 @@ type Model struct {
 
 	finalPasswordFn func([]Result) string // optional final-password generator
 	finalPassword   string                // cached result, shown on the summary
+
+	skipConfirm bool // submit after a single input, skipping the re-type stage
 }
 
 // Option configures the form behavior.
@@ -100,6 +102,13 @@ func WithPageSize(n int) Option {
 // hold r to reveal).
 func WithFinalPassword(fn func([]Result) string) Option {
 	return func(m *Model) { m.finalPasswordFn = fn }
+}
+
+// WithSkipConfirm submits each answer after a single input, skipping the
+// re-type confirmation stage (used by restore flows that re-answer the
+// questions that generated a password).
+func WithSkipConfirm() Option {
+	return func(m *Model) { m.skipConfirm = true }
 }
 
 // New creates a form model.
@@ -261,6 +270,8 @@ func (m *Model) handleInputKey(key tui.Key, confirm bool) {
 			m.confirmPassword()
 		} else if errMsg := m.stepInputError(); errMsg != "" {
 			m.errMsg = errMsg
+		} else if m.skipConfirm {
+			m.submit()
 		} else {
 			m.stage = StageConfirm
 		}

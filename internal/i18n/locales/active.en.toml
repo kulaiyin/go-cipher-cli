@@ -708,6 +708,10 @@ other = "Any memorable text (>= 20 non-space chars after cleaning). Supports mul
 description = "Interactive prompt for password"
 other = "Password:"
 
+[key_derive.prompt.use_question_answer]
+description = "Confirmation to generate a high-strength password from question answers"
+other = "Generate a high-strength password using the question-answer pattern?"
+
 [key_derive.prompt.hint]
 description = "Interactive prompt for hint"
 other = "Hint (optional, press Enter to skip):"
@@ -755,6 +759,10 @@ other = "key derivation failed"
 [key_derive.error.write_output_failed]
 description = "Error when writing output file fails"
 other = "failed to write output file"
+
+[key_derive.error.hint_missing]
+description = "Error when a stored question ID cannot be found in the question pool"
+other = "recovery config references an unknown question: {ID}"
 
 [key_derive.output.strength_label_basic]
 description = "Localized label for basic strength in output"

@@ -142,6 +142,19 @@ func TestSelectEnterAndInput(t *testing.T) {
 	}
 }
 
+func TestSkipConfirmSubmitsDirectly(t *testing.T) {
+	initTestI18n()
+	m := newSmall(WithSkipConfirm())
+
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 's', 'e', 'c', 'r', 'e', 't'), key(tui.KeyEnter))
+	if m.Stage() != StageSelect || m.stepIdx != 1 {
+		t.Fatalf("skip confirm: want next step, got stage=%d step=%d", m.Stage(), m.stepIdx)
+	}
+	if len(m.results) != 1 || m.results[0].Answer != "secret" {
+		t.Fatalf("results: want one submitted answer, got %+v", m.results)
+	}
+}
+
 func TestPasswordMismatchResets(t *testing.T) {
 	initTestI18n()
 	m := newSmall()

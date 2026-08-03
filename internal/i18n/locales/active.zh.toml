@@ -707,6 +707,10 @@ other = "任意易记文本，支持多行粘贴（Ctrl+D 结束输入）。去�
 description = "密码交互提示"
 other = "密码："
 
+[key_derive.prompt.use_question_answer]
+description = "是否使用问题-答案模式生成高强度密码的确认提示"
+other = "使用「问题-答案」模式生成高强度密码？"
+
 [key_derive.prompt.hint]
 description = "提示内容交互提示"
 other = "提示（可选，直接回车跳过）："
@@ -754,6 +758,10 @@ other = "密钥派生失败"
 [key_derive.error.write_output_failed]
 description = "写入输出文件失败的错误"
 other = "写入输出文件失败"
+
+[key_derive.error.hint_missing]
+description = "配置文件中引用的问题 ID 在问题池中不存在"
+other = "恢复配置引用了未知的问题：{ID}"
 
 [key_derive.output.strength_label_basic]
 description = "基础强度本地化标签"
