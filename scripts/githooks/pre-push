@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# pre-push — run `make release` when pushing tag refs
+# Fires on: git push (before any refs are sent to the remote)
+# Behavior: when the push includes one or more tags, each pushed tag is checked
+# out and `make release` (goreleaser --skip=publish) is run so the release is
+# reproducible locally before the tag reaches the remote. The original HEAD is
+# restored afterwards.
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+remote="$1"
+url="$2"
+
+# Collect pushed tag refs from stdin:
+#   <local ref> <local sha> <remote ref> <remote sha>
+tags=()
+while read -r local_ref local_sha remote_ref remote_sha; do
+    case "$local_ref" in
+        refs/tags/*)
+            tags+=("${local_ref#refs/tags/}")
+            ;;
+    esac
+done
+
+if [ "${#tags[@]}" -eq 0 ]; then
+    exit 0
+fi
+
+# Switching tags requires a clean working tree.
+if [ -n "$(git status --porcelain)" ]; then
+    echo -e "${RED}[pre-push] Working tree is not clean; commit or stash changes first (or use --no-verify).${NC}"
+    exit 1
+fi
+
+original_head="$(git rev-parse HEAD)"
+
+cleanup() {
+    git checkout -q "$original_head" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+for tag in "${tags[@]}"; do
+    echo -e "${GREEN}[pre-push] Checking out tag $tag and running make release...${NC}"
+    git checkout -q "$tag"
+    make release
+done
+
+echo -e "${GREEN}[pre-push] make release succeeded for ${#tags[@]} tag(s).${NC}"
+exit 0
