@@ -11,6 +11,7 @@ package form
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,9 +21,19 @@ import (
 
 // Step is a single selectable option (question).
 type Step struct {
-	ID      string `json:"id"`
-	Content string `json:"content"`
+	ID       string `json:"id"`
+	Content  string `json:"content"`
+	Validate string `json:"validate,omitempty"`
 }
+
+// specialCharRe matches the web tool's AT_LEAST_ONE_SPECIAL_CHAR class:
+// ASCII punctuation plus CJK punctuation and currency symbols.
+var specialCharRe = regexp.MustCompile("[" +
+	"\u0021-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u007E" +
+	"\u3000-\u303F\uFF00-\uFFEF" +
+	"\u2026\u00B7\u2014\u2013\u201C\u201D\u2018\u2019\u3001" +
+	"€£₹₽₩฿₺₴₦₵₫₭₪₼₲₳₸₺֏₢₣₤₥₧₨₩₪₫₭₮₯₰₲₳₴₵﷼¢₠₢₣₤₧₺₼₽₿ΞÐŁ" +
+	"]")
 
 // Result is the final answer for one step.
 type Result struct {
@@ -71,6 +82,9 @@ type Model struct {
 	pageSize  int
 	reveal    bool // summary: answers shown in plaintext while r is held
 	revealGen int  // generation of the latest reveal timeout; stale ones ignored
+
+	finalPasswordFn func([]Result) string // optional final-password generator
+	finalPassword   string                // cached result, shown on the summary
 }
 
 // Option configures the form behavior.
@@ -79,6 +93,13 @@ type Option func(*Model)
 // WithPageSize sets the number of options per page (default 5).
 func WithPageSize(n int) Option {
 	return func(m *Model) { m.pageSize = n }
+}
+
+// WithFinalPassword sets a generator that derives a final password from the
+// collected answers; when set, the summary screen shows the result (masked,
+// hold r to reveal).
+func WithFinalPassword(fn func([]Result) string) Option {
+	return func(m *Model) { m.finalPasswordFn = fn }
 }
 
 // New creates a form model.
@@ -208,6 +229,7 @@ func (m *Model) handleSelectKey(key tui.Key) {
 	case tui.KeyEnter:
 		m.stage = StageInput
 		m.input = nil
+		m.errMsg = ""
 	case tui.KeyEsc:
 		if m.stepIdx > 0 {
 			m.stepIdx--
@@ -237,6 +259,8 @@ func (m *Model) handleInputKey(key tui.Key, confirm bool) {
 	case tui.KeyEnter:
 		if confirm {
 			m.confirmPassword()
+		} else if errMsg := m.stepInputError(); errMsg != "" {
+			m.errMsg = errMsg
 		} else {
 			m.stage = StageConfirm
 		}
@@ -245,6 +269,32 @@ func (m *Model) handleInputKey(key tui.Key, confirm bool) {
 		m.confirm = nil
 		m.stage = StageSelect
 	}
+}
+
+// stepInputError validates the current input against the selected step's
+// format rule (trimmed of surrounding whitespace), mirroring the web tool's
+// per-step password rules. It returns a localized message or "" when valid.
+func (m *Model) stepInputError() string {
+	rule := m.currentItem().Validate
+	if rule == "" {
+		return ""
+	}
+	trimmed := strings.TrimSpace(string(m.input))
+	switch rule {
+	case "digit8":
+		if len([]rune(trimmed)) < 8 || !strings.ContainsAny(trimmed, "0123456789") {
+			return i18n.T("form.error.step1_digit8")
+		}
+	case "nonempty":
+		if trimmed == "" {
+			return i18n.T("form.error.step2_nonempty")
+		}
+	case "special":
+		if !specialCharRe.MatchString(trimmed) {
+			return i18n.T("form.error.step3_special")
+		}
+	}
+	return ""
 }
 
 // confirmPassword submits the answer when the two password entries match;
@@ -283,6 +333,10 @@ func (m *Model) submit() {
 		// pending hide timeout from a previous summary cannot fire here.
 		m.reveal = false
 		m.revealGen++
+		m.finalPassword = ""
+		if m.finalPasswordFn != nil {
+			m.finalPassword = m.finalPasswordFn(m.results)
+		}
 	} else {
 		m.page = 0
 		m.cursor = 0
@@ -391,6 +445,13 @@ func (m *Model) summaryView() string {
 			answer = mask([]rune(r.Answer))
 		}
 		fmt.Fprintf(&sb, "%d | %s | %s | %s\n", r.Step, r.ID, r.Content, answer)
+	}
+	if m.finalPassword != "" {
+		pw := m.finalPassword
+		if !m.reveal {
+			pw = mask([]rune(m.finalPassword))
+		}
+		fmt.Fprintf(&sb, "\n%s: %s\n", i18n.T("form.summary_final_password"), pw)
 	}
 	fmt.Fprintf(&sb, "\n%s", i18n.T("form.summary_footer"))
 	return sb.String()

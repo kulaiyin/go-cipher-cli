@@ -71,15 +71,6 @@
       "outHex": "f0d478177d27fd2d40f50ebb9f8737296752abec9cae68fa2017e275756025b7f465df6153dc35cd65750778d7d7ac008c5fd343d45e43b83cdbe7b2ef1eaec6"
     }
   ],
-  "argon2id64mb": {
-    "password": "030a11181f262d343b424950575e656c",
-    "saltHex": "030a11181f262d343b424950575e656c",
-    "iterations": 3,
-    "memorySize": 65536,
-    "parallelism": 4,
-    "hashLength": 8,
-    "outHex": "4e13e281b6cb284b"
-  },
   "generateAesGcmKey": {
     "salt": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
     "passwords": [
@@ -114,142 +105,6 @@
     "data_prk": "36e2294ad5c379a4b25d8854c5187af9000cfcaee1b2b192e765ae547118fd6f288f998b027c6c6c90d51a328d5eaa528a256fced42929cc52d8e5a9fa29edca",
     "result": "000102030405060708090a0b4d38a7ed4d42739ae2bdcad2924c88a569864f89b9d8425dd3bf675cdf15f4cbf7324e730a4d4fe6a8db8c3e352a73807da2dfb27b4e03650e0138"
   },
-  "fusePasswords": {
-    "basic": [
-      {
-        "salt": "a76fdc37b135f1c3",
-        "passwords": [
-          "123456789",
-          "shanghai",
-          "@"
-        ],
-        "out": "a4s373h6a9^6ca2f1i5n8d1gfc7h@1b3573"
-      },
-      {
-        "salt": "cb1045ee07414e4e",
-        "passwords": [
-          "123456789",
-          "shanghai",
-          "@"
-        ],
-        "out": "0b5@ee73841asghhe4c1912074.564ie4an"
-      },
-      {
-        "salt": "b5f6044f2129c682",
-        "passwords": [
-          "123456789",
-          "shanghai",
-          "@"
-        ],
-        "out": "b4s253h6a9f&8a266i5n801gc47h@12\"29f4"
-      },
-      {
-        "salt": "857c1eea3013d365",
-        "passwords": [
-          "123456789",
-          "shanghai",
-          "@"
-        ],
-        "out": "9{8152773c84a3ahase(6#e510in1g3h53d6@"
-      },
-      {
-        "salt": "e98310c3be31e633",
-        "passwords": [
-          "123456789",
-          "shanghai",
-          "@"
-        ],
-        "out": "e4s393h6a983a236i5(n811ge07h@eb313c"
-      },
-      {
-        "salt": "d4520ed6e31706f0",
-        "passwords": [
-          "123456789",
-          "shanghai",
-          "@"
-        ],
-        "out": "24e@d673817asghh&00d5912e34560i6fan"
-      }
-    ],
-    "extended": [
-      {
-        "salt": "a76fdc37b135f1c3",
-        "passwords": [
-          "123456789",
-          "shanghaiCN",
-          "@"
-        ],
-        "out": "C4a3s376h9Nca261a5^f8i1nfd7g@cbh51337"
-      },
-      {
-        "salt": "cb1045ee07414e4e",
-        "passwords": [
-          "123456789",
-          "shanghaiCN",
-          "@"
-        ],
-        "out": "0.b5@ee73841N4ie4he4c191207456asghCan"
-      },
-      {
-        "salt": "b5f6044f2129c682",
-        "passwords": [
-          "123456789",
-          "shanghaiCN",
-          "@"
-        ],
-        "out": "C4b2s356h9N8a\"2f6a568i1nc07g&@42h9142f"
-      },
-      {
-        "salt": "857c1eea3013d365",
-        "passwords": [
-          "123456789",
-          "shanghaiCN",
-          "@"
-        ],
-        "out": "98#152773c841a3aNh{aseC6e50in1g3h5(3d6@"
-      },
-      {
-        "salt": "e98310c3be31e633",
-        "passwords": [
-          "123456789",
-          "shanghaiCN",
-          "@"
-        ],
-        "out": "C4e3s396h9N3a286a538i1ne17g@0bh1(ec33"
-      },
-      {
-        "salt": "d4520ed6e31706f0",
-        "passwords": [
-          "123456789",
-          "shanghaiCN",
-          "@"
-        ],
-        "out": "24e@d673817N0i6fh00d5912e3456a&sghCan"
-      }
-    ]
-  },
-  "normalizePassword": [
-    {
-      "in": "  test password  ",
-      "out": "testpassword"
-    },
-    {
-      "in": "café",
-      "out": "café"
-    },
-    {
-      "in": "café",
-      "out": "café"
-    },
-    {
-      "in": "",
-      "out": ""
-    },
-    {
-      "in": "   ",
-      "out": ""
-    }
-  ],
   "sha256": [
     {
       "in": "hello",
@@ -272,68 +127,68 @@
     {
       "in": "",
       "score": 0,
-        "feedback": [
-          "password must be at least 8 characters",
-          "add a lowercase letter",
-          "add an uppercase letter",
-          "add a digit",
-          "add a special character"
-        ]
-      },
-      {
-        "in": "abc",
-        "score": 1,
-        "feedback": [
-          "password must be at least 8 characters",
-          "add an uppercase letter",
-          "add a digit",
-          "add a special character"
-        ]
-      },
-      {
-        "in": "abcdefgh",
-        "score": 2,
-        "feedback": [
-          "password should be at least 12 characters",
-          "add an uppercase letter",
-          "add a digit",
-          "add a special character"
-        ]
-      },
-      {
-        "in": "Abcd1234!",
-        "score": 5,
-        "feedback": [
-          "password should be at least 12 characters"
-        ]
-      },
-      {
-        "in": "Str0ng!Pass#2024xyz",
-        "score": 6,
-        "feedback": []
-      },
-      {
-        "in": "password",
-        "score": 0,
-        "feedback": [
-          "password should be at least 12 characters",
-          "add an uppercase letter",
-          "add a digit",
-          "add a special character",
-          "avoid common passwords"
-        ]
-      },
-      {
-        "in": "123456",
-        "score": 0,
-        "feedback": [
-          "password must be at least 8 characters",
-          "add a lowercase letter",
-          "add an uppercase letter",
-          "add a special character",
-          "avoid common passwords"
-        ]
-      }
+      "feedback": [
+        "password must be at least 8 characters",
+        "add a lowercase letter",
+        "add an uppercase letter",
+        "add a digit",
+        "add a special character"
+      ]
+    },
+    {
+      "in": "abc",
+      "score": 1,
+      "feedback": [
+        "password must be at least 8 characters",
+        "add an uppercase letter",
+        "add a digit",
+        "add a special character"
+      ]
+    },
+    {
+      "in": "abcdefgh",
+      "score": 2,
+      "feedback": [
+        "password should be at least 12 characters",
+        "add an uppercase letter",
+        "add a digit",
+        "add a special character"
+      ]
+    },
+    {
+      "in": "Abcd1234!",
+      "score": 5,
+      "feedback": [
+        "password should be at least 12 characters"
+      ]
+    },
+    {
+      "in": "Str0ng!Pass#2024xyz",
+      "score": 6,
+      "feedback": []
+    },
+    {
+      "in": "password",
+      "score": 0,
+      "feedback": [
+        "password should be at least 12 characters",
+        "add an uppercase letter",
+        "add a digit",
+        "add a special character",
+        "avoid common passwords"
+      ]
+    },
+    {
+      "in": "123456",
+      "score": 0,
+      "feedback": [
+        "password must be at least 8 characters",
+        "add a lowercase letter",
+        "add an uppercase letter",
+        "add a special character",
+        "avoid common passwords"
+      ]
+    }
   ],
   "validateHintAndKeysUuidMatch": [
     {
@@ -430,7 +285,11 @@
       "version": 10000,
       "salt": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
       "createdAt": 1690000000000,
-      "selectedHints": ["hint-b", "hint-a", "hint-c"],
+      "selectedHints": [
+        "hint-b",
+        "hint-a",
+        "hint-c"
+      ],
       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "payload": "10000|0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef|hint-a,hint-b,hint-c|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|1690000000000",
       "metaHash": "bd0fbb06a6d3cc0d5596c0b65178340058d5aee560b15378bac910d1b0be02fa6ffdbf5ebf1281faf44c0c8c53094becdcf7601a9762c4535c67f1fe751213df",

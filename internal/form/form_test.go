@@ -380,6 +380,90 @@ func TestSummaryHoldToReveal(t *testing.T) {
 	}
 }
 
+func TestStepFormatValidation(t *testing.T) {
+	initTestI18n()
+	steps := [][]Step{
+		{{ID: "Q01", Content: "First", Validate: "digit8"}},
+		{{ID: "Q02", Content: "Second", Validate: "nonempty"}},
+		{{ID: "Q03", Content: "Third", Validate: "special"}},
+	}
+	m := New(steps, WithPageSize(2))
+
+	// Step 1 (digit8): short input without a digit is rejected with a message.
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, '1', '2', '3'), key(tui.KeyEnter))
+	if m.Stage() != StageInput || m.errMsg == "" {
+		t.Fatalf("digit8 short input: stage=%d err=%q", m.Stage(), m.errMsg)
+	}
+	// Re-enter cleanly and provide a valid 8-char digit-containing input.
+	m = drive(t, m, key(tui.KeyEsc), key(tui.KeyEnter),
+		key(tui.KeyRunes, 'a', 'b', 'c', 'd', 'e', 'f', 'g', '1'), key(tui.KeyEnter))
+	if m.Stage() != StageConfirm {
+		t.Fatalf("valid digit8: want StageConfirm, got %d", m.Stage())
+	}
+	m = drive(t, m, key(tui.KeyRunes, 'a', 'b', 'c', 'd', 'e', 'f', 'g', '1'), key(tui.KeyEnter))
+	if m.stepIdx != 1 {
+		t.Fatalf("step1 submit: want step 1, got %d", m.stepIdx)
+	}
+
+	// Step 2 (nonempty): empty input is rejected.
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyEnter))
+	if m.Stage() != StageInput || m.errMsg == "" {
+		t.Fatalf("nonempty empty input: stage=%d err=%q", m.Stage(), m.errMsg)
+	}
+	m = drive(t, m, key(tui.KeyEsc), key(tui.KeyEnter), key(tui.KeyRunes, 'x'), key(tui.KeyEnter),
+		key(tui.KeyRunes, 'x'), key(tui.KeyEnter))
+	if m.stepIdx != 2 {
+		t.Fatalf("step2 submit: want step 2, got %d", m.stepIdx)
+	}
+
+	// Step 3 (special): input without a special character is rejected.
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'a', 'b', 'c'), key(tui.KeyEnter))
+	if m.Stage() != StageInput || m.errMsg == "" {
+		t.Fatalf("special no-special input: stage=%d err=%q", m.Stage(), m.errMsg)
+	}
+	m = drive(t, m, key(tui.KeyEsc), key(tui.KeyEnter), key(tui.KeyRunes, 'a', 'b', '@'), key(tui.KeyEnter),
+		key(tui.KeyRunes, 'a', 'b', '@'), key(tui.KeyEnter))
+	if m.Stage() != StageSummary || len(m.Results()) != 3 {
+		t.Fatalf("step3 submit: stage=%d results=%d", m.Stage(), len(m.Results()))
+	}
+}
+
+func TestSummaryFinalPassword(t *testing.T) {
+	initTestI18n()
+	steps := [][]Step{
+		{{ID: "Q01", Content: "First"}},
+		{{ID: "Q02", Content: "Second"}},
+	}
+	m := New(steps, WithFinalPassword(func(results []Result) string {
+		return strings.ToUpper(results[0].Answer + results[1].Answer)
+	}))
+
+	m = drive(t, m,
+		key(tui.KeyEnter), key(tui.KeyRunes, 'a', 'a'), key(tui.KeyEnter), key(tui.KeyRunes, 'a', 'a'), key(tui.KeyEnter),
+		key(tui.KeyEnter), key(tui.KeyRunes, 'b', 'b'), key(tui.KeyEnter), key(tui.KeyRunes, 'b', 'b'), key(tui.KeyEnter),
+	)
+	if m.Stage() != StageSummary {
+		t.Fatalf("want StageSummary, got %d", m.Stage())
+	}
+
+	// Masked by default.
+	view := m.View()
+	if !strings.Contains(view, "Generated password: ****") {
+		t.Errorf("summary must mask the final password:\n%s", view)
+	}
+	if strings.Contains(view, "AABB") {
+		t.Errorf("summary must not leak the final password:\n%s", view)
+	}
+
+	// Hold r reveals it together with the answers.
+	nm, _ := m.Update(key(tui.KeyRunes, 'r'))
+	m = nm.(*Model)
+	view = m.View()
+	if !strings.Contains(view, "Generated password: AABB") {
+		t.Errorf("summary must reveal the final password after r:\n%s", view)
+	}
+}
+
 func TestEscInInputKeepsSelection(t *testing.T) {
 	initTestI18n()
 	m := newSmall()

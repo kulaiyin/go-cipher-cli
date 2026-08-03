@@ -1127,6 +1127,18 @@ other = "Enter Submit  Esc Cancel"
 description = "Error shown when the two password entries differ"
 other = "Passwords do not match. Please try again."
 
+[form.error.step1_digit8]
+description = "Step 1 format rule: at least 8 characters including at least one digit"
+other = "Password does not meet requirements: at least 8 characters with at least one digit"
+
+[form.error.step2_nonempty]
+description = "Step 2 format rule: must not be empty"
+other = "Password does not meet requirements: cannot be empty"
+
+[form.error.step3_special]
+description = "Step 3 format rule: at least one special character"
+other = "Password does not meet requirements: at least one special character"
+
 [form.summary_title]
 description = "Title of the result summary"
 other = "Result Summary"
@@ -1150,6 +1162,10 @@ other = "Answer"
 [form.summary_footer]
 description = "Footer of the summary screen"
 other = "q Quit  Hold r to show answers"
+
+[form.summary_final_password]
+description = "Label of the generated final password on the summary screen"
+other = "Generated password"
 
 [standard.short]
 description = "Short description for standard command"

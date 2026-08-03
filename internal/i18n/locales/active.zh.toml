@@ -1126,6 +1126,18 @@ other = "Enter 提交  Esc 取消输入"
 description = "两次密码输入不一致时显示的错误提示"
 other = "两次输入的密码不一致，请重新输入。"
 
+[form.error.step1_digit8]
+description = "步骤1格式规则：至少8位且包含至少一个数字"
+other = "密码不符合要求：长度至少8位，至少包含一个数字"
+
+[form.error.step2_nonempty]
+description = "步骤2格式规则：不能为空"
+other = "密码不符合要求：不能为空"
+
+[form.error.step3_special]
+description = "步骤3格式规则：至少包含一个特殊字符"
+other = "密码不符合要求：至少包含一个特殊字符"
+
 [form.summary_title]
 description = "结果汇总的标题"
 other = "结果汇总"
@@ -1149,6 +1161,10 @@ other = "输入内容"
 [form.summary_footer]
 description = "汇总屏幕的底部提示"
 other = "q 退出  按住 r 显示答案"
+
+[form.summary_final_password]
+description = "汇总屏幕上生成的高强度密码标签"
+other = "生成的密码"
 
 [standard.short]
 description = "standard 命令的简短描述"

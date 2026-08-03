@@ -11,6 +11,8 @@ import (
 
 	"go-cipher-cli/internal/form"
 	"go-cipher-cli/internal/i18n"
+	"go-cipher-cli/internal/kdf"
+	"go-cipher-cli/internal/password"
 )
 
 var tuiDemoConfig string
@@ -65,7 +67,20 @@ func runTuiDemo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = form.Run(steps)
+	// A fresh random salt per run makes the generated password unique, like the
+	// web tool's per-visit salt.
+	salt := kdf.GenerateSalt(64)
+	_, err = form.Run(steps, form.WithFinalPassword(func(results []form.Result) string {
+		answers := make([]string, len(results))
+		for i, r := range results {
+			answers[i] = r.Answer
+		}
+		pw, err := password.ComputeFinalPassword(salt, answers)
+		if err != nil {
+			return ""
+		}
+		return pw
+	}))
 	if err != nil {
 		return fmt.Errorf("%s: %w", i18n.T("tui_demo.error.run_failed"), err)
 	}

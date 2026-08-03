@@ -61,9 +61,9 @@ func TestTuiDemoFullFlow(t *testing.T) {
 	feed("19991231") // confirm
 	feed("\r")       // submit -> step 3
 	feed("\r")       // step 3: select Q01 -> password input
-	feed("abc123")   // type password
+	feed("abc123!")  // type password
 	feed("\r")       // -> confirm password
-	feed("abc123")   // confirm
+	feed("abc123!")  // confirm
 	feed("\r")       // submit -> summary
 	feed("q")        // quit
 
@@ -87,7 +87,7 @@ func TestTuiDemoFullFlow(t *testing.T) {
 	}{
 		{"1", "Q01", "20240101"},
 		{"2", "Q06", "19991231"},
-		{"3", "Q01", "abc123"},
+		{"3", "Q01", "abc123!"},
 	}
 	for i, w := range want {
 		r := results[i]

@@ -38,16 +38,6 @@ type Vectors struct {
 		OutHex      string `json:"outHex"`
 	} `json:"argon2id"`
 
-	Argon2id64mb struct {
-		Password    string `json:"password"`
-		SaltHex     string `json:"saltHex"`
-		Iterations  int    `json:"iterations"`
-		MemorySize  int    `json:"memorySize"`
-		Parallelism int    `json:"parallelism"`
-		HashLength  int    `json:"hashLength"`
-		OutHex      string `json:"outHex"`
-	} `json:"argon2id64mb"`
-
 	GenerateAesGcmKey struct {
 		Salt               string   `json:"salt"`
 		Passwords          []string `json:"passwords"`
@@ -74,16 +64,6 @@ type Vectors struct {
 		DataPRK      string `json:"data_prk"`
 		Result       string `json:"result"`
 	} `json:"gcmEncryptFixedIV"`
-
-	FusePasswords struct {
-		Basic    []FusePasswordCase `json:"basic"`
-		Extended []FusePasswordCase `json:"extended"`
-	} `json:"fusePasswords"`
-
-	NormalizePassword []struct {
-		In  string `json:"in"`
-		Out string `json:"out"`
-	} `json:"normalizePassword"`
 
 	SHA256 []struct {
 		In  string `json:"in"`
@@ -132,13 +112,6 @@ type Vectors struct {
 		MetaHash      string   `json:"metaHash"`
 		IntegrityHash string   `json:"integrityHash"`
 	} `json:"metaDataDigest"`
-}
-
-// FusePasswordCase is one fusePasswords golden case.
-type FusePasswordCase struct {
-	Salt      string   `json:"salt"`
-	Passwords []string `json:"passwords"`
-	Out       string   `json:"out"`
 }
 
 var loaded *Vectors
