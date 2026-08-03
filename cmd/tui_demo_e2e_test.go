@@ -106,7 +106,7 @@ func TestTuiDemoFullFlow(t *testing.T) {
 		"1 | Q01 |",
 		"2 | Q06 |",
 		"3 | Q01 |",
-		"Press q to quit",
+		"q Quit  Hold r to show answers",
 	} {
 		if !strings.Contains(rendered, wantStr) {
 			t.Errorf("rendered output missing %q\n--- output ---\n%s", wantStr, rendered)

@@ -1082,10 +1082,6 @@ other = "步骤 {{.Step}} 第 {{.Index}} 个问题缺少 ID"
 description = "TUI 程序运行失败时的错误"
 other = "TUI 运行失败：{{.Err}}"
 
-[tui_demo.output.result_line]
-description = "表单退出后打印的每步结果行"
-other = "步骤 {{.Step}} | {{.ID}} | {{.Content}} | {{.Answer}}"
-
 # ==========================================
 # internal/form/form.go
 # ==========================================
@@ -1152,7 +1148,7 @@ other = "输入内容"
 
 [form.summary_footer]
 description = "汇总屏幕的底部提示"
-other = "按 q 退出"
+other = "q 退出  按住 r 显示答案"
 
 [standard.short]
 description = "standard 命令的简短描述"

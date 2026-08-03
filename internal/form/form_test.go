@@ -304,10 +304,79 @@ func TestViewStages(t *testing.T) {
 	m = drive(t, m, key(tui.KeyRunes, 'h', 'i'), key(tui.KeyEnter),
 		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter))
 	view = m.View()
-	for _, want := range []string{"Result Summary", "Step | ID | Question | Answer", "1 | Q01 | First question | hi", "Press q to quit"} {
+	for _, want := range []string{"Result Summary", "Step | ID | Question | Answer", "1 | Q01 | First question | **", "q Quit  Hold r to show answers"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("summary view missing %q:\n%s", want, view)
 		}
+	}
+	if strings.Contains(view, "1 | Q01 | First question | hi") {
+		t.Errorf("summary view must mask the password by default:\n%s", view)
+	}
+}
+
+func TestSummaryHoldToReveal(t *testing.T) {
+	initTestI18n()
+	m := newSmall()
+	m = drive(t, m,
+		key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter),
+		key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter),
+	)
+	if m.Stage() != StageSummary {
+		t.Fatalf("want StageSummary, got %d", m.Stage())
+	}
+
+	// Masked by default.
+	view := m.View()
+	if !strings.Contains(view, "1 | Q01 | First question | *") {
+		t.Errorf("summary must mask answers by default:\n%s", view)
+	}
+	if strings.Contains(view, "| a") {
+		t.Errorf("summary must not leak the password:\n%s", view)
+	}
+
+	// Press r: answers are revealed and a hide timeout is scheduled.
+	nm, cmd := m.Update(key(tui.KeyRunes, 'r'))
+	if cmd == nil {
+		t.Fatal("r on summary must schedule a hide timeout")
+	}
+	m = nm.(*Model)
+	view = m.View()
+	if !strings.Contains(view, "1 | Q01 | First question | a") {
+		t.Errorf("summary must reveal answers while r is held:\n%s", view)
+	}
+
+	// OS key auto-repeat while r is held keeps the answers revealed and
+	// reschedules the hide timeout on every repeat.
+	var lastCmd tui.Cmd
+	for i := 0; i < 3; i++ {
+		nm, lastCmd = m.Update(key(tui.KeyRunes, 'r'))
+		if lastCmd == nil {
+			t.Fatal("repeated r must keep scheduling hide timeouts")
+		}
+		m = nm.(*Model)
+	}
+	view = m.View()
+	if !strings.Contains(view, "1 | Q01 | First question | a") {
+		t.Errorf("summary must stay revealed while r repeats:\n%s", view)
+	}
+
+	// A stale timeout (from an earlier press) must not hide the answers.
+	nm, _ = m.UpdateTimeout(tui.TimeoutMsg{ID: m.revealGen - 1})
+	m = nm.(*Model)
+	view = m.View()
+	if !strings.Contains(view, "1 | Q01 | First question | a") {
+		t.Errorf("stale timeout must not hide the answers:\n%s", view)
+	}
+
+	// The latest timeout (key released, no more repeats) hides the answers.
+	nm, _ = m.UpdateTimeout(tui.TimeoutMsg{ID: m.revealGen})
+	m = nm.(*Model)
+	view = m.View()
+	if strings.Contains(view, "1 | Q01 | First question | a") {
+		t.Errorf("timeout after release must hide the answers:\n%s", view)
+	}
+	if !strings.Contains(view, "1 | Q01 | First question | *") {
+		t.Errorf("answers must be masked again after the timeout:\n%s", view)
 	}
 }
 

@@ -12,6 +12,7 @@ package form
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/tui"
@@ -48,18 +49,28 @@ const (
 // defaultPageSize is the number of options shown per page.
 const defaultPageSize = 5
 
+// revealHoldDelay is the hide timeout after the last 'r' key event. Terminals
+// only report key presses, not releases; while a key is held the OS key
+// auto-repeat keeps sending the same key (~30ms apart), and each event
+// restarts this timer. The window must exceed the OS first-repeat delay
+// (~500ms) or the reveal would flicker while the key is held, so the answers
+// hide roughly revealHoldDelay after the key is released.
+const revealHoldDelay = 600 * time.Millisecond
+
 // Model is the form's TUI model, implementing tui.Model.
 type Model struct {
-	steps    [][]Step
-	stepIdx  int
-	page     int // page within the current step
-	cursor   int // cursor within the current page
-	stage    Stage
-	results  []Result
-	input    []rune // password input buffer
-	confirm  []rune // confirm-password buffer
-	errMsg   string // validation error shown during input
-	pageSize int
+	steps     [][]Step
+	stepIdx   int
+	page      int // page within the current step
+	cursor    int // cursor within the current page
+	stage     Stage
+	results   []Result
+	input     []rune // password input buffer
+	confirm   []rune // confirm-password buffer
+	errMsg    string // validation error shown during input
+	pageSize  int
+	reveal    bool // summary: answers shown in plaintext while r is held
+	revealGen int  // generation of the latest reveal timeout; stale ones ignored
 }
 
 // Option configures the form behavior.
@@ -107,9 +118,33 @@ func (m *Model) Update(key tui.Key) (tui.Model, tui.Cmd) {
 			m.cursor = 0
 			return m, nil
 		}
-		if key.Type == tui.KeyRunes && len(key.Runes) > 0 && key.Runes[0] == 'q' {
-			return m, tui.Quit()
+		if key.Type == tui.KeyRunes && len(key.Runes) > 0 {
+			switch key.Runes[0] {
+			case 'q':
+				return m, tui.Quit()
+			case 'r':
+				return m.showAnswers()
+			}
 		}
+	}
+	return m, nil
+}
+
+// showAnswers reveals the summary answers and schedules a hide timeout.
+// While r is held, OS key auto-repeat keeps delivering 'r' events and each
+// one reschedules the timeout; the last one fires revealHoldDelay after the
+// key is released, hiding the answers again.
+func (m *Model) showAnswers() (tui.Model, tui.Cmd) {
+	m.reveal = true
+	m.revealGen++
+	return m, tui.After(m.revealGen, revealHoldDelay)
+}
+
+// UpdateTimeout implements tui.TimedModel: a fired timeout hides the answers
+// unless a newer 'r' press has already rescheduled it.
+func (m *Model) UpdateTimeout(msg tui.TimeoutMsg) (tui.Model, tui.Cmd) {
+	if msg.ID == m.revealGen {
+		m.reveal = false
 	}
 	return m, nil
 }
@@ -244,6 +279,10 @@ func (m *Model) submit() {
 	m.stepIdx++
 	if m.stepIdx >= len(m.steps) {
 		m.stage = StageSummary
+		// A fresh summary is always masked; bump the generation so a
+		// pending hide timeout from a previous summary cannot fire here.
+		m.reveal = false
+		m.revealGen++
 	} else {
 		m.page = 0
 		m.cursor = 0
@@ -347,7 +386,11 @@ func (m *Model) summaryView() string {
 	fmt.Fprintf(&sb, "%s\n\n", i18n.T("form.summary_title"))
 	fmt.Fprintf(&sb, "%s | %s | %s | %s\n", i18n.T("form.summary_col_step"), i18n.T("form.summary_col_id"), i18n.T("form.summary_col_content"), i18n.T("form.summary_col_answer"))
 	for _, r := range m.results {
-		fmt.Fprintf(&sb, "%d | %s | %s | %s\n", r.Step, r.ID, r.Content, r.Answer)
+		answer := r.Answer
+		if !m.reveal {
+			answer = mask([]rune(r.Answer))
+		}
+		fmt.Fprintf(&sb, "%d | %s | %s | %s\n", r.Step, r.ID, r.Content, answer)
 	}
 	fmt.Fprintf(&sb, "\n%s", i18n.T("form.summary_footer"))
 	return sb.String()

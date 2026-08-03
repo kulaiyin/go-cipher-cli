@@ -65,17 +65,9 @@ func runTuiDemo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	results, err := form.Run(steps)
+	_, err = form.Run(steps)
 	if err != nil {
 		return fmt.Errorf("%s: %w", i18n.T("tui_demo.error.run_failed"), err)
-	}
-
-	// After the program exits (q on the summary screen), print one line per
-	// result so scripts can consume the answers.
-	for _, r := range results {
-		fmt.Println(i18n.TWithData("tui_demo.output.result_line", map[string]interface{}{
-			"Step": r.Step, "ID": r.ID, "Content": r.Content, "Answer": r.Answer,
-		}))
 	}
 	return nil
 }

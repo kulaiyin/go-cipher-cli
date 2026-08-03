@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -45,6 +46,29 @@ type Msg interface{}
 
 // Cmd is a side-effect command, e.g. quitting the program.
 type Cmd func() Msg
+
+// TimeoutMsg is delivered to a model that scheduled a timeout with After.
+// The ID identifies which scheduled timeout fired.
+type TimeoutMsg struct {
+	ID int
+}
+
+// TimedModel is an optional extension of Model: models that schedule
+// timeouts via After implement UpdateTimeout to react to them.
+type TimedModel interface {
+	Model
+	UpdateTimeout(TimeoutMsg) (Model, Cmd)
+}
+
+// After returns a command that delivers a TimeoutMsg with the given ID after
+// d has elapsed. Several timeouts may run concurrently; the ID lets the model
+// tell which one fired. Models implement TimedModel to handle the message.
+func After(id int, d time.Duration) Cmd {
+	return func() Msg {
+		time.Sleep(d)
+		return TimeoutMsg{ID: id}
+	}
+}
 
 // Model is the minimal interface upper layers implement to render a TUI.
 type Model interface {
@@ -122,6 +146,12 @@ func (b bubbleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		m, cmd := b.model.Update(toTuiKey(msg))
 		return bubbleModel{model: m}, toBubbleCmd(cmd)
+	case TimeoutMsg:
+		if tm, ok := b.model.(TimedModel); ok {
+			m, cmd := tm.UpdateTimeout(msg)
+			return bubbleModel{model: m}, toBubbleCmd(cmd)
+		}
+		return b, nil
 	case tea.WindowSizeMsg:
 		// Form layout does not depend on the window size.
 		return b, nil

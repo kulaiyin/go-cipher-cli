@@ -1083,10 +1083,6 @@ other = "question {{.Index}} in step {{.Step}} has no ID"
 description = "Error when the TUI program fails to run"
 other = "TUI run failed: {{.Err}}"
 
-[tui_demo.output.result_line]
-description = "One result line printed after the form exits"
-other = "Step {{.Step}} | {{.ID}} | {{.Content}} | {{.Answer}}"
-
 # ==========================================
 # internal/form/form.go
 # ==========================================
@@ -1153,7 +1149,7 @@ other = "Answer"
 
 [form.summary_footer]
 description = "Footer of the summary screen"
-other = "Press q to quit"
+other = "q Quit  Hold r to show answers"
 
 [standard.short]
 description = "Short description for standard command"
