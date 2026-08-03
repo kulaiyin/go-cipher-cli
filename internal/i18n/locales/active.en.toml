@@ -207,6 +207,10 @@ other = "number of words (1-20)"
 [diceware.flag.sep]
 description = "Description for --sep flag"
 other = "separator: space / hyphen / none"
+
+[diceware.flag.raw]
+description = "Description for --raw flag"
+other = "print only the passphrase string, nothing else"
 # ==========================================
 # cmd/data_cipher.go
 # ==========================================
@@ -363,10 +367,6 @@ other = "key {{.N}} must be high strength (at least 128 hex chars, ≥ 15 distin
 description = "Error when password1 fails the composite check"
 other = "password1 must be high strength, or contain a letter, a digit and a special char with length ≥ 8"
 
-[data_cipher.error.validator_type_assert]
-description = "Error when a survey validator type assertion fails"
-other = "invalid input type"
-
 [data_cipher.error.read_input]
 description = "Error reading input file"
 other = "read input: {{.Err}}"
@@ -410,6 +410,10 @@ other = "imported file is not a valid encrypted file: data illegally modified"
 [data_cipher.output.encrypt_success]
 description = "Output on successful encryption"
 other = "Encrypted {{.Size}} bytes -> {{.Path}}"
+
+[data_cipher.output.decrypt_hint]
+description = "Hint stored during encryption, shown on decrypt to recall the input and password"
+other = "Hint from encryption: {{.Hint}}"
 
 [data_cipher.output.decrypt_success]
 description = "Output on successful decryption"
@@ -696,13 +700,9 @@ other = "Argon2id strength tier:"
 description = "Interactive prompt for input"
 other = "Input text:"
 
-[key_derive.prompt.multiline_instruction]
-description = "Multiline input finish instruction"
-other = "Enter 2 empty lines to finish"
-
 [key_derive.prompt.input_help]
 description = "Help text for input prompt"
-other = "Any memorable text (>= 20 non-space chars after cleaning). Supports multi-line paste; press Ctrl+D to submit. Combined with the password and salt to derive the keys."
+other = "Any memorable text (>= 20 non-space chars after cleaning). Supports multi-line paste; press Enter to finish, Alt+Enter for a new line. Combined with the password and salt to derive the keys."
 
 [key_derive.prompt.password]
 description = "Interactive prompt for password"
@@ -953,6 +953,10 @@ other = "Strength tier"
 [common.error.required]
 description = "Validation error for required field"
 other = "This field is required"
+
+[common.error.aborted]
+description = "Error shown when the user aborts an interactive prompt with Ctrl+C"
+other = "Prompt aborted"
 
 # ==========================================
 # cmd/mntemp.go

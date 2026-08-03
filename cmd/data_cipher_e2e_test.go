@@ -56,8 +56,12 @@ func TestDataCipher_RoundTrip(t *testing.T) {
 		t.Fatalf("output is not a zip: %x...", zipBytes[:8])
 	}
 	dec := filepath.Join(tmp, "restored.txt")
-	if out, code := runCLI(t, dcArgs(encZip, "--mode", "decrypt", "-o", dec)...); code != 0 {
+	out, code := runCLI(t, dcArgs(encZip, "--mode", "decrypt", "-o", dec)...)
+	if code != 0 {
 		t.Fatalf("decrypt failed: %s", out)
+	}
+	if !strings.Contains(out, "my hint") {
+		t.Errorf("decrypt output should show the hint stored during encryption:\n%s", out)
 	}
 	got, err := os.ReadFile(dec)
 	if err != nil {

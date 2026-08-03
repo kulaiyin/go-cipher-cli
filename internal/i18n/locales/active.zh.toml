@@ -208,6 +208,10 @@ other = "单词数量 (1-20)"
 description = "--sep 标志的描述"
 other = "分隔符: space / hyphen / none"
 
+[diceware.flag.raw]
+description = "--raw 标志的描述"
+other = "仅输出口令字符串，不输出其他内容"
+
 # ==========================================
 # cmd/data_cipher.go
 # ==========================================
@@ -364,10 +368,6 @@ other = "密钥{{.N}}必须为高强度（不少于 128 位十六进制，且字
 description = "密码1未通过复合校验的错误"
 other = "密码1必须为高强度，或同时包含字母、数字和特殊字符且长度不小于 8 位"
 
-[data_cipher.error.validator_type_assert]
-description = "survey 校验器类型断言失败的错误"
-other = "输入类型无效"
-
 [data_cipher.error.read_input]
 description = "读取输入文件失败的错误"
 other = "读取输入失败: {{.Err}}"
@@ -411,6 +411,10 @@ other = "导入的文件不是合法的加密文件：数据被非法修改"
 [data_cipher.output.encrypt_success]
 description = "加密成功时的输出"
 other = "已加密 {{.Size}} 字节 -> {{.Path}}"
+
+[data_cipher.output.decrypt_hint]
+description = "解密时提示加密时填写的 hint，帮助回忆输入内容与密码"
+other = "加密时填写的提示: {{.Hint}}"
 
 [data_cipher.output.decrypt_success]
 description = "解密成功时的输出"
@@ -695,13 +699,9 @@ other = "Argon2id 强度档位："
 description = "输入内容交互提示"
 other = "输入文本："
 
-[key_derive.prompt.multiline_instruction]
-description = "多行输入结束提示"
-other = "连按两次回车结束输入"
-
 [key_derive.prompt.input_help]
 description = "输入内容提示帮助"
-other = "任意易记文本，支持多行粘贴（Ctrl+D 结束输入）。去空格后不少于 20 字符。与密码、盐共同参与派生。"
+other = "任意易记文本，支持多行粘贴（回车结束输入，Alt+回车换行）。去空格后不少于 20 字符。与密码、盐共同参与派生。"
 
 [key_derive.prompt.password]
 description = "密码交互提示"
@@ -952,6 +952,10 @@ other = "强度档位"
 [common.error.required]
 description = "必填字段验证失败"
 other = "此字段必填"
+
+[common.error.aborted]
+description = "用户按 Ctrl+C 中断交互提示时的错误"
+other = "提示已中断"
 
 # ==========================================
 # cmd/mntemp.go

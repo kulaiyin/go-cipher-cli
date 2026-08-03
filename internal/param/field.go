@@ -72,7 +72,7 @@ type Field struct {
 	// the field is skipped during validate() and promptInteractive().
 	// Nil means always visible.
 	Visible func(values FieldValues) bool
-	// PromptFn, when set, replaces the default survey-based prompt for the
+	// PromptFn, when set, replaces the default prompt for the
 	// field. It runs inside the same validation loop as the default prompt:
 	// it collects a value into target, and the result is validated against
 	// the field's rules (re-prompting on failure). Use it for fields whose
@@ -189,7 +189,7 @@ func (f *Field) defaultOptionLabel(labelToValue map[string]string) string {
 	return ""
 }
 
-// Prompt runs an interactive survey for the field, collects input into target,
+// Prompt runs an interactive prompt for the field, collects input into target,
 // then validates the result — looping on failure until valid input is received.
 func (f *Field) Prompt(target *string, flagName string) error {
 	promptMsg := i18n.T(f.promptMessageKey(flagName))
@@ -218,7 +218,7 @@ func (f *Field) Prompt(target *string, flagName string) error {
 				}
 				*target = labelToValue[chosen]
 			case PromptPassword:
-				input, err := Password(promptMsg)
+				input, err := Password(promptMsg, "")
 				if err != nil {
 					return err
 				}

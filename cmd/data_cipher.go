@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 
 	"go-cipher-cli/internal/aesgcm"
 	"go-cipher-cli/internal/container"
 	"go-cipher-cli/internal/i18n"
+	"go-cipher-cli/internal/param"
 	"go-cipher-cli/internal/safety"
 )
 
@@ -55,7 +55,7 @@ type cipherInput struct {
 }
 
 // runDataCipher resolves parameters in order (mode → input-type → content),
-// flag-first with interactive survey fallback when a TTY is available, then
+// flag-first with interactive prompt fallback when a TTY is available, then
 // dispatches to encrypt/decrypt.
 //
 //   - mode:        NO default; must be chosen (flag or interactive select)
@@ -81,12 +81,8 @@ func runDataCipher(args []string) error {
 				modeLabels[i] = o.label
 				modeLabelToValue[o.label] = o.value
 			}
-			p := &survey.Select{
-				Message: i18n.T("data_cipher.prompt.mode"),
-				Options: modeLabels,
-			}
-			var chosen string
-			if err := survey.AskOne(p, &chosen, survey.WithValidator(i18nRequired())); err != nil {
+			chosen, err := param.Select(i18n.T("data_cipher.prompt.mode"), modeLabels, "", "")
+			if err != nil {
 				return err
 			}
 			mode = modeLabelToValue[chosen]
@@ -123,12 +119,8 @@ func runDataCipher(args []string) error {
 				typeLabels[i] = o.label
 				typeLabelToValue[o.label] = o.value
 			}
-			p := &survey.Select{
-				Message: i18n.T("data_cipher.prompt.input_type"),
-				Options: typeLabels,
-			}
-			var chosen string
-			if err := survey.AskOne(p, &chosen, survey.WithValidator(i18nRequired())); err != nil {
+			chosen, err := param.Select(i18n.T("data_cipher.prompt.input_type"), typeLabels, "", "")
+			if err != nil {
 				return err
 			}
 			inputType = typeLabelToValue[chosen]
@@ -166,8 +158,8 @@ func runDataCipher(args []string) error {
 }
 
 // resolveCipherInput builds the cipherInput from flags, positional arg, or an
-// interactive prompt (TTY only). For text: --text or survey.Multiline. For file:
-// --file / positional arg or survey.Input, then read with the size limit.
+// interactive prompt (TTY only). For text: --text or MultiInput. For file:
+// --file / positional arg or Input, then read with the size limit.
 func resolveCipherInput(inputType, positionalFile string) (*cipherInput, error) {
 	in := &cipherInput{inputType: inputType}
 	switch inputType {
@@ -177,12 +169,11 @@ func resolveCipherInput(inputType, positionalFile string) (*cipherInput, error) 
 			if !isStdinTerminal() {
 				return nil, fmt.Errorf("%s", i18n.T("data_cipher.error.text_required"))
 			}
-			p := &survey.Multiline{
-				Message: i18n.T("data_cipher.prompt.text"),
-			}
-			if err := survey.AskOne(p, &text); err != nil {
+			input, err := param.MultiInput(i18n.T("data_cipher.prompt.text"), "")
+			if err != nil {
 				return nil, err
 			}
+			text = input
 		}
 		if strings.TrimSpace(text) == "" {
 			return nil, fmt.Errorf("%s", i18n.T("data_cipher.error.empty_input"))
@@ -198,12 +189,11 @@ func resolveCipherInput(inputType, positionalFile string) (*cipherInput, error) 
 			if !isStdinTerminal() {
 				return nil, fmt.Errorf("%s", i18n.T("data_cipher.error.input_required"))
 			}
-			p := &survey.Input{
-				Message: i18n.T("data_cipher.prompt.input"),
-			}
-			if err := survey.AskOne(p, &path, survey.WithValidator(i18nRequired())); err != nil {
+			p, err := param.Input(i18n.T("data_cipher.prompt.input"), "", "")
+			if err != nil {
 				return nil, err
 			}
+			path = p
 		}
 		data, err := readInputFile(path)
 		if err != nil {
@@ -319,18 +309,10 @@ func runEncrypt(in *cipherInput) error {
 
 // runDecrypt mirrors DataEncryptionForm.validateAndParseBundle + performDecryption.
 func runDecrypt(in *cipherInput) error {
-	if err := resolvePasswords(); err != nil {
-		return err
-	}
-	// validateKeys covers the -p flag path (interactive path was validated live).
-	// The web tool validates the form before decrypting too; a weak key/password
-	// here means the keys[] are malformed, so decryption would never succeed.
-	if err := validateKeys(); err != nil {
-		return err
-	}
 	zipData := in.data
 
-	// 1. Decompress zip -> {bin, meta}.
+	// 1. Decompress zip -> {bin, meta}. Done before passwords so the stored
+	// hint can be shown before the user is asked for the keys.
 	entries, err := container.DecompressBundle(zipData)
 	if err != nil {
 		return err
@@ -356,14 +338,32 @@ func runDecrypt(in *cipherInput) error {
 		return fmt.Errorf("%s", i18n.T("data_cipher.error.meta_tampered"))
 	}
 
-	// 5. Parse the binary container.
+	// 5. Show the hint stored during encryption so the user can recall the
+	// original input text and password.
+	if meta.Hint != "" {
+		fmt.Println(i18n.TWithData("data_cipher.output.decrypt_hint", map[string]interface{}{
+			"Hint": meta.Hint,
+		}))
+	}
+
+	if err := resolvePasswords(); err != nil {
+		return err
+	}
+	// validateKeys covers the -p flag path (interactive path was validated live).
+	// The web tool validates the form before decrypting too; a weak key/password
+	// here means the keys[] are malformed, so decryption would never succeed.
+	if err := validateKeys(); err != nil {
+		return err
+	}
+
+	// 6. Parse the binary container.
 	parsed, err := container.ExtractDecryptedData(entries.Bin)
 	if err != nil {
 		return fmt.Errorf("%s: %w", i18n.T("data_cipher.error.parse_container"), err)
 	}
 	decryptSalt := parsed.SaltSeed
 
-	// 6. integrityHash strong check + tamper trap.
+	// 7. integrityHash strong check + tamper trap.
 	// NOTE: the assemble_package_key is derived from the bin's salt_seed
 	// (parsed.SaltSeed), matching the web tool which uses salt.value set from
 	// extractSaltFromEncryptedData — NOT meta.Salt. For a valid file both are
@@ -380,13 +380,13 @@ func runDecrypt(in *cipherInput) error {
 		decryptSalt = safety.HMACSHA3512([]byte(decryptSalt), []byte(storedIntegrity))
 	}
 
-	// 7. AES-256-GCM decrypt with all keys.
+	// 8. AES-256-GCM decrypt with all keys.
 	pt, err := aesgcm.DecryptWithPassword(parsed.EncryptedData, decryptSalt, dataCipherPasswords)
 	if err != nil {
 		return fmt.Errorf("%s: %s", i18n.T("data_cipher.error.decrypt_failed"), strings.TrimRight(err.Error(), "!"))
 	}
 
-	// 8. Write restored file (prefer original Name from meta-data).
+	// 9. Write restored file (prefer original Name from meta-data).
 	outPath := dataCipherOutput
 	if outPath == "" {
 		base := "decrypted.txt"
@@ -435,31 +435,19 @@ func resolvePasswords() error {
 	// Each is validated live against the web tool's high-strength rule
 	// (IsPasswordHighStrength: >=128 hex chars, >=15 distinct chars).
 	for i := 0; i < 3; i++ {
-		var v string
 		keyNum := i + 1
-		p := &survey.Password{
-			Message: i18n.TWithData("data_cipher.prompt.key_n", map[string]interface{}{
-				"N": keyNum,
-			}),
-			Help: i18n.T("data_cipher.prompt.key_help"),
-		}
-		if err := survey.AskOne(p, &v,
-			survey.WithValidator(i18nRequired()),
-			survey.WithValidator(highStrengthKeyValidator(keyNum)),
-		); err != nil {
+		v, err := param.Password(i18n.TWithData("data_cipher.prompt.key_n", map[string]interface{}{
+			"N": keyNum,
+		}), i18n.T("data_cipher.prompt.key_help"), param.WithValidator(highStrengthKeyValidator(keyNum)))
+		if err != nil {
 			return err
 		}
 		dataCipherPasswords = append(dataCipherPasswords, v)
 	}
 	// password1 (required). Validated live against the web tool's composite rule
 	// (IsPassword1Valid: high strength OR letter+digit+special and >=8 chars).
-	var pw1 string
-	if err := survey.AskOne(
-		&survey.Password{Message: i18n.T("data_cipher.prompt.password1")},
-		&pw1,
-		survey.WithValidator(i18nRequired()),
-		survey.WithValidator(password1Validator),
-	); err != nil {
+	pw1, err := param.Password(i18n.T("data_cipher.prompt.password1"), "", param.WithValidator(password1Validator))
+	if err != nil {
 		return err
 	}
 	dataCipherPasswords = append(dataCipherPasswords, pw1)
@@ -469,14 +457,10 @@ func resolvePasswords() error {
 	// answer is a valid value (an empty-string password participates in key
 	// derivation, just like the web tool), so we always ask both and never skip.
 	for i := 2; i <= 3; i++ { // i = password number (2, 3)
-		var extra string
-		p := &survey.Input{
-			Message: i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
-				"N": i,
-			}),
-			Help: i18n.T("data_cipher.prompt.password_optional_help"),
-		}
-		if err := survey.AskOne(p, &extra); err != nil {
+		extra, err := param.Input(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
+			"N": i,
+		}), "", i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
+		if err != nil {
 			return err
 		}
 		dataCipherPasswords = append(dataCipherPasswords, extra)
@@ -487,14 +471,10 @@ func resolvePasswords() error {
 	// another password, up to the 3+10 = 13 cap.
 	for len(dataCipherPasswords) < maxKeysCount {
 		pwNum := len(dataCipherPasswords) - 2 // index 6 -> password4
-		var extra string
-		p := &survey.Input{
-			Message: i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
-				"N": pwNum,
-			}),
-			Help: i18n.T("data_cipher.prompt.password_optional_help"),
-		}
-		if err := survey.AskOne(p, &extra); err != nil {
+		extra, err := param.Input(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
+			"N": pwNum,
+		}), "", i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
+		if err != nil {
 			return err
 		}
 		if strings.TrimSpace(extra) == "" {
@@ -506,7 +486,7 @@ func resolvePasswords() error {
 }
 
 // resolveHint collects the optional hint interactively BEFORE passwords.
-// Flag-first (--hint wins); otherwise a TTY is prompted with survey.Multiline.
+// Flag-first (--hint wins); otherwise a TTY is prompted with MultiInput.
 // The hint is optional, so an empty answer is valid in both flows. Non-interactive
 // runs without --hint simply leave the hint empty (matches the web tool's default).
 //
@@ -521,27 +501,19 @@ func resolveHint() error {
 	if !isStdinTerminal() {
 		return nil // non-interactive: hint stays empty, that's fine
 	}
-	var hint string
-	p := &survey.Multiline{
-		Message: i18n.T("data_cipher.prompt.hint"),
-		Help:    i18n.T("data_cipher.prompt.hint_help"),
-	}
-	if err := survey.AskOne(p, &hint); err != nil {
+	hint, err := param.MultiInput(i18n.T("data_cipher.prompt.hint"), i18n.T("data_cipher.prompt.hint_help"), param.WithoutRequired())
+	if err != nil {
 		return err
 	}
 	dataCipherHint = strings.TrimSpace(hint)
 	return nil
 }
 
-// highStrengthKeyValidator returns a survey validator enforcing the web tool's
+// highStrengthKeyValidator returns a validator enforcing the web tool's
 // strong-key rule (DataEncryptionForm.vue:744-746: IsPasswordHighStrength) for
 // key N (1-indexed). The web tool trims before validating, so we do too.
-func highStrengthKeyValidator(keyNum int) survey.Validator {
-	return func(ans interface{}) error {
-		s, ok := ans.(string)
-		if !ok {
-			return fmt.Errorf("%s", i18n.T("data_cipher.error.validator_type_assert"))
-		}
+func highStrengthKeyValidator(keyNum int) func(string) error {
+	return func(s string) error {
 		if safety.IsPasswordHighStrength(strings.TrimSpace(s)) {
 			return nil
 		}
@@ -554,11 +526,7 @@ func highStrengthKeyValidator(keyNum int) survey.Validator {
 // password1Validator enforces the web tool's password1 composite rule
 // (DataEncryptionForm.vue:756-758: isPassword1Valid). The web tool trims before
 // validating, so we do too.
-func password1Validator(ans interface{}) error {
-	s, ok := ans.(string)
-	if !ok {
-		return fmt.Errorf("%s", i18n.T("data_cipher.error.validator_type_assert"))
-	}
+func password1Validator(s string) error {
 	if safety.IsPassword1Valid(strings.TrimSpace(s)) {
 		return nil
 	}
@@ -607,12 +575,8 @@ func resolveOutputPath(message, fallback string) error {
 		dataCipherOutput = fallback
 		return nil
 	}
-	var out string
-	p := &survey.Input{
-		Message: message,
-		Default: fallback,
-	}
-	if err := survey.AskOne(p, &out); err != nil {
+	out, err := param.Input(message, fallback, "", param.WithoutRequired())
+	if err != nil {
 		return err
 	}
 	if strings.TrimSpace(out) == "" {

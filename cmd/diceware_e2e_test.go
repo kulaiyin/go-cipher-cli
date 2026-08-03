@@ -29,6 +29,26 @@ func extractPassphrase(t *testing.T, out string) string {
 	return strings.TrimSpace(m[1])
 }
 
+func TestDicewareCmd_Raw(t *testing.T) {
+	out, code := runCLI(t, "diceware", "--raw", "-n", "4", "--sep", "hyphen")
+	if code != 0 {
+		t.Fatalf("diceware --raw failed: %s", out)
+	}
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("--raw must print a single passphrase line, got %d lines:\n%s", len(lines), out)
+	}
+	pp := lines[0]
+	if strings.Count(pp, "-") != 3 {
+		t.Errorf("hyphen separator: expected 3 hyphens in 4-word raw passphrase, got %q", pp)
+	}
+	for _, label := range []string{"Passphrase:", "Length:", "Words:", "Entropy:", "Combinations:", "Separator:", "dice roll"} {
+		if strings.Contains(out, label) {
+			t.Errorf("--raw output must not contain %q, got:\n%s", label, out)
+		}
+	}
+}
+
 func TestDicewareCmd_Default(t *testing.T) {
 	out, code := runCLI(t, "diceware")
 	if code != 0 {

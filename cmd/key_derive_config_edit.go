@@ -146,7 +146,7 @@ func collectConfigPassword(p *keyDeriveParams) (string, error) {
 	if !param.IsStdinTerminal() {
 		return "", fmt.Errorf("%s", i18n.T("key_derive.config_edit.error_password_required"))
 	}
-	// Reuse the declarative password field: hidden survey prompt, same
+	// Reuse the declarative password field: hidden prompt, same
 	// validation rule as the standard generate flow, loops on invalid input.
 	field := param.Field{
 		PromptType:      param.PromptPassword,

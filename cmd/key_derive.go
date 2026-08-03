@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 
 	"go-cipher-cli/internal/form"
@@ -24,7 +23,7 @@ const keyDeriveKeyDriveVersion = "1.0.0"
 // keyDeriveParams declares the parameters of the key-derive command using the
 // declarative standard mode: type metadata, requiredness, validation rules,
 // and interactive prompting are expressed as param.Field declarations instead
-// of hand-written survey code (see mntemp.go for the reference pattern).
+// of hand-written prompt code (see mntemp.go for the reference pattern).
 type keyDeriveParams struct {
 	Mode     param.Field
 	Input    param.Field
@@ -85,8 +84,8 @@ func (p *keyDeriveParams) fieldEntries() []fieldEntry {
 	return []fieldEntry{
 		{&p.Mode, &p.Mode.Value, "mode"},
 		{&p.Input, &p.Input.Value, "input"},
-		{&p.Password, &p.Password.Value, "password"},
 		{&p.Hint, &p.Hint.Value, "hint"},
+		{&p.Password, &p.Password.Value, "password"},
 		{&p.Strength, &p.Strength.Value, "strength"},
 		{&p.Config, &p.Config.Value, "config"},
 		{&p.Output, &p.Output.Value, "output"},
@@ -147,18 +146,6 @@ func runKeyDerive(p *keyDeriveParams) error {
 
 func init() {
 	i18n.MustInit("")
-	// Override survey's hardcoded English error prefix ("Sorry, your reply was invalid:")
-	// so validation errors are fully multilingual via our i18n translations.
-	survey.ErrorTemplate = `{{color .Icon.Format }}{{ .Icon.Text }} {{ .Error.Error }}{{color "reset"}}
-`
-	// Override the hardcoded "[Enter 2 empty lines to finish]" instruction in the
-	// Multiline template so it uses the current language.
-	survey.MultilineQuestionTemplate = strings.Replace(
-		survey.MultilineQuestionTemplate,
-		"[Enter 2 empty lines to finish]",
-		i18n.T("key_derive.prompt.multiline_instruction"),
-		1,
-	)
 	refreshCmdDescs = append(refreshCmdDescs, func() {
 		keyDeriveCmd.Short = i18n.T("key_derive.short")
 		keyDeriveCmd.Long = i18n.T("key_derive.long")
@@ -536,7 +523,7 @@ func buildRestoreSteps(hintIDs []string) ([][]form.Step, error) {
 
 // promptDefaultPassword runs the standard hidden password prompt.
 func promptDefaultPassword(promptMsg string, target *string) error {
-	input, err := param.Password(promptMsg)
+	input, err := param.Password(promptMsg, "")
 	if err != nil {
 		return err
 	}

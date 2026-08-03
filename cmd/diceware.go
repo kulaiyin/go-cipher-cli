@@ -13,6 +13,7 @@ import (
 var (
 	diceNumWords int
 	diceSep      string
+	diceRaw      bool
 )
 
 var dicewareCmd = &cobra.Command{
@@ -25,6 +26,11 @@ var dicewareCmd = &cobra.Command{
 		result, err := diceware.GeneratePassphrase(diceNumWords, sep)
 		if err != nil {
 			return fmt.Errorf("%s: %w", i18n.T("diceware.error.generate_failed"), err)
+		}
+
+		if diceRaw {
+			fmt.Println(result.Passphrase)
+			return nil
 		}
 
 		fmt.Println(i18n.TWithData("diceware.output.passphrase", map[string]interface{}{
@@ -85,5 +91,6 @@ func init() {
 
 	dicewareCmd.Flags().IntVarP(&diceNumWords, "num-words", "n", 5, i18n.T("diceware.flag.num_words"))
 	dicewareCmd.Flags().StringVar(&diceSep, "sep", "none", i18n.T("diceware.flag.sep"))
+	dicewareCmd.Flags().BoolVar(&diceRaw, "raw", false, i18n.T("diceware.flag.raw"))
 	rootCmd.AddCommand(dicewareCmd)
 }
