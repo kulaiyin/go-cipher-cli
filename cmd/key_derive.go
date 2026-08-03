@@ -470,12 +470,24 @@ func promptPasswordWithQuestionAnswer(promptMsg string, target *string, flagName
 	if !useQnA {
 		return promptDefaultPassword(promptMsg, target)
 	}
-
-	steps, err := loadFormSteps(localizedConfigPath())
+	pw, ids, err := runQuestionAnswerFlow(kdParams.Salt.Value)
 	if err != nil {
 		return err
 	}
-	salt := kdParams.Salt.Value
+	kdParams.answerIDs = ids
+	*target = pw
+	return nil
+}
+
+// runQuestionAnswerFlow runs the web-style 3-step question-answer form and
+// derives the high-strength password from the given salt and the chosen answers
+// (password.ComputeFinalPassword). Returns the password and the chosen question
+// IDs in step order. Shared by key-derive (generate) and data-cipher (password1).
+func runQuestionAnswerFlow(salt string) (string, []string, error) {
+	steps, err := loadFormSteps(localizedConfigPath())
+	if err != nil {
+		return "", nil, err
+	}
 	results, err := form.Run(steps, form.WithFinalPassword(func(results []form.Result) string {
 		pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
 		if err != nil {
@@ -484,10 +496,19 @@ func promptPasswordWithQuestionAnswer(promptMsg string, target *string, flagName
 		return pw
 	}))
 	if err != nil {
-		return err
+		return "", nil, err
 	}
-	kdParams.answerIDs = resultIDs(results)
 	pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
+	if err != nil {
+		return "", nil, err
+	}
+	return pw, resultIDs(results), nil
+}
+
+// promptRestoreAnswers re-answers the questions restored from the config so the
+// original high-strength password can be regenerated from the answers and salt.
+func promptRestoreAnswers(cfg *recoveryConfig, target *string) error {
+	pw, err := runReanswerFlow(kdParams.restoreSteps, cfg.Salt)
 	if err != nil {
 		return err
 	}
@@ -495,25 +516,21 @@ func promptPasswordWithQuestionAnswer(promptMsg string, target *string, flagName
 	return nil
 }
 
-// promptRestoreAnswers re-answers the questions restored from the config so the
-// original high-strength password can be regenerated from the answers and salt.
-func promptRestoreAnswers(cfg *recoveryConfig, target *string) error {
-	results, err := form.Run(kdParams.restoreSteps, form.WithSkipConfirm(), form.WithFinalPassword(func(results []form.Result) string {
-		pw, err := password.ComputeFinalPassword(cfg.Salt, finalAnswers(results))
+// runReanswerFlow re-answers the reconstructed questions (one fixed question per
+// step) without the summary confirmation and computes the high-strength password
+// from the salt. Shared by key-derive restore and data-cipher decrypt.
+func runReanswerFlow(steps [][]form.Step, salt string) (string, error) {
+	results, err := form.Run(steps, form.WithSkipConfirm(), form.WithFinalPassword(func(results []form.Result) string {
+		pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
 		if err != nil {
 			return ""
 		}
 		return pw
 	}))
 	if err != nil {
-		return err
+		return "", err
 	}
-	pw, err := password.ComputeFinalPassword(cfg.Salt, finalAnswers(results))
-	if err != nil {
-		return err
-	}
-	*target = pw
-	return nil
+	return password.ComputeFinalPassword(salt, finalAnswers(results))
 }
 
 // buildRestoreSteps reconstructs one fixed question per step from the stored

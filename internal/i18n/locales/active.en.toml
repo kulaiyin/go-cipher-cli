@@ -307,6 +307,10 @@ other = "paste the key produced by `key-derive`"
 description = "Interactive password1 prompt"
 other = "Password1:"
 
+[data_cipher.prompt.use_question_answer]
+description = "Confirmation to generate password1 as a high-strength password from question answers"
+other = "Generate a high-strength password using the question-answer pattern?"
+
 [data_cipher.prompt.password_optional]
 description = "Interactive optional additional password prompt (1-indexed)"
 other = "Password{{.N}} (optional, press Enter to finish):"

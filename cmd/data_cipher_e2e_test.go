@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go-cipher-cli/internal/password"
+	"go-cipher-cli/internal/safety"
 )
 
 // End-to-end tests for the `data-cipher` command, exercising the full pipeline
@@ -274,6 +277,50 @@ func TestDataCipher_WeakPassword1Rejected(t *testing.T) {
 		"-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2], "-p", "abcdefg"}
 	if out, code := runCLI(t, args...); code == 0 {
 		t.Fatalf("expected weak-password1 rejection, got success: %s", out)
+	}
+}
+
+// TestDataCipher_QuestionAnswerPassword1RoundTrip verifies a password1 generated
+// by the question-answer high-strength flow works end-to-end: encrypt with a
+// fixed salt and that password, then decrypt reproducing the same password from
+// the salt stored in the bundle (the encrypt path shares the resolved salt with
+// the question-answer generation, exactly like key-derive).
+func TestDataCipher_QuestionAnswerPassword1RoundTrip(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	salt := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	pw1, err := password.ComputeFinalPassword(salt, []string{"20240101", "shanghai", "@abc"})
+	if err != nil {
+		t.Fatalf("compute password1: %v", err)
+	}
+	if !safety.IsPassword1Valid(pw1) {
+		t.Fatalf("question-answer password1 must satisfy the password1 rule")
+	}
+
+	tmp := t.TempDir()
+	in := filepath.Join(tmp, "secret.txt")
+	plain := []byte("qna password1 payload")
+	if err := os.WriteFile(in, plain, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	encZip := filepath.Join(tmp, "out.zip")
+	if out, code := runCLI(t, "data-cipher", in, "--mode", "encrypt",
+		"-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2], "-p", pw1,
+		"--salt", salt, "-o", encZip); code != 0 {
+		t.Fatalf("encrypt failed: %s", out)
+	}
+	dec := filepath.Join(tmp, "restored.txt")
+	if out, code := runCLI(t, "data-cipher", encZip, "--mode", "decrypt",
+		"-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2], "-p", pw1, "-o", dec); code != 0 {
+		t.Fatalf("decrypt failed: %s", out)
+	}
+	got, err := os.ReadFile(dec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(plain) {
+		t.Fatalf("round-trip mismatch:\n got=%q\nwant=%q", got, plain)
 	}
 }
 

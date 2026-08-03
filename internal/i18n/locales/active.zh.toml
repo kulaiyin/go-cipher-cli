@@ -308,6 +308,10 @@ other = "粘贴 `key-derive` 生成的密钥"
 description = "交互式 password1 提示"
 other = "密码1："
 
+[data_cipher.prompt.use_question_answer]
+description = "是否使用问题-答案模式将密码1生成为高强度密码的确认提示"
+other = "使用「问题-答案」模式生成高强度密码？"
+
 [data_cipher.prompt.password_optional]
 description = "交互式可选额外密码提示（从 1 开始）"
 other = "密码{{.N}}（可选，按回车结束）："

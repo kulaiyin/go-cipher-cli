@@ -35,6 +35,10 @@ var (
 	dataCipherSalt      string
 	dataCipherHint      string
 	dataCipherOutput    string
+	// dataCipherSelectedHints records the question-answer question IDs chosen for
+	// password1 during encrypt, written into meta-data selectedHints so decrypt
+	// can re-answer them and reproduce password1.
+	dataCipherSelectedHints []string
 )
 
 var dataCipherCmd = &cobra.Command{
@@ -216,7 +220,9 @@ func init() {
 	dataCipherCmd.Flags().StringVar(&dataCipherInputType, "input-type", "", i18n.T("data_cipher.flag.input_type"))
 	dataCipherCmd.Flags().StringVar(&dataCipherText, "text", "", i18n.T("data_cipher.flag.text"))
 	dataCipherCmd.Flags().StringVar(&dataCipherFile, "file", "", i18n.T("data_cipher.flag.file"))
-	dataCipherCmd.Flags().StringSliceVarP(&dataCipherPasswords, "password", "p", nil, i18n.T("data_cipher.flag.password"))
+	// StringArray (not StringSlice) so a password containing a comma is kept
+	// whole: the strong-key / generated-password charset includes ",".
+	dataCipherCmd.Flags().StringArrayVarP(&dataCipherPasswords, "password", "p", nil, i18n.T("data_cipher.flag.password"))
 	dataCipherCmd.Flags().StringVar(&dataCipherSalt, "salt", "", i18n.T("data_cipher.flag.salt"))
 	dataCipherCmd.Flags().StringVar(&dataCipherHint, "hint", "", i18n.T("data_cipher.flag.hint"))
 	dataCipherCmd.Flags().StringVarP(&dataCipherOutput, "output", "o", "", i18n.T("data_cipher.flag.output"))
@@ -225,13 +231,23 @@ func init() {
 
 // runEncrypt mirrors DataEncryptionForm.performEncryption + downloadResult(encrypt).
 func runEncrypt(in *cipherInput) error {
+	// Salt is resolved up front so a question-answer generated password1
+	// (collected in resolvePasswords) and the encryption share the same salt;
+	// otherwise decryption could not reproduce password1.
+	if dataCipherSalt == "" {
+		dataCipherSalt = safety.BytesToHex(safety.GenerateRandomBytes(64))
+	}
+	if _, err := hex.DecodeString(dataCipherSalt); err != nil {
+		return fmt.Errorf("%s: %w", i18n.T("data_cipher.error.salt_hex"), err)
+	}
+
 	// Hint is collected BEFORE passwords: it belongs to the "data input" section
 	// alongside the text/file content, which precedes the key config in the web
 	// form. So order is: content -> hint -> passwords -> output.
 	if err := resolveHint(); err != nil {
 		return err
 	}
-	if err := resolvePasswords(); err != nil {
+	if err := resolvePasswords(true, dataCipherSalt, nil); err != nil {
 		return err
 	}
 	// validateKeys covers the -p flag path (interactive path was validated live).
@@ -245,15 +261,7 @@ func runEncrypt(in *cipherInput) error {
 		return err
 	}
 	data := in.data
-
-	// Salt: use --salt or generate a 64-byte (128-hex) seed.
 	salt := dataCipherSalt
-	if salt == "" {
-		salt = safety.BytesToHex(safety.GenerateRandomBytes(64))
-	}
-	if _, err := hex.DecodeString(salt); err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("data_cipher.error.salt_hex"), err)
-	}
 
 	// 1. AES-256-GCM encrypt with ALL keys.
 	ct, err := aesgcm.EncryptWithPassword(data, salt, dataCipherPasswords)
@@ -273,14 +281,20 @@ func runEncrypt(in *cipherInput) error {
 		return err
 	}
 
-	// 4. meta-data.json with dual HMAC signatures.
+	// 4. meta-data.json with dual HMAC signatures. selectedHints carries the
+	// question-answer question IDs chosen for password1 (if any) so decrypt can
+	// re-answer them and reproduce the password.
+	selectedHints := dataCipherSelectedHints
+	if selectedHints == nil {
+		selectedHints = []string{}
+	}
 	meta := &container.MetaData{
 		Version:       dataCipherContainerVersion,
 		Salt:          salt,
 		FileName:      in.fileName,
 		FileType:      in.mimeType,
 		Hint:          dataCipherHint,
-		SelectedHints: []string{},
+		SelectedHints: selectedHints,
 		SHA256:        safety.SHA256Hex(string(bin)),
 		CreatedAt:     time.Now().UnixMilli(),
 	}
@@ -341,7 +355,17 @@ func runDecrypt(in *cipherInput) error {
 		return fmt.Errorf("%s", i18n.T("data_cipher.error.meta_tampered"))
 	}
 
-	// 5. Show the hint stored during encryption so the user can recall the
+	// 5. Parse the binary container up front: the salt_seed it embeds is needed
+	// both for the key derivation and to re-answer the stored question-answer
+	// questions for password1 (selectedHints). This is a structural parse only;
+	// the GCM decrypt still happens after the keys are resolved.
+	parsed, err := container.ExtractDecryptedData(entries.Bin)
+	if err != nil {
+		return fmt.Errorf("%s: %w", i18n.T("data_cipher.error.parse_container"), err)
+	}
+	decryptSalt := parsed.SaltSeed
+
+	// 6. Show the hint stored during encryption so the user can recall the
 	// original input text and password.
 	if meta.Hint != "" {
 		fmt.Println(i18n.TWithData("data_cipher.output.decrypt_hint", map[string]interface{}{
@@ -349,7 +373,11 @@ func runDecrypt(in *cipherInput) error {
 		}))
 	}
 
-	if err := resolvePasswords(); err != nil {
+	// 7. resolvePasswords(false): decrypt never generates a new high-strength
+	// password1; when the file's selectedHints are non-empty, password1 is
+	// reproduced by re-answering those questions with the bin's salt_seed
+	// (mirrors key-derive restore), otherwise it is typed directly.
+	if err := resolvePasswords(false, parsed.SaltSeed, meta.SelectedHints); err != nil {
 		return err
 	}
 	// validateKeys covers the -p flag path (interactive path was validated live).
@@ -359,14 +387,7 @@ func runDecrypt(in *cipherInput) error {
 		return err
 	}
 
-	// 6. Parse the binary container.
-	parsed, err := container.ExtractDecryptedData(entries.Bin)
-	if err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("data_cipher.error.parse_container"), err)
-	}
-	decryptSalt := parsed.SaltSeed
-
-	// 7. integrityHash strong check + tamper trap.
+	// 8. integrityHash strong check + tamper trap.
 	// NOTE: the assemble_package_key is derived from the bin's salt_seed
 	// (parsed.SaltSeed), matching the web tool which uses salt.value set from
 	// extractSaltFromEncryptedData — NOT meta.Salt. For a valid file both are
@@ -383,13 +404,13 @@ func runDecrypt(in *cipherInput) error {
 		decryptSalt = safety.HMACSHA3512([]byte(decryptSalt), []byte(storedIntegrity))
 	}
 
-	// 8. AES-256-GCM decrypt with all keys.
+	// 9. AES-256-GCM decrypt with all keys.
 	pt, err := aesgcm.DecryptWithPassword(parsed.EncryptedData, decryptSalt, dataCipherPasswords)
 	if err != nil {
 		return fmt.Errorf("%s: %s", i18n.T("data_cipher.error.decrypt_failed"), strings.TrimRight(err.Error(), "!"))
 	}
 
-	// 9. Write restored file (prefer original Name from meta-data).
+	// 10. Write restored file (prefer original Name from meta-data).
 	outPath := dataCipherOutput
 	if outPath == "" {
 		base := "decrypted.txt"
@@ -422,7 +443,13 @@ func runDecrypt(in *cipherInput) error {
 //	keys[0..2] = 3 strong keys (key-derive output, 128-hex each)
 //	keys[3]    = password1
 //	keys[4..]  = additional passwords (optional)
-func resolvePasswords() error {
+//
+// allowQnA: encrypt=true enables the question-answer high-strength generation for
+// password1; decrypt=false reproduces the original password instead — typed
+// directly, or re-answered from the stored selectedHints when present. salt is
+// the salt shared with the QnA password (encrypt: resolved salt; decrypt: the
+// bin's salt_seed). hintIDs are the selectedHints from the file (decrypt only).
+func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 	// Fully supplied (≥4) via -p: use as-is. Zero supplied + TTY: collect all
 	// interactively. Partial (1-3) is ambiguous (which slot do they fill?), so
 	// require either all via -p or none (then interactive).
@@ -447,12 +474,15 @@ func resolvePasswords() error {
 		}
 		dataCipherPasswords = append(dataCipherPasswords, v)
 	}
-	// password1 (required). Validated live against the web tool's composite rule
-	// (IsPassword1Valid: high strength OR letter+digit+special and >=8 chars).
-	pw1, err := param.Password(i18n.T("data_cipher.prompt.password1"), "", param.WithValidator(password1Validator))
+	// password1 (required). Encrypt can generate it as a high-strength password
+	// via the question-answer flow (mirrors key-derive) and stores the chosen
+	// question IDs in selectedHints; decrypt re-answers those questions to
+	// reproduce the exact password, or types it directly.
+	pw1, ids, err := promptPassword1(salt, allowQnA, hintIDs)
 	if err != nil {
 		return err
 	}
+	dataCipherSelectedHints = ids
 	dataCipherPasswords = append(dataCipherPasswords, pw1)
 
 	// password2 & password3 are DEFAULT slots (web form renders them by default:
@@ -486,6 +516,46 @@ func resolvePasswords() error {
 		dataCipherPasswords = append(dataCipherPasswords, extra)
 	}
 	return nil
+}
+
+// promptPassword1 collects password1 and returns it plus the chosen
+// question-answer question IDs (encrypt only; nil otherwise).
+//
+//   - encrypt: offers the question-answer high-strength generation (same flow as
+//     key-derive); declining falls back to the plain hidden prompt with the web
+//     tool's composite password1 rule.
+//   - decrypt: when the file's selectedHints are non-empty, password1 is
+//     reproduced by re-answering those questions with the bin's salt_seed
+//     (mirrors key-derive restore); otherwise the plain hidden prompt is used.
+func promptPassword1(salt string, encrypt bool, hintIDs []string) (string, []string, error) {
+	if encrypt {
+		useQnA, err := param.Confirm(i18n.T("data_cipher.prompt.use_question_answer"), true)
+		if err != nil {
+			return "", nil, err
+		}
+		if useQnA {
+			pw, ids, err := runQuestionAnswerFlow(salt)
+			if err != nil {
+				return "", nil, err
+			}
+			return pw, ids, nil
+		}
+	} else if len(hintIDs) > 0 {
+		steps, err := buildRestoreSteps(hintIDs)
+		if err != nil {
+			return "", nil, err
+		}
+		pw, err := runReanswerFlow(steps, salt)
+		if err != nil {
+			return "", nil, err
+		}
+		return pw, nil, nil
+	}
+	pw, err := param.Password(i18n.T("data_cipher.prompt.password1"), "", param.WithValidator(password1Validator))
+	if err != nil {
+		return "", nil, err
+	}
+	return pw, nil, nil
 }
 
 // resolveHint collects the optional hint interactively BEFORE passwords.
