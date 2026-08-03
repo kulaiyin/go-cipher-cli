@@ -116,7 +116,7 @@ func TestSelectEnterAndInput(t *testing.T) {
 		t.Fatalf("after enter: want StageInput, got %d", m.Stage())
 	}
 
-	// Type arbitrary text (CJK included); Backspace deletes the last character.
+	// Type the password (CJK included); Backspace deletes the last character.
 	m = drive(t, m, key(tui.KeyRunes, '2', '0', '2', '4'), key(tui.KeyRunes, '\u5e74'))
 	if got := string(m.input); got != "2024\u5e74" {
 		t.Fatalf("input: want %q, got %q", "2024\u5e74", got)
@@ -126,13 +126,47 @@ func TestSelectEnterAndInput(t *testing.T) {
 		t.Fatalf("after backspace: want %q, got %q", "2024", got)
 	}
 
-	// The highlighted item is Q01; submitting moves to the next step.
+	// Enter moves to the confirm stage, not straight to the next step.
 	m = drive(t, m, key(tui.KeyEnter))
+	if m.Stage() != StageConfirm {
+		t.Fatalf("after enter: want StageConfirm, got %d", m.Stage())
+	}
+
+	// Confirm with the same password to submit; moves to the next step.
+	m = drive(t, m, key(tui.KeyRunes, '2', '0', '2', '4'), key(tui.KeyEnter))
 	if m.Stage() != StageSelect || m.stepIdx != 1 {
 		t.Fatalf("after submit: stage=%d step=%d", m.Stage(), m.stepIdx)
 	}
 	if m.currentItem().ID != "Q03" {
 		t.Fatalf("step 2 first item: want Q03, got %s", m.currentItem().ID)
+	}
+}
+
+func TestPasswordMismatchResets(t *testing.T) {
+	initTestI18n()
+	m := newSmall()
+
+	// Type the password, confirm with a different one: stays in input with an error.
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 's', 'e', 'c', 'r', 'e', 't'), key(tui.KeyEnter))
+	if m.Stage() != StageConfirm {
+		t.Fatalf("want StageConfirm, got %d", m.Stage())
+	}
+	m = drive(t, m, key(tui.KeyRunes, 'd', 'i', 'f', 'f'), key(tui.KeyEnter))
+	if m.Stage() != StageInput {
+		t.Fatalf("mismatch: want StageInput, got %d", m.Stage())
+	}
+	if m.errMsg == "" || len(m.input) != 0 || len(m.confirm) != 0 {
+		t.Fatalf("mismatch should set errMsg and clear buffers: err=%q input=%q confirm=%q", m.errMsg, string(m.input), string(m.confirm))
+	}
+
+	// Re-enter the same password twice to recover.
+	m = drive(t, m, key(tui.KeyRunes, 's', 'e', 'c', 'r', 'e', 't'), key(tui.KeyEnter),
+		key(tui.KeyRunes, 's', 'e', 'c', 'r', 'e', 't'), key(tui.KeyEnter))
+	if m.Stage() != StageSelect || m.stepIdx != 1 {
+		t.Fatalf("after recovery: stage=%d step=%d", m.Stage(), m.stepIdx)
+	}
+	if m.errMsg != "" {
+		t.Fatalf("errMsg should be cleared after successful submit, got %q", m.errMsg)
 	}
 }
 
@@ -144,8 +178,14 @@ func TestInputEscCancels(t *testing.T) {
 	if m.Stage() != StageSelect {
 		t.Fatalf("after esc in input: want StageSelect, got %d", m.Stage())
 	}
-	if len(m.input) != 0 {
-		t.Fatalf("input should be cleared, got %q", string(m.input))
+	if len(m.input) != 0 || len(m.confirm) != 0 {
+		t.Fatalf("buffers should be cleared, got input=%q confirm=%q", string(m.input), string(m.confirm))
+	}
+
+	// Esc in the confirm stage also cancels back to select.
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'x'), key(tui.KeyEnter), key(tui.KeyRunes, 'y'), key(tui.KeyEsc))
+	if m.Stage() != StageSelect {
+		t.Fatalf("after esc in confirm: want StageSelect, got %d", m.Stage())
 	}
 }
 
@@ -153,8 +193,8 @@ func TestSubmitCompletesToSummary(t *testing.T) {
 	initTestI18n()
 	m := newSmall()
 
-	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter)) // step1
-	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter)) // step2
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter)) // step1
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter)) // step2
 	if m.Stage() != StageSummary {
 		t.Fatalf("want StageSummary, got %d", m.Stage())
 	}
@@ -167,7 +207,7 @@ func TestEscBackToPreviousStep(t *testing.T) {
 	initTestI18n()
 	m := newSmall()
 
-	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyEnter)) // step1 Q01 answered
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter)) // step1 Q01 answered
 	if m.stepIdx != 1 {
 		t.Fatalf("want step 1 (0-based), got %d", m.stepIdx)
 	}
@@ -187,8 +227,8 @@ func TestResultsAndOverwrite(t *testing.T) {
 	m := newSmall()
 
 	// Complete both steps normally.
-	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter))
-	m = drive(t, m, key(tui.KeyDown), key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter))
+	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter))
+	m = drive(t, m, key(tui.KeyDown), key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter))
 	results := m.Results()
 	if results[0].ID != "Q01" || results[0].Answer != "a" {
 		t.Fatalf("result 0: %+v", results[0])
@@ -198,7 +238,7 @@ func TestResultsAndOverwrite(t *testing.T) {
 	}
 
 	// Go back to step one and re-answer; the old result is overwritten.
-	m = drive(t, m, key(tui.KeyEsc), key(tui.KeyEsc), key(tui.KeyEnter), key(tui.KeyRunes, 'z'), key(tui.KeyEnter))
+	m = drive(t, m, key(tui.KeyEsc), key(tui.KeyEsc), key(tui.KeyEnter), key(tui.KeyRunes, 'z'), key(tui.KeyEnter), key(tui.KeyRunes, 'z'), key(tui.KeyEnter))
 	if len(m.Results()) != 2 {
 		t.Fatalf("want 2 results, got %d", len(m.Results()))
 	}
@@ -210,7 +250,10 @@ func TestResultsAndOverwrite(t *testing.T) {
 func TestSummaryQuitAndCtrlC(t *testing.T) {
 	initTestI18n()
 	m := newSmall()
-	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter))
+	m = drive(t, m,
+		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter),
+		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter),
+	)
 
 	// On the summary: normal keys do not quit, q quits, Ctrl+C quits.
 	m = drive(t, m, key(tui.KeyRunes, 'x'))
@@ -236,17 +279,30 @@ func TestViewStages(t *testing.T) {
 		}
 	}
 
-	// Input stage
+	// Input stage masks the password.
 	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'h', 'i'))
 	view = m.View()
-	for _, want := range []string{"You selected: Q01 (First question)", "Please enter:", "hi▌"} {
+	for _, want := range []string{"You selected: Q01 (First question)", "Please enter:", "**▌"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("input view missing %q:\n%s", want, view)
 		}
 	}
+	if strings.Contains(view, "hi") {
+		t.Errorf("input view must not leak the password:\n%s", view)
+	}
 
-	// Summary stage
-	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter))
+	// Confirm stage asks again, still masked.
+	m = drive(t, m, key(tui.KeyEnter))
+	view = m.View()
+	for _, want := range []string{"Please confirm:", "▌"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("confirm view missing %q:\n%s", want, view)
+		}
+	}
+
+	// Summary stage: confirm step1, then select/input/confirm step2.
+	m = drive(t, m, key(tui.KeyRunes, 'h', 'i'), key(tui.KeyEnter),
+		key(tui.KeyEnter), key(tui.KeyEnter), key(tui.KeyEnter))
 	view = m.View()
 	for _, want := range []string{"Result Summary", "Step | ID | Question | Answer", "1 | Q01 | First question | hi", "Press q to quit"} {
 		if !strings.Contains(view, want) {

@@ -37,8 +37,10 @@ type Stage int
 const (
 	// StageSelect: page through options and pick one.
 	StageSelect Stage = iota
-	// StageInput: type arbitrary text for the chosen question.
+	// StageInput: type a password (masked) for the chosen question.
 	StageInput
+	// StageConfirm: re-type the password; must match before submitting.
+	StageConfirm
 	// StageSummary: show all results; press q to quit.
 	StageSummary
 )
@@ -54,7 +56,9 @@ type Model struct {
 	cursor   int // cursor within the current page
 	stage    Stage
 	results  []Result
-	input    []rune // input buffer
+	input    []rune // password input buffer
+	confirm  []rune // confirm-password buffer
+	errMsg   string // validation error shown during input
 	pageSize int
 }
 
@@ -91,7 +95,9 @@ func (m *Model) Update(key tui.Key) (tui.Model, tui.Cmd) {
 	case StageSelect:
 		m.handleSelectKey(key)
 	case StageInput:
-		m.handleInputKey(key)
+		m.handleInputKey(key, false)
+	case StageConfirm:
+		m.handleInputKey(key, true)
 	case StageSummary:
 		if key.Type == tui.KeyEsc && len(m.steps) > 0 {
 			// Allow re-answering the last step from the summary.
@@ -113,7 +119,7 @@ func (m *Model) View() string {
 	switch m.stage {
 	case StageSelect:
 		return m.selectView()
-	case StageInput:
+	case StageInput, StageConfirm:
 		return m.inputView()
 	case StageSummary:
 		return m.summaryView()
@@ -177,20 +183,46 @@ func (m *Model) handleSelectKey(key tui.Key) {
 	}
 }
 
-func (m *Model) handleInputKey(key tui.Key) {
+func (m *Model) handleInputKey(key tui.Key, confirm bool) {
 	switch key.Type {
 	case tui.KeyRunes:
-		m.input = append(m.input, key.Runes...)
+		if confirm {
+			m.confirm = append(m.confirm, key.Runes...)
+		} else {
+			m.input = append(m.input, key.Runes...)
+		}
 	case tui.KeyBackspace:
-		if len(m.input) > 0 {
+		if confirm {
+			if len(m.confirm) > 0 {
+				m.confirm = m.confirm[:len(m.confirm)-1]
+			}
+		} else if len(m.input) > 0 {
 			m.input = m.input[:len(m.input)-1]
 		}
 	case tui.KeyEnter:
-		m.submit()
+		if confirm {
+			m.confirmPassword()
+		} else {
+			m.stage = StageConfirm
+		}
 	case tui.KeyEsc:
 		m.input = nil
+		m.confirm = nil
 		m.stage = StageSelect
 	}
+}
+
+// confirmPassword submits the answer when the two password entries match;
+// otherwise it resets both buffers and shows a mismatch error.
+func (m *Model) confirmPassword() {
+	if string(m.input) == string(m.confirm) {
+		m.submit()
+		return
+	}
+	m.errMsg = i18n.T("form.password_mismatch")
+	m.input = nil
+	m.confirm = nil
+	m.stage = StageInput
 }
 
 func (m *Model) submit() {
@@ -207,6 +239,8 @@ func (m *Model) submit() {
 		m.results = append(m.results, r)
 	}
 	m.input = nil
+	m.confirm = nil
+	m.errMsg = ""
 	m.stepIdx++
 	if m.stepIdx >= len(m.steps) {
 		m.stage = StageSummary
@@ -287,9 +321,25 @@ func (m *Model) inputView() string {
 		"ID":      m.currentItem().ID,
 		"Content": m.currentItem().Content,
 	}))
-	fmt.Fprintf(&sb, "%s %s▌\n\n", i18n.T("form.input_prompt"), string(m.input))
-	fmt.Fprintf(&sb, "%s", i18n.T("form.input_footer"))
+	if m.errMsg != "" {
+		fmt.Fprintf(&sb, "%s\n", m.errMsg)
+	}
+	if m.stage == StageConfirm {
+		fmt.Fprintf(&sb, "%s %s▌\n\n", i18n.T("form.confirm_prompt"), mask(m.confirm))
+		fmt.Fprintf(&sb, "%s", i18n.T("form.confirm_footer"))
+	} else {
+		fmt.Fprintf(&sb, "%s %s▌\n\n", i18n.T("form.input_prompt"), mask(m.input))
+		fmt.Fprintf(&sb, "%s", i18n.T("form.input_footer"))
+	}
 	return sb.String()
+}
+
+// mask renders runes as asterisks, hiding the password content.
+func mask(runes []rune) string {
+	if len(runes) == 0 {
+		return ""
+	}
+	return strings.Repeat("*", len(runes))
 }
 
 func (m *Model) summaryView() string {

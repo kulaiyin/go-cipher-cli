@@ -1116,7 +1116,19 @@ other = "请输入："
 
 [form.input_footer]
 description = "输入阶段的按键帮助栏"
+other = "Enter 确认  Esc 取消输入"
+
+[form.confirm_prompt]
+description = "确认密码输入框前的提示"
+other = "请再次输入："
+
+[form.confirm_footer]
+description = "确认阶段的按键帮助栏"
 other = "Enter 提交  Esc 取消输入"
+
+[form.password_mismatch]
+description = "两次密码输入不一致时显示的错误提示"
+other = "两次输入的密码不一致，请重新输入。"
 
 [form.summary_title]
 description = "结果汇总的标题"

@@ -49,15 +49,21 @@ func TestTuiDemoFullFlow(t *testing.T) {
 		time.Sleep(80 * time.Millisecond)
 	}
 
-	feed("\r")       // step 1: select Q01 -> input
-	feed("20240101") // type answer
+	feed("\r")       // step 1: select Q01 -> password input
+	feed("20240101") // type password
+	feed("\r")       // -> confirm password
+	feed("20240101") // confirm
 	feed("\r")       // submit -> step 2
 	feed("\x1b[C")   // step 2: flip to page 2 (cursor on Q06)
-	feed("\r")       // select Q06 -> input
-	feed("19991231") // type answer
+	feed("\r")       // select Q06 -> password input
+	feed("19991231") // type password
+	feed("\r")       // -> confirm password
+	feed("19991231") // confirm
 	feed("\r")       // submit -> step 3
-	feed("\r")       // step 3: select Q01 -> input
-	feed("abc123")   // type answer
+	feed("\r")       // step 3: select Q01 -> password input
+	feed("abc123")   // type password
+	feed("\r")       // -> confirm password
+	feed("abc123")   // confirm
 	feed("\r")       // submit -> summary
 	feed("q")        // quit
 
