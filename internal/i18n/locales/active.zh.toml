@@ -1078,45 +1078,28 @@ description = "易失 RAM 文件系统挂载失败的错误"
 other = "挂载易失 RAM 文件系统失败：{{.Err}}"
 
 # ==========================================
-# cmd/tui_demo.go
+# cmd/question_pool.go
 # ==========================================
 
-[tui_demo.short]
-description = "tui-demo 命令的简短描述"
-other = "交互式多步表单演示（测试用）"
-
-[tui_demo.long]
-description = "tui-demo 命令的详细描述"
-other = """运行多步交互表单组件：每步从问题池中翻页选择一个问题并作答，
-最后展示结果汇总。该命令用于验证组件，正式功能将集成到其他命令中。"""
-
-[tui_demo.flag.config]
-description = "问题池配置文件路径"
-other = "问题池配置文件路径"
-
-[tui_demo.error.load_failed]
+[question_pool.error.load_failed]
 description = "读取问题池配置失败时的错误"
 other = "读取问题池配置失败：{{.Err}}"
 
-[tui_demo.error.invalid_config]
+[question_pool.error.invalid_config]
 description = "问题池配置格式非法时的错误"
 other = "问题池配置无效：{{.Err}}"
 
-[tui_demo.error.empty_config]
+[question_pool.error.empty_config]
 description = "问题池为空时的错误"
 other = "问题池配置为空"
 
-[tui_demo.error.step]
+[question_pool.error.step]
 description = "标识哪个步骤为空"
 other = "步骤 {{.Step}} 为空"
 
-[tui_demo.error.question]
+[question_pool.error.question]
 description = "标识哪个问题缺少 ID"
 other = "步骤 {{.Step}} 第 {{.Index}} 个问题缺少 ID"
-
-[tui_demo.error.run_failed]
-description = "TUI 程序运行失败时的错误"
-other = "TUI 运行失败：{{.Err}}"
 
 # ==========================================
 # internal/form/form.go
@@ -1201,36 +1184,3 @@ other = "Enter 继续  按住 r 显示答案"
 [form.summary_final_password]
 description = "汇总屏幕上生成的高强度密码标签"
 other = "生成的密码"
-
-[standard.short]
-description = "standard 命令的简短描述"
-other = "标准命令模板"
-
-[standard.long]
-description = "standard 命令的详细描述"
-other = """通用命令框架：标准化参数解析（mode/input/password/suffix/output），
-参数缺失时通过交互提示补齐。"""
-
-[standard.flag.mode]
-description = "mode 参数的 flag 帮助"
-other = "运行模式：encrypt / decrypt / derive"
-
-[standard.flag.input]
-description = "input 参数的 flag 帮助"
-other = "输入内容（文本或文件路径）"
-
-[standard.flag.password]
-description = "password 参数的 flag 帮助"
-other = "密码"
-
-[standard.flag.suffix]
-description = "suffix 参数的 flag 帮助"
-other = "域分离用的盐后缀"
-
-[standard.flag.output]
-description = "output 参数的 flag 帮助"
-other = "输出路径"
-
-[standard.error.password]
-description = "密码不满足校验规则时的提示"
-other = "密码不满足要求：至少 8 位，且包含字母、数字和特殊字符。"

@@ -105,9 +105,9 @@ func TestBuildRestoreSteps(t *testing.T) {
 		t.Fatal("locate test file")
 	}
 	root := filepath.Dir(filepath.Dir(file))
-	prev := tuiDemoConfig
-	tuiDemoConfig = filepath.Join(root, "configs/hint-word-pools_en.json")
-	defer func() { tuiDemoConfig = prev }()
+	prev := questionPoolConfig
+	questionPoolConfig = filepath.Join(root, "configs/hint-word-pools_en.json")
+	defer func() { questionPoolConfig = prev }()
 
 	steps, err := loadFormSteps(localizedConfigPath())
 	if err != nil {

@@ -74,12 +74,12 @@ func TestLoadFormStepsErrorMessageIsTranslated(t *testing.T) {
 
 func TestLocalizedConfigPath(t *testing.T) {
 	i18n.MustInit("")
-	orig := tuiDemoConfig
-	defer func() { tuiDemoConfig = orig }()
-	tuiDemoConfig = filepath.Join(t.TempDir(), "hint-word-pools_en.json")
+	orig := questionPoolConfig
+	defer func() { questionPoolConfig = orig }()
+	questionPoolConfig = filepath.Join(t.TempDir(), "hint-word-pools_en.json")
 
 	// zh file exists -> zh path is picked.
-	zhPath := strings.TrimSuffix(tuiDemoConfig, "_en.json") + "_zh.json"
+	zhPath := strings.TrimSuffix(questionPoolConfig, "_en.json") + "_zh.json"
 	if err := os.WriteFile(zhPath, []byte("[]"), 0o644); err != nil {
 		t.Fatalf("write zh config: %v", err)
 	}
@@ -89,9 +89,9 @@ func TestLocalizedConfigPath(t *testing.T) {
 		lang string
 		want string
 	}{
-		{"default en", "en", tuiDemoConfig},
+		{"default en", "en", questionPoolConfig},
 		{"zh with file", "zh", zhPath},
-		{"unknown without file", "fr", tuiDemoConfig},
+		{"unknown without file", "fr", questionPoolConfig},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

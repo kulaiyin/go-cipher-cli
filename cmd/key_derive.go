@@ -152,7 +152,7 @@ func init() {
 	})
 
 	// Command-specific validation rules, registered so the declarative Field
-	// rules can reference them (see validateFields in standard.go).
+	// rules can reference them (see validateFields in params.go).
 	param.RegisterRule("key_derive_input", func(args []string, flagName string, _ param.FieldValues) func(string) error {
 		return func(v string) error { return validation.ValidateKeyDeriveInput(v) }
 	})
@@ -161,8 +161,8 @@ func init() {
 	})
 
 	// Namespace the prompt/option i18n keys (key_derive.prompt.* /
-	// key_derive.option.*) so they do not collide with the shared
-	// "standard" namespace used by the placeholder standard command.
+	// key_derive.option.*) so they do not collide with the default
+	// "standard" namespace used by the param package.
 	for _, e := range kdParams.fieldEntries() {
 		e.field.PromptKeyPrefix = "key_derive"
 	}
