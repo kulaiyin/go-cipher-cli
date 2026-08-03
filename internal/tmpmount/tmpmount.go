@@ -9,6 +9,7 @@ package tmpmount
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -30,6 +31,31 @@ type Result struct {
 	SizeMB      int
 	Backend     Backend
 	FallbackErr error // reason the native mount was not used; nil for native backends
+}
+
+// DefaultMountPath returns the default mount root for a named volatile
+// filesystem: <os.TempDir()>/mntemp/<name>.
+func DefaultMountPath(name string) string {
+	return filepath.Join(os.TempDir(), "mntemp", name)
+}
+
+// IsMounted reports whether path is currently a real mount point (e.g. a Linux
+// tmpfs or macOS RAM disk). Plain directories report false.
+func IsMounted(path string) bool {
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	return isMountPoint(path)
+}
+
+// CommandDir returns the per-command directory under the named mount root
+// (<root>/<command>) and creates it if missing.
+func CommandDir(name, command string) (string, error) {
+	dir := filepath.Join(DefaultMountPath(name), command)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	return dir, nil
 }
 
 // Mount creates a RAM-backed temporary filesystem at path with the given size

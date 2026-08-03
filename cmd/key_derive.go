@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -12,6 +13,7 @@ import (
 	"go-cipher-cli/internal/kdf"
 	"go-cipher-cli/internal/param"
 	"go-cipher-cli/internal/password"
+	"go-cipher-cli/internal/tmpmount"
 	"go-cipher-cli/internal/validation"
 )
 
@@ -376,8 +378,55 @@ func promptKeyDerive(p *keyDeriveParams) error {
 		if err := promptKeyDeriveRestoreConfig(p); err != nil {
 			return err
 		}
+	} else if p.Output.Value == "" {
+		p.Output.PromptFn = mntempOutputPrompt()
 	}
 	return promptInteractive(p.fieldEntries())
+}
+
+// mntempOutputPrompt returns the output field's custom prompt. It runs at save
+// time (the output prompt, after all other inputs): when the volatile mntemp
+// filesystem is mounted the default save location points into it; otherwise the
+// user is asked whether to mount it (default yes). Declining or a failed mount
+// falls back to the usual cwd default without extra output.
+func mntempOutputPrompt() func(promptMsg string, target *string, flagName string) error {
+	return func(promptMsg string, target *string, flagName string) error {
+		defaultPath := "recovery-config.txt"
+		root := tmpmount.DefaultMountPath(mntempDefaultName)
+		if !tmpmount.IsMounted(root) {
+			confirmed, err := param.Confirm(i18n.T("key_derive.prompt.mount_confirm"), true)
+			if err != nil {
+				return err
+			}
+			if !confirmed {
+				return inputOutputPath(promptMsg, defaultPath, target)
+			}
+			if err := mountVolatile(root, mntempDefaultSizeMB, mntempDefaultName); err != nil {
+				fmt.Fprintln(os.Stderr, i18n.TWithData("key_derive.error.mount_failed", map[string]interface{}{
+					"Err": err,
+				}))
+				return inputOutputPath(promptMsg, defaultPath, target)
+			}
+		}
+		dir, err := tmpmount.CommandDir(mntempDefaultName, "key-derive")
+		if err == nil {
+			defaultPath = filepath.Join(dir, "recovery-config.txt")
+		}
+		fmt.Println(i18n.TWithData("key_derive.output.mntemp_note", map[string]interface{}{
+			"Path": defaultPath,
+		}))
+		return inputOutputPath(promptMsg, defaultPath, target)
+	}
+}
+
+// inputOutputPath runs the plain output-path input prompt with the given default.
+func inputOutputPath(promptMsg, defaultPath string, target *string) error {
+	v, err := param.Input(promptMsg, defaultPath, "")
+	if err != nil {
+		return err
+	}
+	*target = v
+	return nil
 }
 
 // promptKeyDeriveRestoreConfig collects the config path and loads it, caching
@@ -441,7 +490,7 @@ func promptPasswordWithQuestionAnswer(promptMsg string, target *string, flagName
 		}
 		return promptDefaultPassword(promptMsg, target)
 	}
-	useQnA, err := param.Confirm(i18n.T("key_derive.prompt.use_question_answer"))
+	useQnA, err := param.Confirm(i18n.T("key_derive.prompt.use_question_answer"), true)
 	if err != nil {
 		return err
 	}

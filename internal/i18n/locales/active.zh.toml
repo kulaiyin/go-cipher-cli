@@ -723,6 +723,18 @@ other = "存入恢复配置作为备忘，不影响派生出的密钥。"
 description = "输出文件路径交互提示"
 other = "恢复配置保存位置："
 
+[key_derive.prompt.mount_confirm]
+description = "是否挂载易失 RAM 文件系统以安全保存的确认提示"
+other = "是否保存到易失 RAM 文件系统（mntemp）？系统关闭时文件将被清除。"
+
+[key_derive.output.mntemp_note]
+description = "提示恢复配置已保存到易失 RAM 文件系统"
+other = "正在将恢复配置保存到易失 RAM 文件系统：{{.Path}}（系统关闭时移除）"
+
+[key_derive.error.mount_failed]
+description = "易失 RAM 文件系统挂载失败的错误"
+other = "挂载易失 RAM 文件系统失败：{{.Err}}"
+
 [key_derive.prompt.config]
 description = "配置路径交互提示"
 other = "恢复配置路径："

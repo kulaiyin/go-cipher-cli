@@ -70,7 +70,7 @@ func resolveMntempPath(name, customPath string) string {
 	if customPath != "" {
 		return expandHomeDir(customPath)
 	}
-	return filepath.Join(os.TempDir(), "mntemp", name)
+	return tmpmount.DefaultMountPath(name)
 }
 
 // expandHomeDir expands a leading ~ to the user's home directory. A bare "~"
@@ -104,7 +104,15 @@ func mntempMount(p *mntempParams) error {
 		}))
 	}
 
-	res, err := tmpmount.Mount(p.MountPath, p.SizeMB, p.Name.Value)
+	return mountVolatile(p.MountPath, p.SizeMB, p.Name.Value)
+}
+
+// mountVolatile mounts a RAM-backed filesystem at path with the given size,
+// retrying elevated via sudo on a terminal when the native mount fails for
+// privilege reasons, and prints the outcome. Shared by mntemp and the commands
+// that auto-mount a volatile save location (e.g. key-derive).
+func mountVolatile(path string, sizeMB int, name string) error {
+	res, err := tmpmount.Mount(path, sizeMB, name)
 	if err != nil {
 		return err
 	}
@@ -112,9 +120,9 @@ func mntempMount(p *mntempParams) error {
 	// The native mount failed. When the cause is missing privileges and we're
 	// on a terminal, offer a sudo retry before falling back to a directory.
 	if res.Backend == tmpmount.BackendDir && tmpmount.IsPrivilegeError(res.FallbackErr) && param.IsStdinTerminal() {
-		confirmed, _ := param.Confirm(i18n.T("mntemp.mount.prompt.sudo"))
+		confirmed, _ := param.Confirm(i18n.T("mntemp.mount.prompt.sudo"), true)
 		if confirmed {
-			sudoRes, sudoErr := tmpmount.MountWithSudo(p.MountPath, p.SizeMB, p.Name.Value)
+			sudoRes, sudoErr := tmpmount.MountWithSudo(path, sizeMB, name)
 			if sudoErr == nil {
 				res = sudoRes
 			} else {
@@ -125,7 +133,7 @@ func mntempMount(p *mntempParams) error {
 		}
 	}
 
-	printMntempMountResult(res, p.Name.Value)
+	printMntempMountResult(res, name)
 	return nil
 }
 
@@ -163,7 +171,7 @@ func mntempUmount(p *mntempParams) error {
 		// A mount created with sudo needs elevated privileges to detach.
 		// Offer a sudo retry on a terminal before giving up.
 		if tmpmount.IsPrivilegeError(err) && param.IsStdinTerminal() {
-			confirmed, _ := param.Confirm(i18n.T("mntemp.umount.prompt.sudo"))
+			confirmed, _ := param.Confirm(i18n.T("mntemp.umount.prompt.sudo"), true)
 			if confirmed {
 				if sudoErr := tmpmount.UmountWithSudo(p.MountPath); sudoErr == nil {
 					fmt.Println(i18n.TWithData("mntemp.umount.success", map[string]interface{}{

@@ -15,9 +15,10 @@ func Output(message string) {
 	fmt.Fprintln(os.Stdout, message)
 }
 
-// Confirm prompts a yes/no question and returns the user's choice.
-func Confirm(message string) (bool, error) {
-	var ok bool
+// Confirm prompts a yes/no question and returns the user's choice. defaultValue
+// is pre-selected; the user accepts it by pressing Enter.
+func Confirm(message string, defaultValue bool) (bool, error) {
+	ok := defaultValue
 	err := runForm(huh.NewConfirm().Title(message).Value(&ok))
 	if err != nil {
 		return false, translateAbort(err)

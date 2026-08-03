@@ -724,6 +724,18 @@ other = "Stored in the recovery config as a reminder. Does not affect the derive
 description = "Interactive prompt for output file path"
 other = "Save recovery config to:"
 
+[key_derive.prompt.mount_confirm]
+description = "Confirmation to mount the volatile RAM filesystem for a secure save"
+other = "Save to a volatile RAM filesystem (mntemp)? Files are removed on shutdown."
+
+[key_derive.output.mntemp_note]
+description = "Notice that the recovery config is saved to the volatile RAM filesystem"
+other = "Saving recovery config to volatile RAM filesystem: {{.Path}} (removed on shutdown)"
+
+[key_derive.error.mount_failed]
+description = "Error when the volatile RAM filesystem mount fails"
+other = "failed to mount volatile RAM filesystem: {{.Err}}"
+
 [key_derive.prompt.config]
 description = "Interactive prompt for config path"
 other = "Path to recovery config:"

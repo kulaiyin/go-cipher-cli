@@ -2,6 +2,8 @@ package tmpmount
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -23,5 +25,41 @@ func TestIsPrivilegeError(t *testing.T) {
 				t.Errorf("IsPrivilegeError(%v) = %v, want %v", tt.err, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestDefaultMountPath(t *testing.T) {
+	got := DefaultMountPath("default")
+	want := filepath.Join(os.TempDir(), "mntemp", "default")
+	if got != want {
+		t.Errorf("DefaultMountPath(default) = %q, want %q", got, want)
+	}
+}
+
+func TestCommandDir(t *testing.T) {
+	dir, err := CommandDir("default", "key-derive")
+	if err != nil {
+		t.Fatalf("CommandDir: %v", err)
+	}
+	want := filepath.Join(os.TempDir(), "mntemp", "default", "key-derive")
+	if dir != want {
+		t.Errorf("CommandDir = %q, want %q", dir, want)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Fatalf("CommandDir should create the directory: %v", err)
+	}
+	if !info.IsDir() {
+		t.Errorf("CommandDir(%q) is not a directory", dir)
+	}
+}
+
+func TestIsMountedPlainDir(t *testing.T) {
+	dir := t.TempDir()
+	if IsMounted(dir) {
+		t.Errorf("IsMounted(%q) = true for a plain directory", dir)
+	}
+	if IsMounted(filepath.Join(dir, "missing")) {
+		t.Errorf("IsMounted returned true for a missing path")
 	}
 }
