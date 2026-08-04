@@ -294,7 +294,7 @@ func init() {
 	mtParams.Size.Required = true
 	mtParams.Size.Interactive = false
 	mtParams.Size.Rules = []param.Rule{
-		{"int_range", []string{"1", strconv.Itoa(mntempMaxSizeMB)}},
+		{Name: "int_range", Args: []string{"1", strconv.Itoa(mntempMaxSizeMB)}},
 	}
 	mtParams.Size.Visible = func(v param.FieldValues) bool {
 		return v["action"] == "mount"

@@ -63,7 +63,7 @@ func newMntempParams(op, name, size, path string) mntempParams {
 		Size: param.Field{
 			Value:    size,
 			Required: true,
-			Rules:    []param.Rule{{"int_range", []string{"1", "512"}}},
+			Rules:    []param.Rule{{Name: "int_range", Args: []string{"1", "512"}}},
 			Visible: func(v param.FieldValues) bool {
 				return v["action"] == "mount"
 			},
