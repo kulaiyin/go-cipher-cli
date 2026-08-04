@@ -448,3 +448,169 @@ func TestKeyDeriveConfigFile_RestoreRejected(t *testing.T) {
 		t.Errorf("expected error mentioning generate mode, got:\n%s", out)
 	}
 }
+
+func TestKeyDeriveCmd_InvalidStrengthFails(t *testing.T) {
+	out, code := runCLI(t, "key-derive", "--mode", "generate",
+		"-i", kdInput, "-p", kdPassword, "--strength", "bogus")
+	if code == 0 {
+		t.Fatalf("expected non-zero exit for invalid strength, output:\n%s", out)
+	}
+	if !strings.Contains(out, "bogus") {
+		t.Errorf("expected error to mention the invalid strength value, got:\n%s", out)
+	}
+}
+
+func TestKeyDeriveCmd_WeakPasswordFails(t *testing.T) {
+	out, code := runCLI(t, "key-derive", "--mode", "generate",
+		"-i", kdInput, "-p", "weakpass", "--strength", "basic")
+	if code == 0 {
+		t.Fatalf("expected non-zero exit for weak password, output:\n%s", out)
+	}
+}
+
+func TestKeyDeriveCmd_ShortInputFails(t *testing.T) {
+	out, code := runCLI(t, "key-derive", "--mode", "generate",
+		"-i", "short", "-p", kdPassword, "--strength", "basic")
+	if code == 0 {
+		t.Fatalf("expected non-zero exit for short input, output:\n%s", out)
+	}
+}
+
+func TestKeyDeriveCmd_Restore_WrongPassword(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "recovery.txt")
+	_, code := runCLI(t, "key-derive", "--mode", "generate",
+		"-i", kdInput, "-p", kdPassword,
+		"--strength", "basic", "--salt", kdSalt,
+		"--output", cfgPath)
+	if code != 0 {
+		t.Fatalf("setup generate failed")
+	}
+
+	out, code := runCLI(t, "key-derive", "--mode", "restore",
+		"-i", kdInput, "-p", "WrongP@ss1",
+		"--config", cfgPath)
+	if code == 0 {
+		t.Fatalf("restore should exit non-zero on wrong password, got 0: %s", out)
+	}
+	if strings.Contains(out, "UUID: ") {
+		t.Errorf("failed restore must not print derived key details, output:\n%s", out)
+	}
+}
+
+func TestKeyDeriveCmd_Restore_MissingConfigFails(t *testing.T) {
+	out, code := runCLI(t, "key-derive", "--mode", "restore",
+		"-i", kdInput, "-p", kdPassword)
+	if code == 0 {
+		t.Fatalf("expected non-zero exit without --config, output:\n%s", out)
+	}
+}
+
+func TestKeyDeriveCmd_Restore_NonexistentConfigFails(t *testing.T) {
+	out, code := runCLI(t, "key-derive", "--mode", "restore",
+		"-i", kdInput, "-p", kdPassword,
+		"--config", filepath.Join(t.TempDir(), "nope.txt"))
+	if code == 0 {
+		t.Fatalf("expected non-zero exit for missing config file, output:\n%s", out)
+	}
+}
+
+func TestKeyDeriveCmd_Restore_TamperedConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "recovery.txt")
+	_, code := runCLI(t, "key-derive", "--mode", "generate",
+		"-i", kdInput, "-p", kdPassword,
+		"--strength", "basic", "--salt", kdSalt,
+		"--output", cfgPath)
+	if code != 0 {
+		t.Fatalf("setup generate failed")
+	}
+
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(raw)
+	dataB64 := ""
+	for _, line := range strings.Split(text, "\n") {
+		if trimmed := strings.TrimSpace(line); strings.HasPrefix(trimmed, "DATA: ") {
+			dataB64 = strings.TrimSpace(strings.TrimPrefix(trimmed, "DATA: "))
+			break
+		}
+	}
+	if dataB64 == "" {
+		t.Fatal("no DATA line in config")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(dataB64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dataObj map[string]interface{}
+	if err := json.Unmarshal(decoded, &dataObj); err != nil {
+		t.Fatal(err)
+	}
+	salt, ok := dataObj["salt"].(string)
+	if !ok || salt == "" {
+		t.Fatal("no salt in DATA payload")
+	}
+	dataObj["salt"] = strings.Repeat("f", len(salt))
+	mutated, err := json.Marshal(dataObj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newB64 := base64.StdEncoding.EncodeToString(mutated)
+	tampered := strings.Replace(text, "DATA: "+dataB64, "DATA: "+newB64, 1)
+	if tampered == text {
+		t.Fatal("tamper substitution produced identical content")
+	}
+	if err := os.WriteFile(cfgPath, []byte(tampered), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, code := runCLI(t, "key-derive", "--mode", "restore",
+		"-i", kdInput, "-p", kdPassword,
+		"--config", cfgPath)
+	if code == 0 {
+		t.Fatalf("restore should fail on tampered config, got 0: %s", out)
+	}
+}
+
+func TestKeyDeriveCmd_Generate_CustomHint(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "recovery.txt")
+	_, code := runCLI(t, "key-derive", "--mode", "generate",
+		"-i", kdInput, "-p", kdPassword,
+		"--strength", "basic", "--salt", kdSalt,
+		"--hint", "my-custom-hint",
+		"--output", cfgPath)
+	if code != 0 {
+		t.Fatalf("generate failed: %s", t.Name())
+	}
+
+	cfg, err := parseFrontendRecoveryConfig(string(readFile(t, cfgPath)))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+	if cfg.Hint != "my-custom-hint" {
+		t.Errorf("config hint = %q, want my-custom-hint", cfg.Hint)
+	}
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
