@@ -3,11 +3,15 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"go-cipher-cli/internal/i18n"
 )
+
+// passwordFieldRe matches a top-level `password:` YAML field line.
+var passwordFieldRe = regexp.MustCompile(`(?m)^password\s*:`)
 
 // TestConfigFilePath verifies the derived config path lands in the mntemp
 // default directory with a <name>_<timestamp>.yaml filename.
@@ -111,7 +115,9 @@ func TestWriteConfigTemplate(t *testing.T) {
 			t.Errorf("template missing %q:\n%s", want, s)
 		}
 	}
-	if strings.Contains(s, "password") {
+	// Match the YAML field, not the substring: the localized warning comment
+	// legitimately contains "password" (e.g. "password manager" in English).
+	if passwordFieldRe.MatchString(s) {
 		t.Errorf("template must not contain a password field (kept off disk):\n%s", s)
 	}
 
@@ -127,7 +133,14 @@ func TestWriteConfigTemplate(t *testing.T) {
 		t.Fatalf("no example comment in template:\n%s", s)
 	}
 	var words []string
-	for _, tk := range strings.Fields(exLine) {
+	// The diceware words follow the localized label after its trailing colon
+	// (":" in en, U+FF1A in zh); the label itself may contain lowercase words
+	// (e.g. "input", "you" in the English example), so only count what follows.
+	wordsPart := exLine
+	if i := strings.LastIndexAny(exLine, "\uFF1A:"); i >= 0 {
+		wordsPart = exLine[i+1:]
+	}
+	for _, tk := range strings.Fields(wordsPart) {
 		if isLowerAlphaWord(tk) {
 			words = append(words, tk)
 		}
