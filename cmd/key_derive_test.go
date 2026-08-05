@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"testing"
 
 	"go-cipher-cli/internal/form"
@@ -100,13 +99,8 @@ func TestResultIDs(t *testing.T) {
 // TestBuildRestoreSteps verifies that stored question IDs are reconstructed
 // from the pool one per step, and that an unknown ID errors early.
 func TestBuildRestoreSteps(t *testing.T) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate test file")
-	}
-	root := filepath.Dir(filepath.Dir(file))
 	prev := questionPoolConfig
-	questionPoolConfig = filepath.Join(root, "configs/hint-word-pools_en.json")
+	questionPoolConfig = "hint-word-pools_en.json"
 	defer func() { questionPoolConfig = prev }()
 
 	steps, err := loadFormSteps(localizedConfigPath())

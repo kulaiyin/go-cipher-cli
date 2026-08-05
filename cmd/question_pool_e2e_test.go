@@ -12,14 +12,14 @@ import (
 	"go-cipher-cli/internal/tui"
 )
 
-// TestQuestionPoolFullFlow drives the real question pool (configs/hint-word-pools_en.json,
-// 3 steps x 30 questions) through the whole interaction: page -> select -> type
-// -> next step, then the summary screen, then quit with Enter.
+// TestQuestionPoolFullFlow drives the real question pool (embedded in the
+// binary, 3 steps x 30 questions) through the whole interaction: page ->
+// select -> type -> next step, then the summary screen, then quit with Enter.
 func TestQuestionPoolFullFlow(t *testing.T) {
 	i18n.MustInit("")
 	i18n.SetLanguage("en")
 
-	steps, err := loadFormSteps("../configs/hint-word-pools_en.json")
+	steps, err := loadFormSteps(localizedConfigPath())
 	if err != nil {
 		t.Fatalf("load pool: %v", err)
 	}
