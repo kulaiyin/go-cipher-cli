@@ -140,6 +140,119 @@ description = "--domain 标志的描述"
 other = "域标签（默认 default-v1，一般不修改）"
 
 # ==========================================
+# cmd/argon2id.go
+# ==========================================
+
+[argon2id.short]
+description = "argon2id 命令的简短描述"
+other = "使用 Argon2id 从密码派生密钥"
+
+[argon2id.long]
+description = "argon2id 命令的详细描述"
+other = """使用 Argon2id 从密码派生密钥。同一组 密码 + 盐 确定性派生出相同密钥，
+无法由密钥反推密码。
+
+密码取自 -p，省略时在终端以隐藏输入交互式提示（避免出现在 shell 历史中）。
+内存以 MB 为单位（默认 64），迭代默认 3 次，并行度默认 1，派生密钥长度默认 64 字节。
+使用 --json 可输出机器可读的 JSON 结果（含处理耗时）。"""
+
+[argon2id.error.derive_failed]
+description = "argon2 派生失败的错误信息"
+other = "argon2id 派生失败: {{.Err}}"
+
+[argon2id.error.invalid_salt]
+description = "--salt 不是合法 hex 的错误信息"
+other = "无效的 --salt: 必须是 hex 字符串: {{.Err}}"
+
+[argon2id.error.invalid_iterations]
+description = "--iterations 不是正数的错误信息"
+other = "--iterations 必须大于 0"
+
+[argon2id.error.invalid_memory]
+description = "--memory 不是正数的错误信息"
+other = "--memory 必须大于 0"
+
+[argon2id.error.invalid_parallelism]
+description = "--parallelism 不是正数的错误信息"
+other = "--parallelism 必须大于 0"
+
+[argon2id.error.invalid_key_length]
+description = "--key-length 不是正数的错误信息"
+other = "--key-length 必须大于 0"
+
+[argon2id.error.json_marshal]
+description = "JSON 序列化失败的错误信息"
+other = "JSON 输出编码失败"
+
+[argon2id.progress.deriving]
+description = "argon2 派生进行中的转圈提示文案"
+other = "正在使用 Argon2id 派生"
+
+[argon2id.output.algorithm]
+description = "输出的算法标签"
+other = "算法:       Argon2id ({{.Memory}} MB / {{.Iterations}} 轮 / {{.Parallelism}} 路并行)"
+
+[argon2id.output.salt_base64]
+description = "输出的盐 base64 标签"
+other = "盐(base64): {{.Salt}}"
+
+[argon2id.output.salt_hex]
+description = "输出的盐 hex 标签"
+other = "盐(hex):    {{.Salt}}"
+
+[argon2id.output.key_hex]
+description = "输出的密钥 hex 标签"
+other = "密钥(hex):     {{.Key}}"
+
+[argon2id.output.key_base64]
+description = "输出的密钥 base64 标签"
+other = "密钥(base64):  {{.Key}}"
+
+[argon2id.output.key_length]
+description = "输出的密钥长度标签"
+other = "密钥长度:      {{.Bits}} 位"
+
+[argon2id.output.processing_time]
+description = "输出的处理耗时标签"
+other = "处理耗时:      {{.Ms}} ms"
+
+[argon2id.flag.password]
+description = "--password 标志的描述"
+other = "用于派生的密码（可选；省略时以隐藏输入交互式提示）"
+
+[argon2id.prompt.password]
+description = "询问派生密码的提示文案"
+other = "密码:"
+
+[argon2id.error.password_required]
+description = "没有可用密码时的错误信息（无 -p 且无终端）"
+other = "未提供密码: 请使用 -p 或以交互方式运行"
+
+[argon2id.flag.salt]
+description = "--salt 标志的描述"
+other = "hex 字符串格式的盐（默认随机 16 字节）"
+
+[argon2id.flag.iterations]
+description = "--iterations 标志的描述"
+other = "Argon2id 迭代次数"
+
+[argon2id.flag.memory]
+description = "--memory 标志的描述"
+other = "Argon2id 内存成本，单位 MB"
+
+[argon2id.flag.parallelism]
+description = "--parallelism 标志的描述"
+other = "Argon2id 并行度"
+
+[argon2id.flag.key_length]
+description = "--key-length 标志的描述"
+other = "派生密钥长度，单位字节"
+
+[argon2id.flag.json]
+description = "--json 标志的描述"
+other = "以 JSON 格式输出结果"
+
+# ==========================================
 # cmd/diceware.go
 # ==========================================
 

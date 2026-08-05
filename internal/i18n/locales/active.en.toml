@@ -140,6 +140,122 @@ description = "Description for --domain flag"
 other = "domain label (default default-v1, generally not changed)"
 
 # ==========================================
+# cmd/argon2id.go
+# ==========================================
+
+[argon2id.short]
+description = "Short description for argon2id command"
+other = "Derive a key with the Argon2id KDF"
+
+[argon2id.long]
+description = "Long description for argon2id command"
+other = """Derive a key from a password using Argon2id. The same password + salt
+deterministically derives the same key; the key cannot be reversed to recover
+the password.
+
+The password is taken from -p or, when omitted, prompted with a hidden input on
+a terminal (so it never appears in shell history). Memory is expressed in MB
+(default 64), iterations default to 3, parallelism to 1, and the derived key
+length to 64 bytes. Use --json to get a machine-readable JSON result including
+the processing time."""
+
+[argon2id.error.derive_failed]
+description = "Error when argon2 derivation fails"
+other = "argon2id derive failed: {{.Err}}"
+
+[argon2id.error.invalid_salt]
+description = "Error when --salt is not valid hex"
+other = "invalid --salt: must be a hex string: {{.Err}}"
+
+[argon2id.error.invalid_iterations]
+description = "Error when --iterations is not positive"
+other = "--iterations must be > 0"
+
+[argon2id.error.invalid_memory]
+description = "Error when --memory is not positive"
+other = "--memory must be > 0"
+
+[argon2id.error.invalid_parallelism]
+description = "Error when --parallelism is not positive"
+other = "--parallelism must be > 0"
+
+[argon2id.error.invalid_key_length]
+description = "Error when --key-length is not positive"
+other = "--key-length must be > 0"
+
+[argon2id.error.json_marshal]
+description = "Error when JSON marshalling fails"
+other = "failed to encode JSON output"
+
+[argon2id.progress.deriving]
+description = "Spinner label while argon2 derivation runs"
+other = "deriving with Argon2id"
+
+[argon2id.output.algorithm]
+description = "Algorithm label in output"
+other = "Algorithm: Argon2id ({{.Memory}} MB / {{.Iterations}} rounds / {{.Parallelism}} parallelism)"
+
+[argon2id.output.salt_base64]
+description = "Salt base64 label in output"
+other = "Salt (base64): {{.Salt}}"
+
+[argon2id.output.salt_hex]
+description = "Salt hex label in output"
+other = "Salt (hex):    {{.Salt}}"
+
+[argon2id.output.key_hex]
+description = "Key hex label in output"
+other = "Key (hex):    {{.Key}}"
+
+[argon2id.output.key_base64]
+description = "Key base64 label in output"
+other = "Key (base64): {{.Key}}"
+
+[argon2id.output.key_length]
+description = "Key length label in output"
+other = "Key length:   {{.Bits}} bits"
+
+[argon2id.output.processing_time]
+description = "Processing time label in output"
+other = "Processing time: {{.Ms}} ms"
+
+[argon2id.flag.password]
+description = "Description for --password flag"
+other = "password to derive from (optional; prompted with hidden input when omitted)"
+
+[argon2id.prompt.password]
+description = "Prompt asking for the derivation password"
+other = "Password:"
+
+[argon2id.error.password_required]
+description = "Error when no password is available (no -p and no terminal)"
+other = "no password provided: use -p or run interactively"
+
+[argon2id.flag.salt]
+description = "Description for --salt flag"
+other = "salt as a hex string (default: random 16 bytes)"
+
+[argon2id.flag.iterations]
+description = "Description for --iterations flag"
+other = "Argon2id iterations"
+
+[argon2id.flag.memory]
+description = "Description for --memory flag"
+other = "Argon2id memory cost in MB"
+
+[argon2id.flag.parallelism]
+description = "Description for --parallelism flag"
+other = "Argon2id parallelism"
+
+[argon2id.flag.key_length]
+description = "Description for --key-length flag"
+other = "derived key length in bytes"
+
+[argon2id.flag.json]
+description = "Description for --json flag"
+other = "output the result as JSON"
+
+# ==========================================
 # cmd/diceware.go
 # ==========================================
 
