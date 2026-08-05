@@ -20,13 +20,15 @@ import (
 )
 
 var (
-	argon2Password    string
-	argon2Salt        string
-	argon2Iterations  int
-	argon2MemoryMB    int
-	argon2Parallelism int
-	argon2KeyLength   int
-	argon2JSON        bool
+	argon2Password         string
+	argon2Salt             string
+	argon2Iterations       int
+	argon2MemoryMB         int
+	argon2Parallelism      int
+	argon2KeyLength        int
+	argon2JSON             bool
+	argon2EchoPassword     bool
+	argon2PromptedPassword string
 )
 
 // argon2JSONOutput is the machine-readable result emitted by argon2id --json.
@@ -42,6 +44,7 @@ type argon2JSONOutput struct {
 	Parallelism    int    `json:"parallelism"`
 	KeyLength      int    `json:"key_length"`
 	ProcessingTime int64  `json:"processing_time_ms"`
+	Password       string `json:"password,omitempty"`
 	Error          string `json:"error,omitempty"`
 }
 
@@ -105,13 +108,13 @@ var argon2idCmd = &cobra.Command{
 
 		if !result.Success {
 			if argon2JSON {
-				emitArgon2JSON(result, salt)
+				emitArgon2JSON(result, salt, echoArgon2Password())
 			}
 			return fmt.Errorf("%s: %s", i18n.T("argon2id.error.derive_failed"), result.Error)
 		}
 
 		if argon2JSON {
-			emitArgon2JSON(result, salt)
+			emitArgon2JSON(result, salt, echoArgon2Password())
 			return nil
 		}
 		emitArgon2Text(result, salt)
@@ -218,7 +221,8 @@ func emitArgon2Text(r kdf.KDFResult, salt []byte) {
 }
 
 // emitArgon2JSON prints the machine-readable output (--json mode).
-func emitArgon2JSON(r kdf.KDFResult, salt []byte) {
+// echoPassword, when non-empty, is written to the password field (interactive prompt only).
+func emitArgon2JSON(r kdf.KDFResult, salt []byte, echoPassword string) {
 	keyBytes, _ := hex.DecodeString(r.Data)
 	out := argon2JSONOutput{
 		Success:        r.Success,
@@ -232,6 +236,7 @@ func emitArgon2JSON(r kdf.KDFResult, salt []byte) {
 		Parallelism:    argon2Parallelism,
 		KeyLength:      r.HashLength,
 		ProcessingTime: r.ProcessingTime,
+		Password:       echoPassword,
 	}
 	if !r.Success {
 		out.Error = r.Error
@@ -242,6 +247,16 @@ func emitArgon2JSON(r kdf.KDFResult, salt []byte) {
 		return
 	}
 	fmt.Println(string(data))
+}
+
+// echoArgon2Password returns the password to echo in --json output.
+// Only echoes when --echo-password is set and the password was prompted
+// interactively; a -p value is never echoed.
+func echoArgon2Password() string {
+	if !argon2EchoPassword || argon2Password != "" {
+		return ""
+	}
+	return argon2PromptedPassword
 }
 
 // resolveArgon2Password returns the derivation password. A non-empty -p value
@@ -255,7 +270,9 @@ func resolveArgon2Password() (string, error) {
 	if !param.IsStdinTerminal() {
 		return "", fmt.Errorf("%s", i18n.T("argon2id.error.password_required"))
 	}
-	return param.Password(i18n.T("argon2id.prompt.password"), "")
+	var err error
+	argon2PromptedPassword, err = param.Password(i18n.T("argon2id.prompt.password"), "")
+	return argon2PromptedPassword, err
 }
 
 func init() {
@@ -273,5 +290,6 @@ func init() {
 	argon2idCmd.Flags().IntVar(&argon2Parallelism, "parallelism", 1, i18n.T("argon2id.flag.parallelism"))
 	argon2idCmd.Flags().IntVar(&argon2KeyLength, "key-length", 64, i18n.T("argon2id.flag.key_length"))
 	argon2idCmd.Flags().BoolVar(&argon2JSON, "json", false, i18n.T("argon2id.flag.json"))
+	argon2idCmd.Flags().BoolVar(&argon2EchoPassword, "echo-password", false, "echo prompted password as plaintext in --json output (interactive only)")
 	rootCmd.AddCommand(argon2idCmd)
 }
