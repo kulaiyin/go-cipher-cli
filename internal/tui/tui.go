@@ -100,14 +100,16 @@ func WithInput(r io.Reader) Option {
 	return func(o *options) { o.input = r }
 }
 
-// WithOutput sets the output target (default os.Stdout); used in tests to
+// WithOutput sets the output target (default os.Stderr); used in tests to
 // capture rendered frames.
 func WithOutput(w io.Writer) Option {
 	return func(o *options) { o.output = w }
 }
 
+// defaultOptions renders to stderr (matching huh's default) so prompts never
+// pollute stdout, keeping stdout machine-readable.
 func defaultOptions() options {
-	return options{input: os.Stdin, output: os.Stdout}
+	return options{input: os.Stdin, output: os.Stderr}
 }
 
 // Run starts the TUI program and returns the final model. How the program
