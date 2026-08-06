@@ -519,9 +519,9 @@ func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 			extraReserved = 1
 		}
 		for i := 2; i <= 3; i++ { // i = password number (2, 3)
-			extra, err := param.Input(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
+			extra, err := param.Password(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
 				"N": i,
-			}), "", i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
+			}), i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
 			if err != nil {
 				return err
 			}
@@ -529,9 +529,9 @@ func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 		}
 		for len(resolved) < maxKeysCount-extraReserved {
 			pwNum := len(resolved) - 2 // index 6 -> password4
-			extra, err := param.Input(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
+			extra, err := param.Password(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
 				"N": pwNum,
-			}), "", i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
+			}), i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
 			if err != nil {
 				return err
 			}
