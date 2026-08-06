@@ -3,17 +3,11 @@ package param
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/charmbracelet/huh"
 
 	"go-cipher-cli/internal/i18n"
 )
-
-// Output prints a line of text to the terminal's standard output.
-func Output(message string) {
-	fmt.Fprintln(os.Stdout, message)
-}
 
 // Confirm prompts a yes/no question and returns the user's choice. defaultValue
 // is pre-selected; the user accepts it by pressing Enter.
