@@ -184,6 +184,18 @@ other = "--key-length 必须大于 0"
 description = "JSON 序列化失败的错误信息"
 other = "JSON 输出编码失败"
 
+[argon2id.error.secrets_stdin_conflict_password]
+description = "--secrets-stdin 与 -p/--password 混用的错误信息"
+other = "--secrets-stdin 与 -p/--password 互斥"
+
+[argon2id.error.secrets_stdin_conflict_salt]
+description = "--secrets-stdin 与 --salt 混用的错误信息"
+other = "--secrets-stdin 与 --salt 互斥"
+
+[argon2id.error.json_tty_denied]
+description = "--json 且 stdout 是终端时的错误"
+other = "密钥不会输出到终端: --json 需将 stdout 重定向到管道或文件"
+
 [argon2id.progress.deriving]
 description = "argon2 派生进行中的转圈提示文案"
 other = "正在使用 Argon2id 派生"
@@ -216,6 +228,10 @@ other = "密钥长度:      {{.Bits}} 位"
 description = "输出的处理耗时标签"
 other = "处理耗时:      {{.Ms}} ms"
 
+[argon2id.output.mask_hint]
+description = "文本模式掩码显示派生密钥的提示"
+other = "（完整密钥已掩码; 需要完整值时请使用 --json 并将 stdout 重定向到管道或文件）"
+
 [argon2id.flag.password]
 description = "--password 标志的描述"
 other = "用于派生的密码（必填，通过命令行传入，不做交互式询问）"
@@ -227,6 +243,10 @@ other = "未提供密码: 请使用 -p 传入"
 [argon2id.flag.salt]
 description = "--salt 标志的描述"
 other = "hex 字符串格式的盐（默认随机 16 字节）"
+
+[argon2id.flag.secrets_stdin]
+description = "--secrets-stdin 标志的描述"
+other = "从标准输入读取口令与盐（第 1 行口令, 第 2 行盐 hex; 与 -p/--salt 互斥）"
 
 [argon2id.flag.iterations]
 description = "--iterations 标志的描述"
@@ -381,6 +401,10 @@ other = "要加密的文本内容（加密且 input-type=text）"
 description = "--file 标志的描述"
 other = "输入文件路径（位置参数的替代写法）"
 
+[data_cipher.flag.secrets_stdin]
+description = "--secrets-stdin 标志的描述"
+other = "从标准输入读取秘密数据（第 1 行内容, 第 2-4 行 3 个强密钥, 第 5 行附加密码, 第 6 行密码一；与 --text/--file/-k/-p/--extra-password 互斥）"
+
 [data_cipher.option.encrypt]
 description = "交互式加密选项标签"
 other = "加密"
@@ -476,6 +500,34 @@ other = "--input-type {{.Type}} 无效：必须为 text 或 file"
 [data_cipher.error.decrypt_file_only]
 description = "解密模式下输入类型非 file 的错误"
 other = "解密模式只支持文件输入"
+
+[data_cipher.error.secrets_stdin_input_type]
+description = "--secrets-stdin 加密模式输入类型非 text 的错误信息"
+other = "--secrets-stdin 加密模式仅支持 --input-type text"
+
+[data_cipher.error.secrets_stdin_conflict_text]
+description = "--secrets-stdin 与 --text 混用的错误信息"
+other = "--secrets-stdin 与 --text 互斥"
+
+[data_cipher.error.secrets_stdin_conflict_file]
+description = "--secrets-stdin 与 --file 混用的错误信息"
+other = "--secrets-stdin 与 --file 互斥"
+
+[data_cipher.error.secrets_stdin_conflict_key]
+description = "--secrets-stdin 与 -k/--key 混用的错误信息"
+other = "--secrets-stdin 与 -k/--key 互斥"
+
+[data_cipher.error.secrets_stdin_conflict_password]
+description = "--secrets-stdin 与 -p/--password 混用的错误信息"
+other = "--secrets-stdin 与 -p/--password 互斥"
+
+[data_cipher.error.secrets_stdin_conflict_extra]
+description = "--secrets-stdin 与 --extra-password 混用的错误信息"
+other = "--secrets-stdin 与 --extra-password 互斥"
+
+[data_cipher.error.password1_tty_required]
+description = "需要交互收集 password1 但 /dev/tty 不可用的错误信息"
+other = "password1 需交互收集（stdin 第 6 行为空）但 /dev/tty 不可用"
 
 [data_cipher.error.password_required]
 description = "缺少必需强密钥/password1 的错误"
@@ -888,6 +940,18 @@ other = "密钥派生失败"
 description = "写入输出文件失败的错误"
 other = "写入输出文件失败"
 
+[key_derive.error.json_marshal]
+description = "JSON 序列化失败的错误"
+other = "JSON 输出编码失败"
+
+[key_derive.error.json_tty_denied]
+description = "--json 且 stdout 是终端时的错误"
+other = "密钥不会输出到终端: --json 需将 stdout 重定向到管道或文件"
+
+[key_derive.output.keys_written]
+description = "明文密钥导出文件成功的提示"
+other = "密钥已导出: {{.Path}} (0600)"
+
 [key_derive.error.hint_missing]
 description = "配置文件中引用的问题 ID 在问题池中不存在"
 other = "恢复配置引用了未知的问题：{ID}"
@@ -1015,6 +1079,14 @@ other = "通过带注释的 YAML 配置文件收集 input/password/hint/strength
 [key_derive.flag.config_file]
 description = "--config-file 标志说明"
 other = "--use-config-file 使用的 YAML 配置文件路径（可选：已存在则直接编辑该文件，不存在则生成模板；默认在 <tmp>/mntemp/default 下自动生成）"
+
+[key_derive.flag.json]
+description = "--json 标志说明"
+other = "以 JSON 输出派生密钥到 stdout（仅限 stdout 重定向到管道或文件时，拒绝输出到终端）"
+
+[key_derive.flag.output_keys]
+description = "--output-keys 标志说明"
+other = "将明文密钥导出到指定文件（0600 权限，不经过终端显示）"
 
 [key_derive.config_edit.error_generate_only]
 description = "--use-config-file 用于非 generate 模式的错误"

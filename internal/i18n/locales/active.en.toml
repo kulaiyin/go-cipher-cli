@@ -187,6 +187,18 @@ other = "--key-length must be > 0"
 description = "Error when JSON marshalling fails"
 other = "failed to encode JSON output"
 
+[argon2id.error.secrets_stdin_conflict_password]
+description = "Error when --secrets-stdin is mixed with -p/--password"
+other = "--secrets-stdin is mutually exclusive with -p/--password"
+
+[argon2id.error.secrets_stdin_conflict_salt]
+description = "Error when --secrets-stdin is mixed with --salt"
+other = "--secrets-stdin is mutually exclusive with --salt"
+
+[argon2id.error.json_tty_denied]
+description = "Error when --json is used with stdout on a terminal"
+other = "derived keys are never printed to a terminal: redirect --json stdout to a pipe or file"
+
 [argon2id.progress.deriving]
 description = "Spinner label while argon2 derivation runs"
 other = "deriving with Argon2id"
@@ -219,6 +231,10 @@ other = "Key length:   {{.Bits}} bits"
 description = "Processing time label in output"
 other = "Processing time: {{.Ms}} ms"
 
+[argon2id.output.mask_hint]
+description = "Hint shown when the text-mode derived key is masked"
+other = "(key masked; use --json with stdout redirected to a pipe or file for the full value)"
+
 [argon2id.flag.password]
 description = "Description for --password flag"
 other = "password to derive from (required; pass it via the command line, no interactive prompt)"
@@ -230,6 +246,10 @@ other = "no password provided: pass one via -p"
 [argon2id.flag.salt]
 description = "Description for --salt flag"
 other = "salt as a hex string (default: random 16 bytes)"
+
+[argon2id.flag.secrets_stdin]
+description = "Description for --secrets-stdin flag"
+other = "read password and salt from stdin (line 1: password, line 2: salt hex); exclusive with -p/--salt"
 
 [argon2id.flag.iterations]
 description = "Description for --iterations flag"
@@ -384,6 +404,10 @@ other = "text content to encrypt (encrypt + input-type=text)"
 description = "Description for --file flag"
 other = "input file path (alternative to the positional argument)"
 
+[data_cipher.flag.secrets_stdin]
+description = "Description for --secrets-stdin flag"
+other = "read secrets from stdin (line 1: content, lines 2-4: the 3 strong keys, line 5: extra password, line 6: password1); exclusive with --text/--file/-k/-p/--extra-password"
+
 [data_cipher.option.encrypt]
 description = "Interactive encrypt option label"
 other = "encrypt"
@@ -479,6 +503,34 @@ other = "invalid --input-type {{.Type}}: must be text or file"
 [data_cipher.error.decrypt_file_only]
 description = "Error when input-type is not file in decrypt mode"
 other = "decrypt mode only supports file input"
+
+[data_cipher.error.secrets_stdin_input_type]
+description = "Error when --secrets-stdin encrypt mode carries a non-text input type"
+other = "--secrets-stdin encrypt mode only supports --input-type text"
+
+[data_cipher.error.secrets_stdin_conflict_text]
+description = "Error when --secrets-stdin is mixed with --text"
+other = "--secrets-stdin is mutually exclusive with --text"
+
+[data_cipher.error.secrets_stdin_conflict_file]
+description = "Error when --secrets-stdin is mixed with --file"
+other = "--secrets-stdin is mutually exclusive with --file"
+
+[data_cipher.error.secrets_stdin_conflict_key]
+description = "Error when --secrets-stdin is mixed with -k/--key"
+other = "--secrets-stdin is mutually exclusive with -k/--key"
+
+[data_cipher.error.secrets_stdin_conflict_password]
+description = "Error when --secrets-stdin is mixed with -p/--password"
+other = "--secrets-stdin is mutually exclusive with -p/--password"
+
+[data_cipher.error.secrets_stdin_conflict_extra]
+description = "Error when --secrets-stdin is mixed with --extra-password"
+other = "--secrets-stdin is mutually exclusive with --extra-password"
+
+[data_cipher.error.password1_tty_required]
+description = "Error when interactive password1 collection is needed but /dev/tty is unavailable"
+other = "password1 must be collected interactively (empty stdin line) but /dev/tty is unavailable"
 
 [data_cipher.error.password_required]
 description = "Error when required keys/password1 are missing"
@@ -893,6 +945,18 @@ other = "key derivation failed"
 description = "Error when writing output file fails"
 other = "failed to write output file"
 
+[key_derive.error.json_marshal]
+description = "Error when JSON marshalling fails"
+other = "failed to encode JSON output"
+
+[key_derive.error.json_tty_denied]
+description = "Error when --json is used with stdout on a terminal"
+other = "keys are never printed to a terminal: redirect --json stdout to a pipe or file"
+
+[key_derive.output.keys_written]
+description = "Success message when plaintext keys are exported to a file"
+other = "keys exported: {{.Path}} (0600)"
+
 [key_derive.error.hint_missing]
 description = "Error when a stored question ID cannot be found in the question pool"
 other = "recovery config references an unknown question: {ID}"
@@ -1020,6 +1084,14 @@ other = "collect input/password/hint/strength via an annotated YAML config file 
 [key_derive.flag.config_file]
 description = "Description for --config-file flag"
 other = "path of the YAML config file for --use-config-file (optional: edit an existing file in place; missing files get a generated template; default is a fresh file under <tmp>/mntemp/default)"
+
+[key_derive.flag.json]
+description = "Description for --json flag"
+other = "emit the derived keys as JSON on stdout (refused when stdout is a terminal; redirect to a pipe or file)"
+
+[key_derive.flag.output_keys]
+description = "Description for --output-keys flag"
+other = "export the plaintext keys to the given file (0600 permissions, never shown on a terminal)"
 
 [key_derive.config_edit.error_generate_only]
 description = "Error when --use-config-file is used outside generate mode"

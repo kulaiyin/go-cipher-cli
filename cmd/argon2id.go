@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"strings"
@@ -27,6 +29,7 @@ var (
 	argon2KeyLength        int
 	argon2JSON             bool
 	argon2EchoPassword     bool
+	argon2SecretsStdin     bool
 	argon2PromptedPassword string
 )
 
@@ -56,15 +59,28 @@ var argon2idCmd = &cobra.Command{
 		if err := validateArgon2Flags(); err != nil {
 			return err
 		}
-
-		password, err := resolveArgon2Password()
-		if err != nil {
+		if err := validateArgon2SecretsExclusive(); err != nil {
 			return err
 		}
 
-		// Resolve the salt: an explicit --salt hex value, else a freshly
+		var password, saltHex string
+		if argon2SecretsStdin {
+			p, s, err := readArgon2Secrets()
+			if err != nil {
+				return err
+			}
+			password, saltHex = p, s
+		} else {
+			p, err := resolveArgon2Password()
+			if err != nil {
+				return err
+			}
+			password = p
+			saltHex = argon2Salt
+		}
+
+		// Resolve the salt: an explicit salt value, else a freshly
 		// generated random 16-byte salt.
-		saltHex := argon2Salt
 		if saltHex == "" {
 			saltHex = kdf.GenerateSalt(16)
 		}
@@ -110,6 +126,11 @@ var argon2idCmd = &cobra.Command{
 		}
 
 		if argon2JSON {
+			// Refuse to emit the derived key to a terminal; --json is the
+			// machine interface and must be piped/redirected.
+			if term.IsTerminal(int(os.Stdout.Fd())) {
+				return fmt.Errorf("%s", i18n.T("argon2id.error.json_tty_denied"))
+			}
 			emitArgon2JSON(result, salt, echoArgon2Password())
 			return nil
 		}
@@ -134,6 +155,37 @@ func validateArgon2Flags() error {
 		return fmt.Errorf("%s", i18n.T("argon2id.error.invalid_key_length"))
 	}
 	return nil
+}
+
+// validateArgon2SecretsExclusive rejects --secrets-stdin mixed with -p/--salt
+// so secrets can never fall back to the process argument list.
+func validateArgon2SecretsExclusive() error {
+	if !argon2SecretsStdin {
+		return nil
+	}
+	if argon2Password != "" {
+		return fmt.Errorf("%s", i18n.T("argon2id.error.secrets_stdin_conflict_password"))
+	}
+	if argon2Salt != "" {
+		return fmt.Errorf("%s", i18n.T("argon2id.error.secrets_stdin_conflict_salt"))
+	}
+	return nil
+}
+
+// readArgon2Secrets reads line 1 (password) and line 2 (salt hex) from stdin.
+// A missing final line is tolerated (EOF): the salt stays empty and falls back
+// to random generation below.
+func readArgon2Secrets() (password, saltHex string, err error) {
+	r := bufio.NewReader(os.Stdin)
+	password, err = r.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return "", "", err
+	}
+	saltHex, err = r.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return "", "", err
+	}
+	return strings.TrimSpace(password), strings.TrimSpace(saltHex), nil
 }
 
 // runArgon2Progress renders a simulated progress bar on stderr until done is
@@ -188,7 +240,9 @@ func estimateArgon2Cost(cfg kdf.Argon2Config) float64 {
 	return baseDurationSecs * cost
 }
 
-// emitArgon2Text prints the human-readable output (default mode).
+// emitArgon2Text prints the human-readable output (default mode). The derived
+// key is masked so it never appears in plaintext on a terminal; the full value
+// is available via --json on a redirected stdout.
 func emitArgon2Text(r kdf.KDFResult, salt []byte) {
 	fmt.Println(i18n.TWithData("argon2id.output.algorithm", map[string]interface{}{
 		"Memory":      argon2MemoryMB,
@@ -202,11 +256,11 @@ func emitArgon2Text(r kdf.KDFResult, salt []byte) {
 		"Salt": hex.EncodeToString(salt),
 	}))
 	fmt.Println(i18n.TWithData("argon2id.output.key_hex", map[string]interface{}{
-		"Key": r.Data,
+		"Key": displayMaskKey(r.Data),
 	}))
 	keyBytes, _ := hex.DecodeString(r.Data)
 	fmt.Println(i18n.TWithData("argon2id.output.key_base64", map[string]interface{}{
-		"Key": base64.StdEncoding.EncodeToString(keyBytes),
+		"Key": displayMaskKey(base64.StdEncoding.EncodeToString(keyBytes)),
 	}))
 	fmt.Println(i18n.TWithData("argon2id.output.key_length", map[string]interface{}{
 		"Bits": len(keyBytes) * 8,
@@ -214,6 +268,7 @@ func emitArgon2Text(r kdf.KDFResult, salt []byte) {
 	fmt.Println(i18n.TWithData("argon2id.output.processing_time", map[string]interface{}{
 		"Ms": r.ProcessingTime,
 	}))
+	fmt.Println(i18n.T("argon2id.output.mask_hint"))
 }
 
 // emitArgon2JSON prints the machine-readable output (--json mode).
@@ -249,7 +304,7 @@ func emitArgon2JSON(r kdf.KDFResult, salt []byte, echoPassword string) {
 // Only echoes when --echo-password is set and the password was prompted
 // interactively; a -p value is never echoed.
 func echoArgon2Password() string {
-	if !argon2EchoPassword || argon2Password != "" {
+	if !argon2EchoPassword || argon2Password != "" || argon2SecretsStdin {
 		return ""
 	}
 	return argon2PromptedPassword
@@ -274,6 +329,7 @@ func init() {
 	// -p is optional: it is prompted interactively (hidden input) when omitted.
 	argon2idCmd.Flags().StringVarP(&argon2Password, "password", "p", "", i18n.T("argon2id.flag.password"))
 	argon2idCmd.Flags().StringVar(&argon2Salt, "salt", "", i18n.T("argon2id.flag.salt"))
+	argon2idCmd.Flags().BoolVar(&argon2SecretsStdin, "secrets-stdin", false, i18n.T("argon2id.flag.secrets_stdin"))
 	argon2idCmd.Flags().IntVar(&argon2Iterations, "iterations", 3, i18n.T("argon2id.flag.iterations"))
 	argon2idCmd.Flags().IntVar(&argon2MemoryMB, "memory", 64, i18n.T("argon2id.flag.memory"))
 	argon2idCmd.Flags().IntVar(&argon2Parallelism, "parallelism", 1, i18n.T("argon2id.flag.parallelism"))

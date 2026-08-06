@@ -19,7 +19,7 @@ const (
 	a2WantKeyHex = "2afa7f5bf041cb89dd3386b80ec27f51036fa97e86822f2e08a3f4be8ff58a70"
 )
 
-func TestArgon2idCmd_Text_GoldenVector(t *testing.T) {
+func TestArgon2idCmd_Text_MaskedGoldenVector(t *testing.T) {
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}
@@ -29,11 +29,17 @@ func TestArgon2idCmd_Text_GoldenVector(t *testing.T) {
 		t.Fatalf("argon2id failed: %s", out)
 	}
 
-	if !strings.Contains(out, "Key (hex):    "+a2WantKeyHex) {
-		t.Errorf("expected golden key hex, output:\n%s", out)
+	// Text mode masks the derived key (first 8 / last 8 chars + asterisks) so
+	// the plaintext never reaches a terminal; the full value is covered by the
+	// --json golden test below.
+	if !strings.Contains(out, "Key (hex):    "+displayMaskKey(a2WantKeyHex)) {
+		t.Errorf("expected masked key hex, output:\n%s", out)
 	}
-	if !strings.Contains(out, "Key (base64): Kvp/W/BBy4ndM4a4DsJ/UQNvqX6Ggi8uCKP0vo/1inA=") {
-		t.Errorf("expected golden key base64, output:\n%s", out)
+	if !strings.Contains(out, "Key (base64): "+displayMaskKey("Kvp/W/BBy4ndM4a4DsJ/UQNvqX6Ggi8uCKP0vo/1inA=")) {
+		t.Errorf("expected masked key base64, output:\n%s", out)
+	}
+	if !strings.Contains(out, "use --json") {
+		t.Errorf("expected mask hint pointing to --json, output:\n%s", out)
 	}
 	if !strings.Contains(out, "Salt (hex):    "+a2TestSaltHex) {
 		t.Errorf("expected salt hex echo, output:\n%s", out)

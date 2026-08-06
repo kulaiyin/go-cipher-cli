@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,10 +42,11 @@ var (
 	dataCipherExtraPassword string
 	// dataCipherPasswords is the resolved full key/password list used by the
 	// encrypt/decrypt pipeline (3 strong keys + password1 + optional extras).
-	dataCipherPasswords []string
-	dataCipherSalt      string
-	dataCipherHint      string
-	dataCipherOutput    string
+	dataCipherPasswords    []string
+	dataCipherSalt         string
+	dataCipherHint         string
+	dataCipherOutput       string
+	dataCipherSecretsStdin bool
 	// dataCipherSelectedHints records the question-answer question IDs chosen for
 	// password1 during encrypt, written into meta-data selectedHints so decrypt
 	// can re-answer them and reproduce password1.
@@ -109,6 +112,26 @@ func runDataCipher(args []string) error {
 		}))
 	}
 
+	// --secrets-stdin: secrets arrive over the stdin 6-line protocol instead of
+	// flags. mode is resolved above (required in non-interactive runs, which is
+	// always the case here since stdin is occupied by the protocol); encrypt can
+	// only carry text content on line 1, so input-type is forced to "text" (an
+	// explicit --input-type file is rejected as a conflict).
+	if dataCipherSecretsStdin {
+		if err := validateSecretsStdinExclusive(); err != nil {
+			return err
+		}
+		if mode == "encrypt" && dataCipherInputType != "" && dataCipherInputType != "text" {
+			return fmt.Errorf("%s", i18n.T("data_cipher.error.secrets_stdin_input_type"))
+		}
+		if err := readDataCipherSecrets(mode); err != nil {
+			return err
+		}
+		if mode == "encrypt" {
+			dataCipherInputType = "text"
+		}
+	}
+
 	// 2. Resolve the input type. Decrypt is always file (web tool locks it too).
 	inputType := dataCipherInputType
 	if mode == "decrypt" {
@@ -168,6 +191,56 @@ func runDataCipher(args []string) error {
 			"Mode": mode,
 		}))
 	}
+}
+
+// validateSecretsStdinExclusive rejects --secrets-stdin mixed with any
+// flag-sourced secret so secrets can never fall back to the process argument
+// list.
+func validateSecretsStdinExclusive() error {
+	if !dataCipherSecretsStdin {
+		return nil
+	}
+	switch {
+	case dataCipherText != "":
+		return fmt.Errorf("%s", i18n.T("data_cipher.error.secrets_stdin_conflict_text"))
+	case dataCipherFile != "":
+		return fmt.Errorf("%s", i18n.T("data_cipher.error.secrets_stdin_conflict_file"))
+	case len(dataCipherKeys) > 0:
+		return fmt.Errorf("%s", i18n.T("data_cipher.error.secrets_stdin_conflict_key"))
+	case dataCipherPassword != "":
+		return fmt.Errorf("%s", i18n.T("data_cipher.error.secrets_stdin_conflict_password"))
+	case dataCipherExtraPassword != "":
+		return fmt.Errorf("%s", i18n.T("data_cipher.error.secrets_stdin_conflict_extra"))
+	}
+	return nil
+}
+
+// readDataCipherSecrets reads the 6-line stdin protocol into the flag-backed
+// variables so the resolve* steps skip all interactive collection:
+//
+//	line 1: text content (encrypt only; empty placeholder on decrypt)
+//	lines 2-4: the 3 strong keys
+//	line 5: extra password (may be empty)
+//	line 6: password1 (empty means: collect interactively from the terminal)
+func readDataCipherSecrets(mode string) error {
+	r := bufio.NewReader(os.Stdin)
+	lines := make([]string, 6)
+	for i := range lines {
+		line, err := r.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return err
+		}
+		lines[i] = strings.TrimSpace(line)
+	}
+	if mode == "encrypt" {
+		dataCipherText = lines[0]
+	}
+	dataCipherKeys = lines[1:4]
+	dataCipherExtraPassword = lines[4]
+	if lines[5] != "" {
+		dataCipherPassword = lines[5]
+	}
+	return nil
 }
 
 // resolveCipherInput builds the cipherInput from flags, positional arg, or an
@@ -237,6 +310,7 @@ func init() {
 	dataCipherCmd.Flags().StringVar(&dataCipherSalt, "salt", "", i18n.T("data_cipher.flag.salt"))
 	dataCipherCmd.Flags().StringVar(&dataCipherHint, "hint", "", i18n.T("data_cipher.flag.hint"))
 	dataCipherCmd.Flags().StringVarP(&dataCipherOutput, "output", "o", "", i18n.T("data_cipher.flag.output"))
+	dataCipherCmd.Flags().BoolVar(&dataCipherSecretsStdin, "secrets-stdin", false, i18n.T("data_cipher.flag.secrets_stdin"))
 	rootCmd.AddCommand(dataCipherCmd)
 }
 
@@ -494,9 +568,18 @@ func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 
 	// 2. password1 (web keys[3]) from -p, or interactively in a TTY (encrypt may
 	// generate it via the question-answer flow; decrypt reproduces it from
-	// selectedHints or asks directly).
+	// selectedHints or asks directly). Under --secrets-stdin an empty password1
+	// line also collects interactively, but from /dev/tty since the stdin pipe
+	// is already consumed by the protocol.
 	if dataCipherPassword != "" {
 		resolved = append(resolved, dataCipherPassword)
+	} else if dataCipherSecretsStdin {
+		pw1, ids, err := promptPassword1FromTTY(salt, allowQnA, hintIDs)
+		if err != nil {
+			return err
+		}
+		dataCipherSelectedHints = ids
+		resolved = append(resolved, pw1)
 	} else if !isStdinTerminal() {
 		return fmt.Errorf("%s", i18n.T("data_cipher.error.password_required"))
 	} else {
@@ -590,6 +673,24 @@ func promptPassword1(salt string, encrypt bool, hintIDs []string) (string, []str
 		return "", nil, err
 	}
 	return pw, nil, nil
+}
+
+// promptPassword1FromTTY collects password1 interactively from the controlling
+// terminal. Used by --secrets-stdin when the password1 line is empty: the stdin
+// pipe has already been consumed by the protocol, so the interactive flow (QnA
+// on encrypt, reanswer on decrypt) must read from /dev/tty instead. The global
+// os.Stdin/os.Stdout are swapped for the duration because the interactive
+// libraries (param, form) read from the global stdin.
+func promptPassword1FromTTY(salt string, allowQnA bool, hintIDs []string) (string, []string, error) {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return "", nil, fmt.Errorf("%s", i18n.T("data_cipher.error.password1_tty_required"))
+	}
+	defer tty.Close()
+	oldStdin, oldStdout := os.Stdin, os.Stdout
+	os.Stdin, os.Stdout = tty, tty
+	defer func() { os.Stdin, os.Stdout = oldStdin, oldStdout }()
+	return promptPassword1(salt, allowQnA, hintIDs)
 }
 
 // resolveHint collects the optional hint interactively BEFORE passwords.

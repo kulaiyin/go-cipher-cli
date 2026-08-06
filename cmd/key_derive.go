@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"go-cipher-cli/internal/form"
 	"go-cipher-cli/internal/i18n"
@@ -40,6 +42,13 @@ type keyDeriveParams struct {
 	// path; empty means auto-generate under mntemp.
 	UseConfigFile bool
 	ConfigFile    string
+
+	// JSON / OutputKeys are pure flags (never prompted): JSON switches the
+	// result to a machine-readable key payload on stdout (refused when stdout
+	// is a TTY so keys never reach a terminal); OutputKeys writes the plaintext
+	// keys to a 0600 file for interactive users.
+	JSON       bool
+	OutputKeys string
 
 	// loadedCfg caches the recovery config loaded during the restore prompt
 	// pass so execute does not read the file twice.
@@ -231,6 +240,8 @@ func init() {
 	keyDeriveCmd.Flags().StringVar(&kdParams.Salt.Value, "salt", "", i18n.T("key_derive.flag.salt"))
 	keyDeriveCmd.Flags().BoolVar(&kdParams.UseConfigFile, "use-config-file", false, i18n.T("key_derive.flag.use_config_file"))
 	keyDeriveCmd.Flags().StringVar(&kdParams.ConfigFile, "config-file", "", i18n.T("key_derive.flag.config_file"))
+	keyDeriveCmd.Flags().BoolVar(&kdParams.JSON, "json", false, i18n.T("key_derive.flag.json"))
+	keyDeriveCmd.Flags().StringVar(&kdParams.OutputKeys, "output-keys", "", i18n.T("key_derive.flag.output_keys"))
 	rootCmd.AddCommand(keyDeriveCmd)
 }
 
@@ -315,6 +326,25 @@ func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, stren
 	// 	"Ms": result.ProcessingTime,
 	// }))
 
+	// --output-keys: write the plaintext keys to a 0600 file for interactive
+	// users. Always honored, independent of --json.
+	if p.OutputKeys != "" {
+		if err := writeKeySetFile(p.OutputKeys, result); err != nil {
+			return err
+		}
+	}
+
+	// --json: machine-readable key payload on stdout. Refused when stdout is a
+	// TTY so the derived keys can never be printed to a terminal (matches
+	// bf9c10c: keys stay off stdout unless explicitly piped).
+	if p.JSON {
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			return fmt.Errorf("%s", i18n.T("key_derive.error.json_tty_denied"))
+		}
+		emitKeySetJSON(result)
+		return nil
+	}
+
 	// Build the recovery config to print/save. In restore mode we preserve the
 	// originally stored uuids/hint_ids so the saved file stays self-consistent.
 	rc := buildRecoveryConfig(result, hint, p.answerIDs)
@@ -343,6 +373,59 @@ func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, stren
 	if stored != nil {
 		fmt.Println(i18n.T("key_derive.output.restore_success"))
 	}
+	return nil
+}
+
+// keySetJSONOutput is the machine-readable payload emitted by key-derive --json.
+type keySetJSONOutput struct {
+	Success   bool     `json:"success"`
+	Algorithm string   `json:"algorithm"`
+	Strength  string   `json:"strength"`
+	Salt      string   `json:"salt"`
+	UUID      string   `json:"uuid"`
+	Keys      []string `json:"keys"`
+	TimeMs    int64    `json:"processing_time_ms"`
+	Error     string   `json:"error,omitempty"`
+}
+
+// emitKeySetJSON prints the derived keys as JSON to stdout. Only reachable
+// when stdout is not a TTY (enforced by the caller), so the keys never land on
+// a terminal.
+func emitKeySetJSON(r kdf.KeySetResult) {
+	out := keySetJSONOutput{
+		Success:   r.Success,
+		Algorithm: "argon2id+hkdf",
+		Strength:  string(r.Strength),
+		Salt:      r.SaltSeed,
+		UUID:      r.UUID,
+		Keys:      r.Keys,
+		TimeMs:    r.ProcessingTime,
+	}
+	if !r.Success {
+		out.Error = r.Error
+	}
+	data, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, i18n.T("key_derive.error.json_marshal"))
+		return
+	}
+	fmt.Println(string(data))
+}
+
+// writeKeySetFile writes the plaintext keys to path with 0600 permissions so
+// interactive users can export them without ever showing them on a terminal.
+func writeKeySetFile(path string, r kdf.KeySetResult) error {
+	var b strings.Builder
+	fmt.Fprintf(&b, "S1: %s\n", r.Keys[0])
+	fmt.Fprintf(&b, "S2: %s\n", r.Keys[1])
+	fmt.Fprintf(&b, "S3: %s\n", r.Keys[2])
+	fmt.Fprintf(&b, "UUID: %s\n", r.UUID)
+	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+		return fmt.Errorf("%s: %w", i18n.T("key_derive.error.write_output_failed"), err)
+	}
+	fmt.Println(i18n.TWithData("key_derive.output.keys_written", map[string]interface{}{
+		"Path": path,
+	}))
 	return nil
 }
 
@@ -422,7 +505,9 @@ func promptKeyDeriveRestoreConfig(p *keyDeriveParams) error {
 	}
 	p.loadedCfg = cfg
 	if cfg.Hint != "" {
-		fmt.Println(i18n.TWithData("key_derive.output.restore_hint", map[string]interface{}{
+		// Restore hint is a human-facing prompt, not machine data: it must go to
+		// stderr so stdout stays clean for --json key output.
+		fmt.Fprintln(os.Stderr, i18n.TWithData("key_derive.output.restore_hint", map[string]interface{}{
 			"Hint": cfg.Hint,
 		}))
 	}
