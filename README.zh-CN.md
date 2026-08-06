@@ -79,19 +79,24 @@ go-cipher-cli key-derive --mode restore -i "我的seed2024安全密钥派生示�
 go-cipher-cli data-cipher --mode encrypt \
   --input-type text --text "要加密的内容" \
   --hint "可选提示" \
-  -p "<密钥1-128hex>" -p "<密钥2-128hex>" -p "<密钥3-128hex>" -p "<密码1>" \
+  -k "<密钥1-128hex>" -k "<密钥2-128hex>" -k "<密钥3-128hex>" -p "<密码1>" \
   -o encrypted.zip
 
 # 加密文件（位置参数 = --file）
 go-cipher-cli data-cipher secret.txt --mode encrypt \
-  -p "<密钥1-128hex>" -p "<密钥2-128hex>" -p "<密钥3-128hex>" -p "<密码1>"
+  -k "<密钥1-128hex>" -k "<密钥2-128hex>" -k "<密钥3-128hex>" -p "<密码1>"
 
-# 解密（-p 顺序必须与加密时一致）
+# 第三方调用：密钥（-k）+ 密码1（-p）+ 一个普通额外密码
+go-cipher-cli data-cipher secret.txt --mode encrypt \
+  -k "<密钥1-128hex>" -k "<密钥2-128hex>" -k "<密钥3-128hex>" -p "<密码1>" \
+  --extra-password "<额外普通密码>"
+
+# 解密（必须使用与加密时相同的参数）
 go-cipher-cli data-cipher --mode decrypt encrypted.zip \
-  -p "<密钥1-128hex>" -p "<密钥2-128hex>" -p "<密钥3-128hex>" -p "<密码1>"
+  -k "<密钥1-128hex>" -k "<密钥2-128hex>" -k "<密钥3-128hex>" -p "<密码1>"
 ```
 
-> **`-p` 顺序约定**：前 3 个必须是 128 位十六进制强密钥（由 `key-derive` 派生），第 4 个是密码1；顺序、个数必须与加密时完全一致，否则派生密钥不同、解密失败。密钥1/2/3 强制高强度校验，密码1 需满足复合规则（高强度 或 字母+数字+特殊字符且≥8位）。
+> **密钥与密码**：`key-derive` 派生的 3 把强密钥用 `-k`（密钥1/2/3，强制高强度校验）；密码1 用 `-p`（单值，需高强度，或 字母+数字+特殊字符且≥8位）。`--extra-password` 在末尾追加一个可选普通密码（无强度要求）——它参与加密，解密时需重复提供。参数集合与个数必须与加密时完全一致，否则派生密钥不同、解密失败。
 
 ### 密码强化器 — `enhance`
 

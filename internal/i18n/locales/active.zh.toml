@@ -342,16 +342,24 @@ argon2id -> HMAC-SHA3-512 -> HKDF -> AES-256-GCM，封装为 ZIP 包
 --mode encrypt  : 输入文件 -> 加密 .zip
 --mode decrypt  : 加密 .zip -> 原始文件
 
-密码（-p）对应 Web 工具的 keys[]：前三个为 key-derive 产出的强密钥
-（各 128 位十六进制），第四个为 password1。"""
+密码对应 Web 工具的 keys[]：强密钥（-k）填充 keys[0..2]，password1（-p）
+填充 keys[3]，--extra-password 在末尾追加额外密码（无强度要求）。"""
 
 [data_cipher.flag.mode]
 description = "--mode 标志的描述"
 other = "操作模式：encrypt 或 decrypt（必填）"
 
+[data_cipher.flag.key]
+description = "--key 标志的描述"
+other = "key-derive 产出的强密钥（128 位十六进制；密钥 1-3 最多重复 3 次）"
+
 [data_cipher.flag.password]
 description = "--password 标志的描述"
-other = "密码/强密钥（可重复）；前三个为 128 位十六进制强密钥，其后为 password1"
+other = "password1（单值；需为高强度，或同时包含字母、数字和特殊字符且长度不小于 8 位）"
+
+[data_cipher.flag.extra_password]
+description = "--extra-password 标志的描述"
+other = "可选的额外密码，追加到密钥集合末尾（无强度要求）"
 
 [data_cipher.flag.salt]
 description = "--salt 标志的描述"
@@ -474,8 +482,12 @@ description = "解密模式下输入类型非 file 的错误"
 other = "解密模式只支持文件输入"
 
 [data_cipher.error.password_required]
-description = "缺少密码的错误"
-other = "至少需要 4 个密码（-p）：3 个强密钥 + password1"
+description = "缺少必需强密钥/password1 的错误"
+other = "需要 3 个强密钥（-k）和 password1（-p）"
+
+[data_cipher.error.too_many_keys]
+description = "提供的强密钥超过 3 个的错误"
+other = "强密钥（-k）最多允许 3 个"
 
 [data_cipher.error.key_not_high_strength]
 description = "强密钥未通过高强度校验的错误"

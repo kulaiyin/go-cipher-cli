@@ -31,6 +31,15 @@ var (
 	dataCipherInputType string
 	dataCipherText      string
 	dataCipherFile      string
+	// dataCipherKeys holds the 3 strong keys from -k (web keys[0..2]).
+	dataCipherKeys []string
+	// dataCipherPassword is password1 from -p (web keys[3]).
+	dataCipherPassword string
+	// dataCipherExtraPassword is an optional extra password from
+	// --extra-password, appended at the end of the key set (no strength rule).
+	dataCipherExtraPassword string
+	// dataCipherPasswords is the resolved full key/password list used by the
+	// encrypt/decrypt pipeline (3 strong keys + password1 + optional extras).
 	dataCipherPasswords []string
 	dataCipherSalt      string
 	dataCipherHint      string
@@ -220,9 +229,11 @@ func init() {
 	dataCipherCmd.Flags().StringVar(&dataCipherInputType, "input-type", "", i18n.T("data_cipher.flag.input_type"))
 	dataCipherCmd.Flags().StringVar(&dataCipherText, "text", "", i18n.T("data_cipher.flag.text"))
 	dataCipherCmd.Flags().StringVar(&dataCipherFile, "file", "", i18n.T("data_cipher.flag.file"))
-	// StringArray (not StringSlice) so a password containing a comma is kept
+	// StringArray (not StringSlice) so a value containing a comma is kept
 	// whole: the strong-key / generated-password charset includes ",".
-	dataCipherCmd.Flags().StringArrayVarP(&dataCipherPasswords, "password", "p", nil, i18n.T("data_cipher.flag.password"))
+	dataCipherCmd.Flags().StringArrayVarP(&dataCipherKeys, "key", "k", nil, i18n.T("data_cipher.flag.key"))
+	dataCipherCmd.Flags().StringVarP(&dataCipherPassword, "password", "p", "", i18n.T("data_cipher.flag.password"))
+	dataCipherCmd.Flags().StringVar(&dataCipherExtraPassword, "extra-password", "", i18n.T("data_cipher.flag.extra_password"))
 	dataCipherCmd.Flags().StringVar(&dataCipherSalt, "salt", "", i18n.T("data_cipher.flag.salt"))
 	dataCipherCmd.Flags().StringVar(&dataCipherHint, "hint", "", i18n.T("data_cipher.flag.hint"))
 	dataCipherCmd.Flags().StringVarP(&dataCipherOutput, "output", "o", "", i18n.T("data_cipher.flag.output"))
@@ -250,7 +261,8 @@ func runEncrypt(in *cipherInput) error {
 	if err := resolvePasswords(true, dataCipherSalt, nil); err != nil {
 		return err
 	}
-	// validateKeys covers the -p flag path (interactive path was validated live).
+	// validateKeys covers the -k/-p/--extra-password flag path (the interactive
+	// path was validated live).
 	if err := validateKeys(); err != nil {
 		return err
 	}
@@ -380,7 +392,8 @@ func runDecrypt(in *cipherInput) error {
 	if err := resolvePasswords(false, parsed.SaltSeed, meta.SelectedHints); err != nil {
 		return err
 	}
-	// validateKeys covers the -p flag path (interactive path was validated live).
+	// validateKeys covers the -k/-p/--extra-password flag path (interactive path
+	// was validated live).
 	// The web tool validates the form before decrypting too; a weak key/password
 	// here means the keys[] are malformed, so decryption would never succeed.
 	if err := validateKeys(); err != nil {
@@ -432,17 +445,22 @@ func runDecrypt(in *cipherInput) error {
 	return nil
 }
 
-// resolvePasswords ensures the web tool's minimum (3 strong keys + password1)
-// is met. When fewer than 4 passwords were supplied via -p and a TTY is
-// available, it collects them interactively: keys 1-3 (strong keys), password1,
-// then optionally additional passwords (up to the 3+10 web-tool cap). Non-interactive
-// runs still require -p to be passed explicitly.
+// resolvePasswords assembles the resolved dataCipherPasswords list from the
+// flag sources and, when needed, interactive prompts.
 //
-// The interactive ordering matches the web tool's keys[] layout:
+// Layout mirrors the web tool's keys[]:
 //
-//	keys[0..2] = 3 strong keys (key-derive output, 128-hex each)
-//	keys[3]    = password1
-//	keys[4..]  = additional passwords (optional)
+//	keys[0..2] = 3 strong keys (-k, key-derive output, 128-hex each)
+//	keys[3]    = password1 (-p)
+//	keys[4..]  = optional additional passwords (interactive slots, then the
+//	             --extra-password value appended at the end)
+//
+// Required entries (the 3 strong keys and password1) come from flags when
+// supplied; otherwise they are collected interactively when a TTY is available,
+// and the command fails when they are missing in a non-interactive run. The
+// optional additional passwords are ALWAYS asked in a TTY (even when
+// --extra-password was supplied) — --extra-password is appended at the end; the
+// derivation is order-independent, so its position does not affect the key.
 //
 // allowQnA: encrypt=true enables the question-answer high-strength generation for
 // password1; decrypt=false reproduces the original password instead — typed
@@ -450,71 +468,87 @@ func runDecrypt(in *cipherInput) error {
 // the salt shared with the QnA password (encrypt: resolved salt; decrypt: the
 // bin's salt_seed). hintIDs are the selectedHints from the file (decrypt only).
 func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
-	// Fully supplied (≥4) via -p: use as-is. Zero supplied + TTY: collect all
-	// interactively. Partial (1-3) is ambiguous (which slot do they fill?), so
-	// require either all via -p or none (then interactive).
-	if len(dataCipherPasswords) >= 4 {
-		return nil
+	if len(dataCipherKeys) > 3 {
+		return fmt.Errorf("%s", i18n.T("data_cipher.error.too_many_keys"))
 	}
-	if len(dataCipherPasswords) > 0 || !isStdinTerminal() {
+
+	resolved := make([]string, 0, 3+1+1)
+
+	// 1. Strong keys (web keys[0..2]) from -k; missing ones prompted in a TTY.
+	resolved = append(resolved, dataCipherKeys...)
+	if len(resolved) < 3 {
+		if !isStdinTerminal() {
+			return fmt.Errorf("%s", i18n.T("data_cipher.error.password_required"))
+		}
+		for i := len(resolved); i < 3; i++ {
+			keyNum := i + 1
+			v, err := param.Password(i18n.TWithData("data_cipher.prompt.key_n", map[string]interface{}{
+				"N": keyNum,
+			}), i18n.T("data_cipher.prompt.key_help"), param.WithValidator(highStrengthKeyValidator(keyNum)))
+			if err != nil {
+				return err
+			}
+			resolved = append(resolved, v)
+		}
+	}
+
+	// 2. password1 (web keys[3]) from -p, or interactively in a TTY (encrypt may
+	// generate it via the question-answer flow; decrypt reproduces it from
+	// selectedHints or asks directly).
+	if dataCipherPassword != "" {
+		resolved = append(resolved, dataCipherPassword)
+	} else if !isStdinTerminal() {
 		return fmt.Errorf("%s", i18n.T("data_cipher.error.password_required"))
-	}
-
-	// Collect the 4 required entries interactively.
-	// keys 1-3 are strong keys; shown as "key N", masked via Password.
-	// Each is validated live against the web tool's high-strength rule
-	// (IsPasswordHighStrength: >=128 hex chars, >=15 distinct chars).
-	for i := 0; i < 3; i++ {
-		keyNum := i + 1
-		v, err := param.Password(i18n.TWithData("data_cipher.prompt.key_n", map[string]interface{}{
-			"N": keyNum,
-		}), i18n.T("data_cipher.prompt.key_help"), param.WithValidator(highStrengthKeyValidator(keyNum)))
+	} else {
+		pw1, ids, err := promptPassword1(salt, allowQnA, hintIDs)
 		if err != nil {
 			return err
 		}
-		dataCipherPasswords = append(dataCipherPasswords, v)
-	}
-	// password1 (required). Encrypt can generate it as a high-strength password
-	// via the question-answer flow (mirrors key-derive) and stores the chosen
-	// question IDs in selectedHints; decrypt re-answers those questions to
-	// reproduce the exact password, or types it directly.
-	pw1, ids, err := promptPassword1(salt, allowQnA, hintIDs)
-	if err != nil {
-		return err
-	}
-	dataCipherSelectedHints = ids
-	dataCipherPasswords = append(dataCipherPasswords, pw1)
-
-	// password2 & password3 are DEFAULT slots (web form renders them by default:
-	// keys = ["","","","","",""]; they are optional but always presented). An empty
-	// answer is a valid value (an empty-string password participates in key
-	// derivation, just like the web tool), so we always ask both and never skip.
-	for i := 2; i <= 3; i++ { // i = password number (2, 3)
-		extra, err := param.Input(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
-			"N": i,
-		}), "", i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
-		if err != nil {
-			return err
-		}
-		dataCipherPasswords = append(dataCipherPasswords, extra)
+		dataCipherSelectedHints = ids
+		resolved = append(resolved, pw1)
 	}
 
-	// password4+ are NOT default slots — they are added via the "add password"
-	// button on the web. Here, empty input ends collection; anything else adds
-	// another password, up to the 3+10 = 13 cap.
-	for len(dataCipherPasswords) < maxKeysCount {
-		pwNum := len(dataCipherPasswords) - 2 // index 6 -> password4
-		extra, err := param.Input(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
-			"N": pwNum,
-		}), "", i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
-		if err != nil {
-			return err
+	// 3. Optional additional passwords (web keys[4..]) are always asked in a TTY
+	// (empty answers are valid and dropped by the derivation). Non-interactive
+	// runs get none of them. The collection stops one short of the web cap when
+	// --extra-password is present so it can still be appended without exceeding
+	// the 3+10 key limit.
+	if isStdinTerminal() {
+		extraReserved := 0
+		if dataCipherExtraPassword != "" {
+			extraReserved = 1
 		}
-		if strings.TrimSpace(extra) == "" {
-			break
+		for i := 2; i <= 3; i++ { // i = password number (2, 3)
+			extra, err := param.Input(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
+				"N": i,
+			}), "", i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
+			if err != nil {
+				return err
+			}
+			resolved = append(resolved, extra)
 		}
-		dataCipherPasswords = append(dataCipherPasswords, extra)
+		for len(resolved) < maxKeysCount-extraReserved {
+			pwNum := len(resolved) - 2 // index 6 -> password4
+			extra, err := param.Input(i18n.TWithData("data_cipher.prompt.password_optional", map[string]interface{}{
+				"N": pwNum,
+			}), "", i18n.T("data_cipher.prompt.password_optional_help"), param.WithoutRequired())
+			if err != nil {
+				return err
+			}
+			if strings.TrimSpace(extra) == "" {
+				break
+			}
+			resolved = append(resolved, extra)
+		}
 	}
+
+	// 4. --extra-password is appended at the end; the derivation is
+	// order-independent, so its position does not affect the derived key.
+	if dataCipherExtraPassword != "" {
+		resolved = append(resolved, dataCipherExtraPassword)
+	}
+
+	dataCipherPasswords = resolved
 	return nil
 }
 
@@ -609,8 +643,8 @@ func password1Validator(s string) error {
 // validateKeys runs the web tool's full keys[] validation
 // (DataEncryptionForm.vue:772-784 validateForm → validateKey) against the
 // resolved dataCipherPasswords. It covers BOTH flows: the interactive path
-// (already validated live above) and the -p flag path (which bypasses the live
-// validators). Rules, mirroring the web tool exactly:
+// (already validated live above) and the -k/-p/--extra-password flag path
+// (which bypasses the live validators). Rules, mirroring the web tool exactly:
 //
 //	keys[0..2] (key1/2/3):   non-empty + IsPasswordHighStrength
 //	keys[3]    (password1):  non-empty + IsPassword1Valid

@@ -344,16 +344,25 @@ tool: argon2id -> HMAC-SHA3-512 -> HKDF -> AES-256-GCM, wrapped in a ZIP bundle
 --mode encrypt  : input file  -> encrypted .zip
 --mode decrypt  : encrypted .zip -> original file
 
-Passwords (-p) map to the web tool's keys[]: the first three are the strong
-keys produced by `key-derive` (128-hex each), the fourth is password1."""
+Passwords map to the web tool's keys[]: strong keys (-k) fill keys[0..2], the
+password1 (-p) fills keys[3], and --extra-password appends an extra password at
+the end (no strength rule)."""
 
 [data_cipher.flag.mode]
 description = "Description for --mode flag"
 other = "operation mode: encrypt or decrypt (required)"
 
+[data_cipher.flag.key]
+description = "Description for --key flag"
+other = "strong key produced by key-derive (128-hex; repeat up to 3 times for keys 1-3)"
+
 [data_cipher.flag.password]
 description = "Description for --password flag"
-other = "password/strong-key (repeatable); first three are 128-hex strong keys, then password1"
+other = "password1 (single value; high-strength, or letter + digit + special with length >= 8)"
+
+[data_cipher.flag.extra_password]
+description = "Description for --extra-password flag"
+other = "optional extra password appended to the key set (no strength requirement)"
 
 [data_cipher.flag.salt]
 description = "Description for --salt flag"
@@ -476,8 +485,12 @@ description = "Error when input-type is not file in decrypt mode"
 other = "decrypt mode only supports file input"
 
 [data_cipher.error.password_required]
-description = "Error when passwords are missing"
-other = "at least 4 passwords (-p) are required: 3 strong keys + password1"
+description = "Error when required keys/password1 are missing"
+other = "3 strong keys (-k) and password1 (-p) are required"
+
+[data_cipher.error.too_many_keys]
+description = "Error when more than 3 strong keys are supplied"
+other = "at most 3 strong keys (-k) are allowed"
 
 [data_cipher.error.key_not_high_strength]
 description = "Error when a strong key fails the high-strength check"

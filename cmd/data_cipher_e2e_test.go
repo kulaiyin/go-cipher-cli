@@ -32,7 +32,7 @@ func dcArgs(file string, extra ...string) []string {
 	if file != "" {
 		args = append(args, file)
 	}
-	args = append(args, "-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2], "-p", dcPassword1)
+	args = append(args, "-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", dcPassword1)
 	return append(args, extra...)
 }
 
@@ -92,7 +92,7 @@ func TestDataCipher_WrongPasswordFails(t *testing.T) {
 	// (letter + digit + special, >=8) so we exercise the GCM auth-failure path,
 	// not the pre-decrypt validateKeys gate.
 	if out, code := runCLI(t, "data-cipher", encZip, "--mode", "decrypt",
-		"-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2], "-p", "WRONG-password-9!"); code == 0 {
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", "WRONG-password-9!"); code == 0 {
 		t.Fatalf("decrypt with wrong password unexpectedly succeeded: %s", out)
 	}
 }
@@ -167,7 +167,7 @@ func TestDataCipher_InvalidModeFails(t *testing.T) {
 // input_required rather than entering an unusable interactive prompt. In a real
 // TTY the command would instead prompt for the file path.
 func TestDataCipher_NoArgNonInteractiveFails(t *testing.T) {
-	if out, code := runCLI(t, "data-cipher", "-p", dcKeys[0]); code == 0 {
+	if out, code := runCLI(t, "data-cipher", "-k", dcKeys[0]); code == 0 {
 		t.Fatalf("expected input-required failure, got: %s", out)
 	}
 }
@@ -178,9 +178,10 @@ func TestDataCipher_TooFewPasswordsFails(t *testing.T) {
 	if err := os.WriteFile(in, []byte("data"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// 3 keys but no password1 (-p) -> non-interactive must fail.
 	if out, code := runCLI(t, "data-cipher", in, "--mode", "encrypt",
-		"-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2]); code == 0 {
-		t.Fatalf("expected too-few-passwords failure, got: %s", out)
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2]); code == 0 {
+		t.Fatalf("expected missing-password1 failure, got: %s", out)
 	}
 }
 
@@ -257,7 +258,7 @@ func TestDataCipher_WeakKeyRejected(t *testing.T) {
 	// key1 is far too short / not 128-hex -> must be rejected.
 	weakKey := "tooweak"
 	args := []string{"data-cipher", in, "--mode", "encrypt",
-		"-p", weakKey, "-p", dcKeys[1], "-p", dcKeys[2], "-p", dcPassword1}
+		"-k", weakKey, "-k", dcKeys[1], "-k", dcKeys[2], "-p", dcPassword1}
 	if out, code := runCLI(t, args...); code == 0 {
 		t.Fatalf("expected weak-key rejection, got success: %s", out)
 	}
@@ -274,7 +275,7 @@ func TestDataCipher_WeakPassword1Rejected(t *testing.T) {
 	}
 	// "abcdefg" is >=7 chars but <8 AND lacks digit/special -> rejected.
 	args := []string{"data-cipher", in, "--mode", "encrypt",
-		"-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2], "-p", "abcdefg"}
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", "abcdefg"}
 	if out, code := runCLI(t, args...); code == 0 {
 		t.Fatalf("expected weak-password1 rejection, got success: %s", out)
 	}
@@ -306,13 +307,13 @@ func TestDataCipher_QuestionAnswerPassword1RoundTrip(t *testing.T) {
 	}
 	encZip := filepath.Join(tmp, "out.zip")
 	if out, code := runCLI(t, "data-cipher", in, "--mode", "encrypt",
-		"-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2], "-p", pw1,
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", pw1,
 		"--salt", salt, "-o", encZip); code != 0 {
 		t.Fatalf("encrypt failed: %s", out)
 	}
 	dec := filepath.Join(tmp, "restored.txt")
 	if out, code := runCLI(t, "data-cipher", encZip, "--mode", "decrypt",
-		"-p", dcKeys[0], "-p", dcKeys[1], "-p", dcKeys[2], "-p", pw1, "-o", dec); code != 0 {
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", pw1, "-o", dec); code != 0 {
 		t.Fatalf("decrypt failed: %s", out)
 	}
 	got, err := os.ReadFile(dec)
@@ -321,6 +322,80 @@ func TestDataCipher_QuestionAnswerPassword1RoundTrip(t *testing.T) {
 	}
 	if string(got) != string(plain) {
 		t.Fatalf("round-trip mismatch:\n got=%q\nwant=%q", got, plain)
+	}
+}
+
+// TestDataCipher_ExtraPasswordRoundTrip verifies the third-party scenario:
+// 3 strong keys (-k) + password1 (-p) + an ordinary extra password
+// (--extra-password) encrypt/decrypt end-to-end, with the extra password
+// participating in the key derivation.
+func TestDataCipher_ExtraPasswordRoundTrip(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	tmp := t.TempDir()
+	in := filepath.Join(tmp, "secret.txt")
+	plain := []byte("extra-password payload")
+	if err := os.WriteFile(in, plain, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	encZip := filepath.Join(tmp, "out.zip")
+	if out, code := runCLI(t, "data-cipher", in, "--mode", "encrypt",
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", dcPassword1,
+		"--extra-password", "Ordinary-9!pw", "-o", encZip); code != 0 {
+		t.Fatalf("encrypt failed: %s", out)
+	}
+	dec := filepath.Join(tmp, "restored.txt")
+	if out, code := runCLI(t, "data-cipher", encZip, "--mode", "decrypt",
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", dcPassword1,
+		"--extra-password", "Ordinary-9!pw", "-o", dec); code != 0 {
+		t.Fatalf("decrypt failed: %s", out)
+	}
+	got, err := os.ReadFile(dec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(plain) {
+		t.Fatalf("round-trip mismatch:\n got=%q\nwant=%q", got, plain)
+	}
+}
+
+// TestDataCipher_ExtraPasswordWrongFails verifies that decrypting with a wrong
+// --extra-password value fails (the derived key differs).
+func TestDataCipher_ExtraPasswordWrongFails(t *testing.T) {
+	if testing.Short() {
+		t.Skip("argon2 slow in -short")
+	}
+	tmp := t.TempDir()
+	in := filepath.Join(tmp, "secret.txt")
+	if err := os.WriteFile(in, []byte("data"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	encZip := filepath.Join(tmp, "out.zip")
+	if out, code := runCLI(t, "data-cipher", in, "--mode", "encrypt",
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", dcPassword1,
+		"--extra-password", "Ordinary-9!pw", "-o", encZip); code != 0 {
+		t.Fatalf("encrypt failed: %s", out)
+	}
+	if out, code := runCLI(t, "data-cipher", encZip, "--mode", "decrypt",
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-p", dcPassword1,
+		"--extra-password", "Wrong-0!pw", "-o", filepath.Join(tmp, "restored.txt")); code == 0 {
+		t.Fatalf("decrypt with wrong --extra-password unexpectedly succeeded: %s", out)
+	}
+}
+
+// TestDataCipher_TooManyKeysFails verifies more than 3 strong keys (-k) are
+// rejected before encryption.
+func TestDataCipher_TooManyKeysFails(t *testing.T) {
+	tmp := t.TempDir()
+	in := filepath.Join(tmp, "secret.txt")
+	if err := os.WriteFile(in, []byte("data"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, code := runCLI(t, "data-cipher", in, "--mode", "encrypt",
+		"-k", dcKeys[0], "-k", dcKeys[1], "-k", dcKeys[2], "-k", dcKeys[0],
+		"-p", dcPassword1); code == 0 {
+		t.Fatalf("expected too-many-keys failure, got success: %s", out)
 	}
 }
 

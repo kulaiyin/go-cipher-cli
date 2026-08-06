@@ -50,16 +50,17 @@ func TestDataCipherEncryptStoresSelectedHints(t *testing.T) {
 	}
 
 	saveSalt, saveOutput, saveHint := dataCipherSalt, dataCipherOutput, dataCipherHint
-	savePw, saveHints := dataCipherPasswords, dataCipherSelectedHints
+	saveKeys, savePw, savePwList, saveHints := dataCipherKeys, dataCipherPassword, dataCipherPasswords, dataCipherSelectedHints
 	defer func() {
 		dataCipherSalt, dataCipherOutput, dataCipherHint = saveSalt, saveOutput, saveHint
-		dataCipherPasswords, dataCipherSelectedHints = savePw, saveHints
+		dataCipherKeys, dataCipherPassword, dataCipherPasswords, dataCipherSelectedHints = saveKeys, savePw, savePwList, saveHints
 	}()
 
 	dataCipherSalt = salt
 	dataCipherOutput = filepath.Join(t.TempDir(), "bundle.zip")
 	dataCipherHint = ""
-	dataCipherPasswords = []string{dcKeys[0], dcKeys[1], dcKeys[2], pw1}
+	dataCipherKeys = []string{dcKeys[0], dcKeys[1], dcKeys[2]}
+	dataCipherPassword = pw1
 	dataCipherSelectedHints = []string{"Q01", "Q06", "Q23"}
 
 	in := &cipherInput{inputType: "file", data: []byte("payload"), fileName: "secret.txt", mimeType: "text/plain"}

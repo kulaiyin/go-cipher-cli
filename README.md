@@ -79,19 +79,24 @@ AES-256-GCM encrypt/decrypt of text or files, producing ZIP bundles. First deriv
 go-cipher-cli data-cipher --mode encrypt \
   --input-type text --text "secret content" \
   --hint "optional hint" \
-  -p "<key1-128hex>" -p "<key2-128hex>" -p "<key3-128hex>" -p "<password1>" \
+  -k "<key1-128hex>" -k "<key2-128hex>" -k "<key3-128hex>" -p "<password1>" \
   -o encrypted.zip
 
 # Encrypt a file (positional arg = --file)
 go-cipher-cli data-cipher secret.txt --mode encrypt \
-  -p "<key1-128hex>" -p "<key2-128hex>" -p "<key3-128hex>" -p "<password1>"
+  -k "<key1-128hex>" -k "<key2-128hex>" -k "<key3-128hex>" -p "<password1>"
 
-# Decrypt (-p order must match the encryption)
+# Third-party call: keys (-k) + password1 (-p) + an ordinary extra password
+go-cipher-cli data-cipher secret.txt --mode encrypt \
+  -k "<key1-128hex>" -k "<key2-128hex>" -k "<key3-128hex>" -p "<password1>" \
+  --extra-password "<extra-ordinary-password>"
+
+# Decrypt (must use the same flags)
 go-cipher-cli data-cipher --mode decrypt encrypted.zip \
-  -p "<key1-128hex>" -p "<key2-128hex>" -p "<key3-128hex>" -p "<password1>"
+  -k "<key1-128hex>" -k "<key2-128hex>" -k "<key3-128hex>" -p "<password1>"
 ```
 
-> **`-p` ordering**: the first three must be 128-hex strong keys (from `key-derive`), the fourth is password1; order and count must match the encryption exactly, or the derived key differs and decryption fails. Keys 1/2/3 are enforced high-strength; password1 must satisfy the composite rule (high strength OR letter + digit + special char with length ≥ 8).
+> **Keys & passwords**: the 3 strong keys from `key-derive` go under `-k` (keys 1-3, enforced high-strength); password1 goes under `-p` (single value; high strength, or letter + digit + special char with length ≥ 8). `--extra-password` appends an optional ordinary password at the end (no strength rule) — it participates in encryption, so decrypt must repeat it. Flag set and count must match the encryption exactly, or the derived key differs and decryption fails.
 
 ### Password enhancer — `enhance`
 
