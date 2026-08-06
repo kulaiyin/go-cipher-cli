@@ -61,6 +61,10 @@ go-cipher-cli key-derive --mode generate -i "my recovery seed phrase 07" -p "D3r
 go-cipher-cli key-derive --mode generate -i "my recovery seed phrase 07" -p "D3rive-P@ss" \
   --output recovery.txt
 
+# Add a custom hint (defaults to the first 10 chars of input) to the recovery config
+go-cipher-cli key-derive --mode generate -i "my recovery seed phrase 07" -p "D3rive-P@ss" \
+  --hint "recovery hint" --output recovery.txt
+
 # Restore: re-derive with the original input+password, compare against the UUIDs in the config
 go-cipher-cli key-derive --mode restore -i "my recovery seed phrase 07" -p "D3rive-P@ss" \
   --config recovery.txt
@@ -79,21 +83,21 @@ AES-256-GCM encrypt/decrypt of text or files, producing ZIP bundles. First deriv
 go-cipher-cli data-cipher --mode encrypt \
   --input-type text --text "secret content" \
   --hint "optional hint" \
-  -k "<key1-128hex>" -k "<key2-128hex>" -k "<key3-128hex>" -p "<password1>" \
+  -k "51e4bd5f6cbb041cfc8afff10f7b887d436d82e9f9dda7a3483572019d5c56b9692ed4b1b6071d8fe1c6aadd07013bccc140a93a42a528846157d366a161f57c" -k "a205793f30b9e078182df7da66f3a19ce2def1be44dc303d1a5c9ca741197dde71e429d367cc6092b1c6218457c34e74c27fa78850bfc67a9d3a33fdc4abcfef" -k "bba970b4f2c786ec9a98aa5bca6a7aa677b5f22a0f0d0258226a3902ff66115dfa38e9ce4356ed4dd11cc366742cbcd015ae6ff6419d53355bc4ad6857830572" -p "consonant-overdraft-urgency-roamer7" \
   -o encrypted.zip
 
 # Encrypt a file (positional arg = --file)
 go-cipher-cli data-cipher secret.txt --mode encrypt \
-  -k "<key1-128hex>" -k "<key2-128hex>" -k "<key3-128hex>" -p "<password1>"
+  -k "51e4bd5f6cbb041cfc8afff10f7b887d436d82e9f9dda7a3483572019d5c56b9692ed4b1b6071d8fe1c6aadd07013bccc140a93a42a528846157d366a161f57c" -k "a205793f30b9e078182df7da66f3a19ce2def1be44dc303d1a5c9ca741197dde71e429d367cc6092b1c6218457c34e74c27fa78850bfc67a9d3a33fdc4abcfef" -k "bba970b4f2c786ec9a98aa5bca6a7aa677b5f22a0f0d0258226a3902ff66115dfa38e9ce4356ed4dd11cc366742cbcd015ae6ff6419d53355bc4ad6857830572" -p "consonant-overdraft-urgency-roamer7"
 
 # Third-party call: keys (-k) + password1 (-p) + an ordinary extra password
 go-cipher-cli data-cipher secret.txt --mode encrypt \
-  -k "<key1-128hex>" -k "<key2-128hex>" -k "<key3-128hex>" -p "<password1>" \
+  -k "51e4bd5f6cbb041cfc8afff10f7b887d436d82e9f9dda7a3483572019d5c56b9692ed4b1b6071d8fe1c6aadd07013bccc140a93a42a528846157d366a161f57c" -k "a205793f30b9e078182df7da66f3a19ce2def1be44dc303d1a5c9ca741197dde71e429d367cc6092b1c6218457c34e74c27fa78850bfc67a9d3a33fdc4abcfef" -k "bba970b4f2c786ec9a98aa5bca6a7aa677b5f22a0f0d0258226a3902ff66115dfa38e9ce4356ed4dd11cc366742cbcd015ae6ff6419d53355bc4ad6857830572" -p "consonant-overdraft-urgency-roamer7" \
   --extra-password "<extra-ordinary-password>"
 
 # Decrypt (must use the same flags)
 go-cipher-cli data-cipher --mode decrypt encrypted.zip \
-  -k "<key1-128hex>" -k "<key2-128hex>" -k "<key3-128hex>" -p "<password1>"
+  -k "51e4bd5f6cbb041cfc8afff10f7b887d436d82e9f9dda7a3483572019d5c56b9692ed4b1b6071d8fe1c6aadd07013bccc140a93a42a528846157d366a161f57c" -k "a205793f30b9e078182df7da66f3a19ce2def1be44dc303d1a5c9ca741197dde71e429d367cc6092b1c6218457c34e74c27fa78850bfc67a9d3a33fdc4abcfef" -k "bba970b4f2c786ec9a98aa5bca6a7aa677b5f22a0f0d0258226a3902ff66115dfa38e9ce4356ed4dd11cc366742cbcd015ae6ff6419d53355bc4ad6857830572" -p "consonant-overdraft-urgency-roamer7"
 ```
 
 > **Keys & passwords**: the 3 strong keys from `key-derive` go under `-k` (keys 1-3, enforced high-strength); password1 goes under `-p` (single value; high strength, or letter + digit + special char with length ≥ 8). `--extra-password` appends an optional ordinary password at the end (no strength rule) — it participates in encryption, so decrypt must repeat it. Flag set and count must match the encryption exactly, or the derived key differs and decryption fails.
@@ -143,7 +147,7 @@ go-cipher-cli version                                     # prints the version
 go-cipher-cli --help                                      # show help
 ```
 
-> Running `data-cipher` / `key-derive` with no arguments enters interactive mode, guiding you step by step in the order mode → input type → content → hint → keys/passwords → output path.
+> Running `data-cipher` or `key-derive` with no arguments enters interactive mode. `data-cipher` guides you in the order mode → input type → content → hint → keys/passwords → output path; `key-derive` in the order mode → input → hint → password → strength → output path.
 
 See the [Usage guide](https://kulaiyin.github.io/go-cipher-cli/en/guide/usage) and [Key management](https://kulaiyin.github.io/go-cipher-cli/en/guide/key-management) for full details.
 

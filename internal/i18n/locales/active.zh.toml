@@ -218,15 +218,11 @@ other = "处理耗时:      {{.Ms}} ms"
 
 [argon2id.flag.password]
 description = "--password 标志的描述"
-other = "用于派生的密码（可选；省略时以隐藏输入交互式提示）"
-
-[argon2id.prompt.password]
-description = "询问派生密码的提示文案"
-other = "密码:"
+other = "用于派生的密码（必填，通过命令行传入，不做交互式询问）"
 
 [argon2id.error.password_required]
-description = "没有可用密码时的错误信息（无 -p 且无终端）"
-other = "未提供密码: 请使用 -p 或以交互方式运行"
+description = "未提供 -p 时的错误信息"
+other = "未提供密码: 请使用 -p 传入"
 
 [argon2id.flag.salt]
 description = "--salt 标志的描述"
@@ -403,7 +399,7 @@ other = "文件"
 
 [data_cipher.prompt.mode]
 description = "交互式模式选择提示"
-other = "请选择操作模式："
+other = "模式："
 
 [data_cipher.prompt.input_type]
 description = "交互式输入类型选择提示"
@@ -447,7 +443,7 @@ other = "提示内容（可选，直接回车跳过）："
 
 [data_cipher.prompt.hint_help]
 description = "提示内容帮助"
-other = "随密文一起保存的备忘信息（如来源、用途），不影响密钥派生。"
+other = "帮助您回忆内容或密码的来源"
 
 [data_cipher.prompt.output_encrypt]
 description = "加密输出文件路径交互提示"
@@ -802,11 +798,11 @@ other = "将恢复配置写入该路径，而非打印到标准输出"
 
 [key_derive.option.mode.generate]
 description = "生成模式选项标签"
-other = "生成（新密钥集）"
+other = "生成"
 
 [key_derive.option.mode.restore]
 description = "恢复模式选项标签"
-other = "恢复（依据配置校验）"
+other = "恢复"
 
 [key_derive.option.strength.basic]
 description = "基础强度选项标签"
@@ -822,7 +818,7 @@ other = "高级（慢速，高内存）"
 
 [key_derive.prompt.mode]
 description = "模式交互提示"
-other = "操作模式："
+other = "模式："
 
 [key_derive.prompt.strength]
 description = "强度交互提示"
@@ -834,7 +830,7 @@ other = "输入文本："
 
 [key_derive.prompt.input_help]
 description = "输入内容提示帮助"
-other = "任意易记文本，支持多行粘贴（回车结束输入，Alt+回车换行）。去空格后不少于 20 字符。与密码、盐共同参与派生。"
+other = "任意易记文本，支持多行粘贴（回车结束输入，Alt+回车换行）。去空格后不少于 20 字符。\n密钥恢复需要与您首次输入的内容完全一致，请立即备份到安全位置（如密码管理器、加密笔记），否则丢失后将永久无法恢复密钥。"
 
 [key_derive.prompt.password]
 description = "密码交互提示"
@@ -850,7 +846,7 @@ other = "提示（可选，直接回车跳过）："
 
 [key_derive.prompt.hint_help]
 description = "提示内容帮助"
-other = "存入恢复配置作为备忘，不影响派生出的密钥。"
+other = "用于帮助您回忆输入内容或来源，默认使用输入内容的前10个字符"
 
 [key_derive.prompt.output]
 description = "输出文件路径交互提示"

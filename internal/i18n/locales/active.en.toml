@@ -221,15 +221,11 @@ other = "Processing time: {{.Ms}} ms"
 
 [argon2id.flag.password]
 description = "Description for --password flag"
-other = "password to derive from (optional; prompted with hidden input when omitted)"
-
-[argon2id.prompt.password]
-description = "Prompt asking for the derivation password"
-other = "Password:"
+other = "password to derive from (required; pass it via the command line, no interactive prompt)"
 
 [argon2id.error.password_required]
-description = "Error when no password is available (no -p and no terminal)"
-other = "no password provided: use -p or run interactively"
+description = "Error when -p is not provided"
+other = "no password provided: pass one via -p"
 
 [argon2id.flag.salt]
 description = "Description for --salt flag"
@@ -406,7 +402,7 @@ other = "file"
 
 [data_cipher.prompt.mode]
 description = "Interactive mode selection prompt"
-other = "Select an operation mode:"
+other = "Mode:"
 
 [data_cipher.prompt.input_type]
 description = "Interactive input-type selection prompt"
@@ -450,7 +446,7 @@ other = "Hint (optional, press Enter to skip):"
 
 [data_cipher.prompt.hint_help]
 description = "Help text for the hint prompt"
-other = "memo stored alongside the ciphertext (e.g. origin, purpose); does not affect key derivation."
+other = "Helps you recall the origin of the content or password."
 
 [data_cipher.prompt.output_encrypt]
 description = "Encrypt output file path interactive prompt"
@@ -807,11 +803,11 @@ other = "write the recovery config to this path instead of stdout"
 
 [key_derive.option.mode.generate]
 description = "Label for generate mode option"
-other = "Generate (new key set)"
+other = "Generate"
 
 [key_derive.option.mode.restore]
 description = "Label for restore mode option"
-other = "Restore (verify against config)"
+other = "Restore"
 
 [key_derive.option.strength.basic]
 description = "Label for basic strength option"
@@ -827,7 +823,7 @@ other = "Advanced (slow, higher memory)"
 
 [key_derive.prompt.mode]
 description = "Interactive prompt for mode"
-other = "Operation mode:"
+other = "Mode:"
 
 [key_derive.prompt.strength]
 description = "Interactive prompt for strength"
@@ -839,7 +835,7 @@ other = "Input text:"
 
 [key_derive.prompt.input_help]
 description = "Help text for input prompt"
-other = "Any memorable text (>= 20 non-space chars after cleaning). Supports multi-line paste; press Enter to finish, Alt+Enter for a new line. Combined with the password and salt to derive the keys."
+other = "Any memorable text (>= 20 non-space chars after cleaning). Supports multi-line paste; press Enter to finish, Alt+Enter for a new line.\nKey recovery requires exactly the input you provided the first time — back it up in a secure place (e.g., password manager, encrypted notes), otherwise the keys become permanently unrecoverable if it is lost."
 
 [key_derive.prompt.password]
 description = "Interactive prompt for password"
@@ -855,7 +851,7 @@ other = "Hint (optional, press Enter to skip):"
 
 [key_derive.prompt.hint_help]
 description = "Help text for hint prompt"
-other = "Stored in the recovery config as a reminder. Does not affect the derived keys."
+other = "Helps you recall the input text or its origin. Defaults to the first 10 characters of the input."
 
 [key_derive.prompt.output]
 description = "Interactive prompt for output file path"

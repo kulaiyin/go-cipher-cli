@@ -16,7 +16,6 @@ import (
 
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/kdf"
-	"go-cipher-cli/internal/param"
 )
 
 var (
@@ -49,7 +48,7 @@ type argon2JSONOutput struct {
 }
 
 var argon2idCmd = &cobra.Command{
-	Use:          "argon2id [-p <password>] [flags]",
+	Use:          "argon2id -p <password> [flags]",
 	Short:        "placeholder",
 	Long:         "placeholder",
 	SilenceUsage: true,
@@ -58,9 +57,6 @@ var argon2idCmd = &cobra.Command{
 			return err
 		}
 
-		// -p is optional: when omitted, the password is prompted with a hidden
-		// input on a terminal so it never appears in shell history. A non-empty
-		// -p value (scripted usage) is used as-is.
 		password, err := resolveArgon2Password()
 		if err != nil {
 			return err
@@ -259,20 +255,13 @@ func echoArgon2Password() string {
 	return argon2PromptedPassword
 }
 
-// resolveArgon2Password returns the derivation password. A non-empty -p value
-// (scripted usage) is used as-is; otherwise the user is prompted with a hidden
-// input on a terminal. Without a terminal and without -p there is nothing to
-// derive from, so the command fails.
+// resolveArgon2Password returns the derivation password. The password must be
+// supplied via -p; there is no interactive prompt.
 func resolveArgon2Password() (string, error) {
-	if argon2Password != "" {
-		return argon2Password, nil
-	}
-	if !param.IsStdinTerminal() {
+	if argon2Password == "" {
 		return "", fmt.Errorf("%s", i18n.T("argon2id.error.password_required"))
 	}
-	var err error
-	argon2PromptedPassword, err = param.Password(i18n.T("argon2id.prompt.password"), "")
-	return argon2PromptedPassword, err
+	return argon2Password, nil
 }
 
 func init() {

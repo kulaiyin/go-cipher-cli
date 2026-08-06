@@ -61,6 +61,10 @@ go-cipher-cli key-derive --mode generate -i "我的seed2024安全密钥派生示
 go-cipher-cli key-derive --mode generate -i "我的seed2024安全密钥派生示例txt" -p "D3rive-P@ss" \
   --output recovery.txt
 
+# 自定义提示信息（默认取输入内容前 10 个字符），随恢复配置一并保存
+go-cipher-cli key-derive --mode generate -i "我的seed2024安全密钥派生示例txt" -p "D3rive-P@ss" \
+  --hint "恢复提示" --output recovery.txt
+
 # restore：用原始 input+password 重新派生，与配置里的 UUID 比对校验是否还原了同一组密钥
 go-cipher-cli key-derive --mode restore -i "我的seed2024安全密钥派生示例txt" -p "D3rive-P@ss" \
   --config recovery.txt
@@ -79,21 +83,21 @@ go-cipher-cli key-derive --mode restore -i "我的seed2024安全密钥派生示�
 go-cipher-cli data-cipher --mode encrypt \
   --input-type text --text "要加密的内容" \
   --hint "可选提示" \
-  -k "<密钥1-128hex>" -k "<密钥2-128hex>" -k "<密钥3-128hex>" -p "<密码1>" \
+  -k "51e4bd5f6cbb041cfc8afff10f7b887d436d82e9f9dda7a3483572019d5c56b9692ed4b1b6071d8fe1c6aadd07013bccc140a93a42a528846157d366a161f57c" -k "a205793f30b9e078182df7da66f3a19ce2def1be44dc303d1a5c9ca741197dde71e429d367cc6092b1c6218457c34e74c27fa78850bfc67a9d3a33fdc4abcfef" -k "bba970b4f2c786ec9a98aa5bca6a7aa677b5f22a0f0d0258226a3902ff66115dfa38e9ce4356ed4dd11cc366742cbcd015ae6ff6419d53355bc4ad6857830572" -p "consonant-overdraft-urgency-roamer7" \
   -o encrypted.zip
 
 # 加密文件（位置参数 = --file）
 go-cipher-cli data-cipher secret.txt --mode encrypt \
-  -k "<密钥1-128hex>" -k "<密钥2-128hex>" -k "<密钥3-128hex>" -p "<密码1>"
+  -k "51e4bd5f6cbb041cfc8afff10f7b887d436d82e9f9dda7a3483572019d5c56b9692ed4b1b6071d8fe1c6aadd07013bccc140a93a42a528846157d366a161f57c" -k "a205793f30b9e078182df7da66f3a19ce2def1be44dc303d1a5c9ca741197dde71e429d367cc6092b1c6218457c34e74c27fa78850bfc67a9d3a33fdc4abcfef" -k "bba970b4f2c786ec9a98aa5bca6a7aa677b5f22a0f0d0258226a3902ff66115dfa38e9ce4356ed4dd11cc366742cbcd015ae6ff6419d53355bc4ad6857830572" -p "consonant-overdraft-urgency-roamer7"
 
 # 第三方调用：密钥（-k）+ 密码1（-p）+ 一个普通额外密码
 go-cipher-cli data-cipher secret.txt --mode encrypt \
-  -k "<密钥1-128hex>" -k "<密钥2-128hex>" -k "<密钥3-128hex>" -p "<密码1>" \
+  -k "51e4bd5f6cbb041cfc8afff10f7b887d436d82e9f9dda7a3483572019d5c56b9692ed4b1b6071d8fe1c6aadd07013bccc140a93a42a528846157d366a161f57c" -k "a205793f30b9e078182df7da66f3a19ce2def1be44dc303d1a5c9ca741197dde71e429d367cc6092b1c6218457c34e74c27fa78850bfc67a9d3a33fdc4abcfef" -k "bba970b4f2c786ec9a98aa5bca6a7aa677b5f22a0f0d0258226a3902ff66115dfa38e9ce4356ed4dd11cc366742cbcd015ae6ff6419d53355bc4ad6857830572" -p "consonant-overdraft-urgency-roamer7" \
   --extra-password "<额外普通密码>"
 
 # 解密（必须使用与加密时相同的参数）
 go-cipher-cli data-cipher --mode decrypt encrypted.zip \
-  -k "<密钥1-128hex>" -k "<密钥2-128hex>" -k "<密钥3-128hex>" -p "<密码1>"
+  -k "51e4bd5f6cbb041cfc8afff10f7b887d436d82e9f9dda7a3483572019d5c56b9692ed4b1b6071d8fe1c6aadd07013bccc140a93a42a528846157d366a161f57c" -k "a205793f30b9e078182df7da66f3a19ce2def1be44dc303d1a5c9ca741197dde71e429d367cc6092b1c6218457c34e74c27fa78850bfc67a9d3a33fdc4abcfef" -k "bba970b4f2c786ec9a98aa5bca6a7aa677b5f22a0f0d0258226a3902ff66115dfa38e9ce4356ed4dd11cc366742cbcd015ae6ff6419d53355bc4ad6857830572" -p "consonant-overdraft-urgency-roamer7"
 ```
 
 > **密钥与密码**：`key-derive` 派生的 3 把强密钥用 `-k`（密钥1/2/3，强制高强度校验）；密码1 用 `-p`（单值，需高强度，或 字母+数字+特殊字符且≥8位）。`--extra-password` 在末尾追加一个可选普通密码（无强度要求）——它参与加密，解密时需重复提供。参数集合与个数必须与加密时完全一致，否则派生密钥不同、解密失败。
@@ -143,7 +147,7 @@ go-cipher-cli version                                        # 输出版本号
 go-cipher-cli --help                                         # 查看帮助
 ```
 
-> 不带任何参数运行 `data-cipher` / `key-derive` 会进入交互模式，按 模式 → 输入类型 → 内容 → 提示 → 密钥/密码 → 输出路径 的顺序逐步引导。
+> 不带任何参数运行 `data-cipher` 或 `key-derive` 会进入交互模式。`data-cipher` 按 模式 → 输入类型 → 内容 → 提示 → 密钥/密码 → 输出路径 的顺序逐步引导；`key-derive` 按 模式 → 输入 → 提示 → 密码 → 强度 → 输出路径 的顺序逐步引导。
 
 完整用法见 [使用说明](https://kulaiyin.github.io/go-cipher-cli/zh/guide/usage) 和 [密钥管理](https://kulaiyin.github.io/go-cipher-cli/zh/guide/key-management)。
 
