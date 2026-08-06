@@ -294,22 +294,26 @@ func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, stren
 		}
 	}
 
-	cfgLabel := strengthConfigLabel(result.Strength)
-	fmt.Println(i18n.TWithData("key_derive.output.algorithm", map[string]interface{}{
-		"Strength": cfgLabel,
-	}))
-	fmt.Println(i18n.TWithData("key_derive.output.uuid", map[string]interface{}{
-		"UUID": result.UUID,
-	}))
-	for i, k := range result.Keys {
-		fmt.Println(i18n.TWithData("key_derive.output.key", map[string]interface{}{
-			"Name": fmt.Sprintf("S%d", i+1),
-			"Key":  k,
-		}))
-	}
-	fmt.Println(i18n.TWithData("key_derive.output.processing_time", map[string]interface{}{
-		"Ms": result.ProcessingTime,
-	}))
+	// The recovered key details (algorithm / UUID / S1-S3 keys / processing
+	// time) are intentionally NOT printed to stdout: the derived keys are
+	// sensitive and remain verifiable via restore against the config's UUID
+	// fingerprints.
+	//
+	// fmt.Println(i18n.TWithData("key_derive.output.algorithm", map[string]interface{}{
+	// 	"Strength": strengthConfigLabel(result.Strength),
+	// }))
+	// fmt.Println(i18n.TWithData("key_derive.output.uuid", map[string]interface{}{
+	// 	"UUID": result.UUID,
+	// }))
+	// for i, k := range result.Keys {
+	// 	fmt.Println(i18n.TWithData("key_derive.output.key", map[string]interface{}{
+	// 		"Name": fmt.Sprintf("S%d", i+1),
+	// 		"Key":  k,
+	// 	}))
+	// }
+	// fmt.Println(i18n.TWithData("key_derive.output.processing_time", map[string]interface{}{
+	// 	"Ms": result.ProcessingTime,
+	// }))
 
 	// Build the recovery config to print/save. In restore mode we preserve the
 	// originally stored uuids/hint_ids so the saved file stays self-consistent.

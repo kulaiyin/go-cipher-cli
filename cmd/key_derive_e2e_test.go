@@ -32,38 +32,6 @@ const (
 	kdWantS1   = "ec9b6b4c1aa5d79a8d264fbeec4deaa2fad98dbffff8200ccf3598bea0c03b998f38cb2af69c27e55f43be83871e9283a3880f54f3e3d1bbed2194f06840e127"
 )
 
-// extractField pulls the value after "Name: " from a key-derive output line,
-// e.g. "S1: ec9b..." -> "ec9b...". Returns "" if not found.
-func extractField(out, prefix string) string {
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if v, ok := strings.CutPrefix(line, prefix); ok {
-			return strings.TrimSpace(v)
-		}
-	}
-	return ""
-}
-
-// extractUUID pulls the UUID value from key-derive output.
-func extractUUID(t *testing.T, out string) string {
-	t.Helper()
-	v := extractField(out, "UUID:")
-	if v == "" {
-		t.Fatalf("no UUID line in output:\n%s", out)
-	}
-	return v
-}
-
-// extractKey pulls an S1/S2/S3 value from key-derive output.
-func extractKey(t *testing.T, out, name string) string {
-	t.Helper()
-	v := extractField(out, name+":")
-	if v == "" {
-		t.Fatalf("no %s line in output:\n%s", name, out)
-	}
-	return v
-}
-
 // extractDataB64 pulls the base64 DATA line from a frontend-format config block.
 func extractDataB64(t *testing.T, out string) string {
 	t.Helper()
@@ -81,27 +49,48 @@ func TestKeyDeriveCmd_Generate_GoldenVector(t *testing.T) {
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "recovery.txt")
 	out, code := runCLI(t, "key-derive", "--mode", "generate",
 		"-i", kdInput, "-p", kdPassword,
-		"--strength", "basic", "--salt", kdSalt)
+		"--strength", "basic", "--salt", kdSalt,
+		"--output", cfgPath)
 	if code != 0 {
 		t.Fatalf("key-derive generate failed: %s", out)
 	}
+	// generate must not print the derived keys/UUID to stdout: the derived
+	// keys are sensitive and only verifiable via the config fingerprints.
+	if strings.Contains(out, "S1:") || strings.Contains(out, "UUID: ") {
+		t.Errorf("generate must not print derived key details to stdout:\n%s", out)
+	}
 
-	if got := extractUUID(t, out); got != kdWantUUID {
-		t.Errorf("UUID mismatch\n got: %s\nwant: %s", got, kdWantUUID)
+	// The config fingerprints must match the golden vector.
+	cfg, err := parseFrontendRecoveryConfig(readFile(t, cfgPath))
+	if err != nil {
+		t.Fatalf("config not valid frontend format: %v", err)
 	}
-	if got := extractKey(t, out, "S1"); got != kdWantS1 {
-		t.Errorf("S1 mismatch\n got: %s\nwant: %s", got, kdWantS1)
+	wantMaskedUUID := kdWantUUID[:8] + strings.Repeat("*", len(kdWantUUID)-16) + kdWantUUID[len(kdWantUUID)-8:]
+	if cfg.UUID != wantMaskedUUID {
+		t.Errorf("masked uuid = %q, want %q", cfg.UUID, wantMaskedUUID)
 	}
-	// S2/S3 must be present and distinct from S1.
-	s2 := extractKey(t, out, "S2")
-	s3 := extractKey(t, out, "S3")
-	if s2 == kdWantS1 || s3 == kdWantS1 || s2 == s3 {
-		t.Errorf("keys should be distinct: S1/S2/S3 not all different")
+	wantFP := kdWantS1[:8] + kdWantS1[len(kdWantS1)-8:]
+	if cfg.UUIDs[0] != wantFP {
+		t.Errorf("S1 fingerprint = %q, want %q", cfg.UUIDs[0], wantFP)
 	}
+
+	// Restore with the same inputs succeeds and also prints no key details.
+	rest, code := runCLI(t, "key-derive", "--mode", "restore",
+		"-i", kdInput, "-p", kdPassword,
+		"--config", cfgPath)
+	if code != 0 {
+		t.Fatalf("restore failed: %s", rest)
+	}
+	if strings.Contains(rest, "S1:") || strings.Contains(rest, "UUID: ") {
+		t.Errorf("restore must not print derived key details to stdout:\n%s", rest)
+	}
+
 	// The salt must appear in the DATA field of the frontend-format config.
-	dataB64 := extractDataB64(t, out)
+	dataB64 := extractDataB64(t, readFile(t, cfgPath))
 	decoded, err := base64.StdEncoding.DecodeString(dataB64)
 	if err != nil {
 		t.Fatalf("DATA is not valid base64: %v", err)
@@ -181,10 +170,6 @@ func TestKeyDeriveCmd_Restore_Match(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("restore failed: %s", out)
 	}
-	// restore with correct inputs must re-derive the same UUID and report success.
-	if got := extractUUID(t, out); got != kdWantUUID {
-		t.Errorf("UUID mismatch\n got: %s\nwant: %s", got, kdWantUUID)
-	}
 	if !strings.Contains(out, "restore success") && !strings.Contains(out, "successful") {
 		t.Errorf("expected restore success message, output:\n%s", out)
 	}
@@ -228,15 +213,28 @@ func TestKeyDeriveCmd_DefaultModeIsGenerate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}
-	// No --mode flag: defaults to generate, produces a key set.
+	// No --mode flag: defaults to generate, which writes a recovery config
+	// instead of printing the derived keys to stdout.
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "recovery.txt")
 	out, code := runCLI(t, "key-derive",
 		"-i", kdInput, "-p", kdPassword,
-		"--strength", "basic", "--salt", kdSalt)
+		"--strength", "basic", "--output", cfgPath)
 	if code != 0 {
 		t.Fatalf("default mode failed: %s", out)
 	}
-	if got := extractUUID(t, out); got != kdWantUUID {
-		t.Errorf("default mode should generate, UUID mismatch\n got: %s\nwant: %s", got, kdWantUUID)
+	cfg, err := parseFrontendRecoveryConfig(readFile(t, cfgPath))
+	if err != nil {
+		t.Fatalf("default mode should generate a valid config: %v", err)
+	}
+	if cfg.Salt == "" || len(cfg.UUIDs) != 4 {
+		t.Errorf("unexpected config: %+v", cfg)
+	}
+	rest, code := runCLI(t, "key-derive", "--mode", "restore",
+		"-i", kdInput, "-p", kdPassword,
+		"--config", cfgPath)
+	if code != 0 {
+		t.Fatalf("restore should succeed from the default-generated config: %s", rest)
 	}
 }
 
@@ -286,9 +284,6 @@ func TestKeyDeriveCmd_Restore_LegacyJSON(t *testing.T) {
 		"--config", cfgPath)
 	if code != 0 {
 		t.Fatalf("restore from legacy JSON failed: %s", out)
-	}
-	if got := extractUUID(t, out); got != kdWantUUID {
-		t.Errorf("UUID mismatch\n got: %s\nwant: %s", got, kdWantUUID)
 	}
 	if !strings.Contains(out, "restore success") && !strings.Contains(out, "successful") {
 		t.Errorf("expected restore success message, output:\n%s", out)
@@ -364,14 +359,9 @@ func TestKeyDeriveConfigFile_GenerateFromExistingConfig(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("config-file generate failed (%d):\n%s", code, out)
 	}
-	if got := extractUUID(t, out); got != kdWantUUID {
-		t.Errorf("UUID = %q, want %q", got, kdWantUUID)
-	}
-	if got := extractKey(t, out, "S1"); got != kdWantS1 {
-		t.Errorf("S1 = %q, want %q", got, kdWantS1)
-	}
 	// The recovery config must be saved next to the config file and the user
-	// warned it is volatile (temp dir, lost on reboot).
+	// warned it is volatile (temp dir, lost on reboot). The derived keys are
+	// not printed to stdout by generate; they are verified via restore.
 	rcPath := filepath.Join(dir, "my-config.txt")
 	rcRaw, err := os.ReadFile(rcPath)
 	if err != nil {
@@ -382,6 +372,21 @@ func TestKeyDeriveConfigFile_GenerateFromExistingConfig(t *testing.T) {
 	}
 	if !strings.Contains(out, "temporary directory") {
 		t.Errorf("expected volatile warning for the recovery config, got:\n%s", out)
+	}
+	rest, code := runCLI(t, "key-derive", "--mode", "restore",
+		"-i", kdInput, "-p", kdPassword,
+		"--config", rcPath)
+	if code != 0 {
+		t.Fatalf("restore from saved config failed (%d):\n%s", code, rest)
+	}
+	// The saved config must carry the golden-vector masked UUID fingerprint.
+	rc, err := parseFrontendRecoveryConfig(string(rcRaw))
+	if err != nil {
+		t.Fatalf("parse saved config: %v", err)
+	}
+	wantMaskedUUID := kdWantUUID[:8] + strings.Repeat("*", len(kdWantUUID)-16) + kdWantUUID[len(kdWantUUID)-8:]
+	if rc.UUID != wantMaskedUUID {
+		t.Errorf("masked uuid = %q, want %q", rc.UUID, wantMaskedUUID)
 	}
 }
 
