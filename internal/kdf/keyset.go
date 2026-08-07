@@ -12,11 +12,13 @@ package kdf
 // #2, used by `enhance`). Do not mix the two.
 
 import (
+	"encoding/hex"
 	"time"
 	"unicode/utf8"
 
 	"go-cipher-cli/internal/crypto"
 	"go-cipher-cli/internal/safety"
+	"go-cipher-cli/internal/util"
 )
 
 // Strength is an Argon2id cost tier, mirroring the frontend strengthConfig
@@ -69,6 +71,25 @@ type KeySetResult struct {
 	Error          string
 }
 
+// KeySetBytesResult is the wipeable counterpart of KeySetResult: the derived
+// keys and UUID are carried as raw [][]byte / []byte (the bytes BEFORE hex
+// encoding) so callers that handle secrets can util.WipeBytes them after use.
+// Go strings are immutable and cannot be zeroed, so any path that must keep
+// the derived keys out of long-lived memory should use DeriveKeySetBytes
+// instead of DeriveKeySet.
+//
+// RawKeys[i] is the raw bytes of Keys[i] (i.e. hex.DecodeString(Keys[i]) ==
+// RawKeys[i]); RawUUID is likewise the raw bytes of UUID.
+type KeySetBytesResult struct {
+	Success        bool
+	RawKeys        [][]byte // S1, S2, S3 — each 64 bytes (512 bits), hex-encoded into KeySetResult.Keys
+	RawUUID        []byte   // 16 bytes (128 bits), hex-encoded into KeySetResult.UUID
+	SaltSeed       string
+	Strength       Strength
+	ProcessingTime int64 // milliseconds
+	Error          string
+}
+
 // DeriveKeySet replicates the frontend KeyDerivationForm.deriveKey pipeline.
 //
 // Inputs are expected to be ALREADY cleaned (whitespace stripped + NFC), as
@@ -78,10 +99,54 @@ type KeySetResult struct {
 //
 // Output: 3 independent 512-bit keys and a 128-bit UUID, all deterministic
 // for the same inputs.
+//
+// The returned Keys/UUID are hex STRINGS and therefore cannot be wiped from
+// memory. Use DeriveKeySetBytes when the caller must zero the derived key
+// material after use.
 func DeriveKeySet(input string, password []byte, saltSeed string, strength Strength) KeySetResult {
+	raw := deriveKeySetCore(input, password, saltSeed, strength)
+	if !raw.Success {
+		return KeySetResult{
+			Success:        false,
+			SaltSeed:       raw.SaltSeed,
+			Strength:       raw.Strength,
+			ProcessingTime: raw.ProcessingTime,
+			Error:          raw.Error,
+		}
+	}
+	keys := make([]string, len(raw.RawKeys))
+	for i, k := range raw.RawKeys {
+		keys[i] = safety.BytesToHex(k)
+	}
+	return KeySetResult{
+		Success:        true,
+		SaltSeed:       raw.SaltSeed,
+		Keys:           keys,
+		UUID:           safety.BytesToHex(raw.RawUUID),
+		Strength:       raw.Strength,
+		ProcessingTime: raw.ProcessingTime,
+	}
+}
+
+// DeriveKeySetBytes runs the exact same pipeline as DeriveKeySet but returns
+// the derived keys and UUID as raw wipeable bytes (KeySetBytesResult). Use this
+// in security-sensitive paths so the caller can util.WipeBytes the key
+// material once it is no longer needed. The derivation is byte-for-byte
+// identical to DeriveKeySet: hex.EncodeToString(result.RawKeys[i]) ==
+// DeriveKeySet(...).Keys[i]. Unlike DeriveKeySet it runs the wipeable kernel,
+// which carries every password-bearing intermediate as a []byte and zeroes it
+// before returning.
+func DeriveKeySetBytes(input string, password []byte, saltSeed string, strength Strength) KeySetBytesResult {
+	return deriveKeySetCoreWipeable(input, password, saltSeed, strength)
+}
+
+// deriveKeySetCore is the shared derivation kernel used by both DeriveKeySet
+// (hex-string result) and DeriveKeySetBytes (raw-bytes result). It returns the
+// keys as raw bytes before hex encoding, so neither wrapper re-derives them.
+func deriveKeySetCore(input string, password []byte, saltSeed string, strength Strength) KeySetBytesResult {
 	start := time.Now()
 	cfg := StrengthConfigFor(strength)
-	result := KeySetResult{SaltSeed: saltSeed, Strength: normalizedStrength(strength)}
+	result := KeySetBytesResult{SaltSeed: saltSeed, Strength: normalizedStrength(strength)}
 
 	// --- Step 1: derive the two salts from salt_seed (frontend L685-694) ---
 	// Frontend: KeyDerivation.hkdf(salt_seed, { salt:"", info:"argon2id", hashLength:64 })
@@ -125,27 +190,115 @@ func DeriveKeySet(input string, password []byte, saltSeed string, strength Stren
 		Parallelism: cfg.Parallelism,
 		HashLength:  cfg.HashLength,
 	})
-	if !masterKey.Success || masterKey.Data == "" {
+	if !masterKey.Success || len(masterKey.Data) == 0 {
 		result.Error = masterKey.Error
 		result.ProcessingTime = time.Since(start).Milliseconds()
 		return result
 	}
-	mainKeyHex := masterKey.Data // hex string; consumed as ASCII bytes below
+	mainKeyHex := safety.BytesToHex(masterKey.Data) // hex string; consumed as ASCII bytes below
 
 	// --- Step 4: domain-separate 4 keys via HKDF (frontend L730-748) ---
 	// Frontend: KeyDerivation.hkdf(mainKey, { salt:"", info:"S1"/"S2"/"S3"/"UUID" })
 	// mainKey is the hex STRING, consumed as ASCII bytes (SafetyUtility.hkdf ->
 	// toUint8Array(string) -> UTF-8 of the hex text). safety.HKDFExpand(prk string)
 	// does exactly []byte(prk), so it matches.
-	s1 := hexEncode(safety.HKDFExpand(mainKeyHex, []byte("S1"), cfg.HashLength))
-	s2 := hexEncode(safety.HKDFExpand(mainKeyHex, []byte("S2"), cfg.HashLength))
-	s3 := hexEncode(safety.HKDFExpand(mainKeyHex, []byte("S3"), cfg.HashLength))
-	uuidFull := hexEncode(safety.HKDFExpand(mainKeyHex, []byte("UUID"), cfg.HashLength))
-	uuid := uuidFull[:32] // first 32 hex chars = 16 bytes (frontend L746)
+	//
+	// Keep the raw bytes (HKDFExpand returns []byte) so the DeriveKeySetBytes
+	// wrapper can hand them back wipeable; DeriveKeySet hex-encodes them.
+	rawS1 := safety.HKDFExpand(mainKeyHex, []byte("S1"), cfg.HashLength)
+	rawS2 := safety.HKDFExpand(mainKeyHex, []byte("S2"), cfg.HashLength)
+	rawS3 := safety.HKDFExpand(mainKeyHex, []byte("S3"), cfg.HashLength)
+	rawUUIDFull := safety.HKDFExpand(mainKeyHex, []byte("UUID"), cfg.HashLength)
+	// UUID is the first 32 hex chars = 16 bytes (frontend L746).
+	rawUUID := rawUUIDFull[:16]
 
 	result.Success = true
-	result.Keys = []string{s1, s2, s3}
-	result.UUID = uuid
+	result.RawKeys = [][]byte{rawS1, rawS2, rawS3}
+	result.RawUUID = rawUUID
+	result.ProcessingTime = time.Since(start).Milliseconds()
+	return result
+}
+
+// deriveKeySetCoreWipeable is the wipeable counterpart of deriveKeySetCore: it
+// produces a byte-for-byte identical key set while carrying every password-
+// bearing intermediate (combined, hmacKey, finalSalt, inputData, masterKey) as
+// a []byte that is zeroed via util.WipeBytes before return, instead of the
+// immutable Go strings used by deriveKeySetCore. It backs DeriveKeySetBytes so
+// the pipe layer's "everything wipeable" guarantee actually holds. The byte
+// sequence fed to each primitive is identical to deriveKeySetCore; parity is
+// locked by TestDeriveKeySetBytes_CoreWipeableParity.
+func deriveKeySetCoreWipeable(input string, password []byte, saltSeed string, strength Strength) KeySetBytesResult {
+	start := time.Now()
+	cfg := StrengthConfigFor(strength)
+	result := KeySetBytesResult{SaltSeed: saltSeed, Strength: normalizedStrength(strength)}
+
+	// --- Step 1: derive the two salts from salt_seed (frontend L685-694) ---
+	saltSeedBytes := []byte(saltSeed)
+	defer util.WipeBytes(saltSeedBytes)
+	saltArgon2id := HKDF(saltSeedBytes, []byte{}, []byte("argon2id"), cfg.HashLength)
+	defer util.WipeBytes(saltArgon2id)
+	saltPassword := HKDF(saltSeedBytes, []byte{}, []byte("password-salt"), cfg.HashLength)
+	defer util.WipeBytes(saltPassword)
+
+	// --- Step 2: strengthen the password (frontend L697-704) ---
+	// Frontend quirk #1 ("object coercion") and #2 ("array_buffer_to_string")
+	// are replicated byte-for-byte, but the intermediates are wipeable bytes.
+	const objectCoercionLiteral = "[object Object]"
+	combined := make([]byte, 0, len(password)+len(objectCoercionLiteral))
+	combined = append(combined, password...)
+	combined = append(combined, objectCoercionLiteral...)
+	defer util.WipeBytes(combined)
+	_ = crypto.HashText(input, "sha3-512") // computed by frontend (side effect), value unused
+
+	hmacKey := utf8DecodeBytesRaw(saltPassword)
+	defer util.WipeBytes(hmacKey)
+
+	finalSalt, err := crypto.HMACHexBytes(combined, "hmac-sha3-512", hmacKey)
+	if err != nil {
+		result.Error = err.Error()
+		result.ProcessingTime = time.Since(start).Milliseconds()
+		return result
+	}
+	defer util.WipeBytes(finalSalt)
+
+	// --- Step 3: build the Argon2id input and derive the master key (L708-717) ---
+	inputData := make([]byte, 0, len(input)+len(finalSalt)+len(password))
+	inputData = append(inputData, input...)
+	inputData = append(inputData, finalSalt...)
+	inputData = append(inputData, password...)
+	defer util.WipeBytes(inputData)
+	masterKey := Argon2(inputData, Argon2Config{
+		Salt:        saltArgon2id,
+		Iterations:  cfg.Iterations,
+		MemorySize:  cfg.MemorySize,
+		Parallelism: cfg.Parallelism,
+		HashLength:  cfg.HashLength,
+	})
+	if !masterKey.Success || len(masterKey.Data) == 0 {
+		result.Error = masterKey.Error
+		result.ProcessingTime = time.Since(start).Milliseconds()
+		return result
+	}
+	// The frontend consumes the master key as the ASCII bytes of its hex TEXT
+	// (SafetyUtility.hkdf -> toUint8Array(string) -> UTF-8 of the hex string), so
+	// the wipeable kernel carries those hex bytes in a wipeable buffer instead of
+	// an immutable string. Both the raw Argon2 output and the hex buffer are
+	// zeroed before return.
+	mainKeyHexBytes := make([]byte, hex.EncodedLen(len(masterKey.Data)))
+	hex.Encode(mainKeyHexBytes, masterKey.Data)
+	defer util.WipeBytes(mainKeyHexBytes)
+	defer util.WipeBytes(masterKey.Data)
+
+	// --- Step 4: domain-separate 4 keys via HKDF (frontend L730-748) ---
+	rawS1 := safety.HKDFExpandBytes(mainKeyHexBytes, []byte("S1"), cfg.HashLength)
+	rawS2 := safety.HKDFExpandBytes(mainKeyHexBytes, []byte("S2"), cfg.HashLength)
+	rawS3 := safety.HKDFExpandBytes(mainKeyHexBytes, []byte("S3"), cfg.HashLength)
+	rawUUIDFull := safety.HKDFExpandBytes(mainKeyHexBytes, []byte("UUID"), cfg.HashLength)
+	rawUUID := rawUUIDFull[:16]
+
+	result.Success = true
+	result.RawKeys = [][]byte{rawS1, rawS2, rawS3}
+	result.RawUUID = rawUUID
 	result.ProcessingTime = time.Since(start).Milliseconds()
 	return result
 }
@@ -156,10 +309,6 @@ func normalizedStrength(s Strength) Strength {
 		return s
 	}
 	return StrengthMedium
-}
-
-func hexEncode(b []byte) string {
-	return safety.BytesToHex(b)
 }
 
 // utf8DecodeBytes replicates the WHATWG Encoding Standard's UTF-8 decoder in
@@ -282,4 +431,11 @@ func utf8DecodeBytes(input []byte) string {
 	}
 
 	return string(b)
+}
+
+// utf8DecodeBytesRaw is the wipeable counterpart of utf8DecodeBytes: it returns
+// the same WHATWG UTF-8 decoded output as []byte so the caller can
+// util.WipeBytes it. []byte(utf8DecodeBytes(input)) == utf8DecodeBytesRaw(input).
+func utf8DecodeBytesRaw(input []byte) []byte {
+	return []byte(utf8DecodeBytes(input))
 }

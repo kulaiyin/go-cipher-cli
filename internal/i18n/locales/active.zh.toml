@@ -152,9 +152,10 @@ description = "argon2id 命令的详细描述"
 other = """使用 Argon2id 从密码派生密钥。同一组 密码 + 盐 确定性派生出相同密钥，
 无法由密钥反推密码。
 
-密码取自 -p，省略时在终端以隐藏输入交互式提示（避免出现在 shell 历史中）。
-内存以 MB 为单位（默认 64），迭代默认 3 次，并行度默认 1，派生密钥长度默认 64 字节。
-使用 --json 可输出机器可读的 JSON 结果（含处理耗时）。"""
+标准输入被管道或重定向时从 JSON 对象读取（{"salt": "<hex>", "password":
+"<secret>"}）；标准输入为终端时以关闭回显的方式交互式提示口令。管道输入缺少
+口令时回退到终端提示。内存以 MB 为单位（默认 64），迭代默认 3 次，并行度默认
+1，派生密钥长度默认 64 字节。"""
 
 [argon2id.error.derive_failed]
 description = "argon2 派生失败的错误信息"
@@ -180,73 +181,21 @@ other = "--parallelism 必须大于 0"
 description = "--key-length 不是正数的错误信息"
 other = "--key-length 必须大于 0"
 
-[argon2id.error.json_marshal]
-description = "JSON 序列化失败的错误信息"
-other = "JSON 输出编码失败"
-
-[argon2id.error.secrets_stdin_conflict_password]
-description = "--secrets-stdin 与 -p/--password 混用的错误信息"
-other = "--secrets-stdin 与 -p/--password 互斥"
-
-[argon2id.error.secrets_stdin_conflict_salt]
-description = "--secrets-stdin 与 --salt 混用的错误信息"
-other = "--secrets-stdin 与 --salt 互斥"
-
-[argon2id.error.json_tty_denied]
-description = "--json 且 stdout 是终端时的错误"
-other = "密钥不会输出到终端: --json 需将 stdout 重定向到管道或文件"
-
 [argon2id.progress.deriving]
 description = "argon2 派生进行中的转圈提示文案"
 other = "正在使用 Argon2id 派生"
 
-[argon2id.output.algorithm]
-description = "输出的算法标签"
-other = "算法:       Argon2id ({{.Memory}} MB / {{.Iterations}} 轮 / {{.Parallelism}} 路并行)"
+[argon2id.prompt.password]
+description = "终端读取口令前显示的提示"
+other = "请输入口令: "
 
-[argon2id.output.salt_base64]
-description = "输出的盐 base64 标签"
-other = "盐(base64): {{.Salt}}"
-
-[argon2id.output.salt_hex]
-description = "输出的盐 hex 标签"
-other = "盐(hex):    {{.Salt}}"
-
-[argon2id.output.key_hex]
-description = "输出的密钥 hex 标签"
-other = "密钥(hex):     {{.Key}}"
-
-[argon2id.output.key_base64]
-description = "输出的密钥 base64 标签"
-other = "密钥(base64):  {{.Key}}"
-
-[argon2id.output.key_length]
-description = "输出的密钥长度标签"
-other = "密钥长度:      {{.Bits}} 位"
-
-[argon2id.output.processing_time]
-description = "输出的处理耗时标签"
-other = "处理耗时:      {{.Ms}} ms"
-
-[argon2id.output.mask_hint]
-description = "文本模式掩码显示派生密钥的提示"
-other = "（完整密钥已掩码; 需要完整值时请使用 --json 并将 stdout 重定向到管道或文件）"
-
-[argon2id.flag.password]
-description = "--password 标志的描述"
-other = "用于派生的密码（必填，通过命令行传入，不做交互式询问）"
-
-[argon2id.error.password_required]
-description = "未提供 -p 时的错误信息"
-other = "未提供密码: 请使用 -p 传入"
+[argon2id.error.tty_read_failed]
+description = "从终端读取口令失败的错误信息"
+other = "从终端读取口令失败"
 
 [argon2id.flag.salt]
 description = "--salt 标志的描述"
 other = "hex 字符串格式的盐（默认随机 16 字节）"
-
-[argon2id.flag.secrets_stdin]
-description = "--secrets-stdin 标志的描述"
-other = "从标准输入读取口令与盐（第 1 行口令, 第 2 行盐 hex; 与 -p/--salt 互斥）"
 
 [argon2id.flag.iterations]
 description = "--iterations 标志的描述"
@@ -263,10 +212,6 @@ other = "Argon2id 并行度"
 [argon2id.flag.key_length]
 description = "--key-length 标志的描述"
 other = "派生密钥长度，单位字节"
-
-[argon2id.flag.json]
-description = "--json 标志的描述"
-other = "以 JSON 格式输出结果"
 
 # ==========================================
 # cmd/diceware.go
@@ -360,6 +305,21 @@ argon2id -> HMAC-SHA3-512 -> HKDF -> AES-256-GCM，封装为 ZIP 包
 
 密码对应 Web 工具的 keys[]：强密钥（-k）填充 keys[0..2]，password1（-p）
 填充 keys[3]，--extra-password 在末尾追加额外密码（无强度要求）。"""
+
+[data_cipher_pipe.short]
+description = "data-cipher-pipe 命令简短描述"
+other = "通过交互输入或管道 JSON 加密/解密数据（敏感信息全程可擦除）"
+
+[data_cipher_pipe.long]
+description = "data-cipher-pipe 命令详细描述"
+other = """使用与 data-cipher 相同的 AES-256-GCM 管道加密或解密数据，产出与 Web 兼容的
+ZIP 包。当标准输入为终端时，命令以交互方式提示（敏感信息以隐藏方式收集）；
+否则从标准输入读取一个 JSON 对象（包含 mode/inputType/text/file/salt/hint/keys/
+password1/extraPasswords/output）。
+
+敏感信息（3 个强密钥、password1、额外密码）永不进入命令行参数或 shell 历史，
+全程以可擦除 bytes 承载并在使用后清零。管道运行缺少敏感信息时，会降级到 TTY
+交互补全，并复用已提供的字段。"""
 
 [data_cipher.flag.mode]
 description = "--mode 标志的描述"
@@ -541,6 +501,10 @@ other = "强密钥（-k）最多允许 3 个"
 description = "强密钥未通过高强度校验的错误"
 other = "密钥{{.N}}必须为高强度（不少于 128 位十六进制，且字符种类 ≥ 15）"
 
+[data_cipher.error.keys_pipe_required]
+description = "3 个强密钥未通过 pipe 传入的错误信息"
+other = "3 个强密钥必须通过 pipe 传入（不支持交互输入）"
+
 [data_cipher.error.password1_invalid]
 description = "密码1未通过复合校验的错误"
 other = "密码1必须为高强度，或同时包含字母、数字和特殊字符且长度不小于 8 位"
@@ -568,6 +532,50 @@ other = "加密失败: {{.Err}}"
 [data_cipher.error.decrypt_failed]
 description = "解密失败的错误"
 other = "解密失败: {{.Err}}"
+
+[key_data_cipher.short]
+description = "key-data-cipher 命令的简短描述"
+other = "先派生或恢复密钥，再一步完成加密/解密"
+
+[key_data_cipher.long]
+description = "key-data-cipher 命令的详细描述"
+other = "组合 key-derive-pipe 与 data-cipher-pipe：从恢复配置文件（key-derive.txt）恢复 3 个强密钥，或通过问题-答案流程派生全新密钥，然后对数据包进行加密或解密。密钥无需手工输入。"
+
+[key_data_cipher.error.config_required]
+description = "解密必须提供恢复配置但未提供时的错误"
+other = "解密需要恢复配置文件（key-derive.txt）来恢复密钥"
+
+[key_data_cipher.error.config_not_found]
+description = "提供的恢复配置文件不存在时的错误"
+other = "恢复配置文件不存在: {{.Path}}"
+
+[key_data_cipher.error.input_not_found]
+description = "解密输入文件不存在时的错误"
+other = "输入文件不存在: {{.Path}}"
+
+[key_data_cipher.error.keys_not_allowed]
+description = "当管道 JSON 携带外部密钥/password1 时的错误，本命令在进程内派生密钥、经问答流程设置 password1"
+other = "密钥/password1 不得通过管道传入：密钥在进程内派生，password1 经问答流程设置"
+
+[key_data_cipher.output.config_written]
+description = "新生成的恢复配置已保存时的提示"
+other = "新的恢复配置已写入 {{.Path}}"
+
+[key_data_cipher.output.config_volatile]
+description = "提醒用户保存新生成的恢复配置，丢失后将无法解密"
+other = "警告：此配置是恢复密钥的唯一途径。它现在位于易失内存（RAM）文件系统中，关机即被擦除——请立即将其转移到永久存储位置，否则数据将永远无法解密。"
+
+[key_data_cipher.stage.derive_keys]
+description = "派生强密钥（key1/key2/key3）的问答流程之前显示的标题"
+other = "第 1/2 步 —— 回答问题以派生你的强密钥（key1/key2/key3）。"
+
+[key_data_cipher.stage.password1]
+description = "派生 password1（加密口令槽位）的问答流程之前显示的标题"
+other = "第 2/2 步 —— 再次回答问题以设置 password1，即附加的加密口令。此口令独立于上面派生密钥时的回答。"
+
+[key_data_cipher.prompt.config_help_encrypt]
+description = "加密模式下可选恢复配置输入的帮助文本"
+other = "留空则派生全新密钥；填入已有的恢复配置路径则恢复你的密钥。"
 
 [data_cipher.error.write_output]
 description = "写入输出失败的错误"
@@ -815,6 +823,21 @@ HKDF(SHA3-512) 域分离（S1/S2/S3/UUID）。
 
 命令行参数优先；任何缺失的必填项会在交互式下提示输入（仅当 stdin 是终端时）。
 与网页端字节级兼容。"""
+
+[key_derive_pipe.short]
+description = "key-derive-pipe 命令简短描述"
+other = "从交互输入或管道 JSON 对象派生密钥集（敏感信息全程可擦除）"
+
+[key_derive_pipe.long]
+description = "key-derive-pipe 命令详细描述"
+other = """从输入文本与密码派生一组 3 个 512 位密钥外加 UUID。
+当标准输入为终端时，命令以交互方式提示输入（密码以隐藏方式收集）；否则从标准输入
+读取一个 JSON 对象（包含 mode/input/password/salt/hint/strength/config）。密码永不
+进入命令行参数或 shell 历史，且所有敏感信息（密码、派生密钥、中间值）均以可擦除
+bytes 承载并在使用后清零。
+
+--mode generate：生成全新密钥集并输出恢复配置（写入文件或标准输出），供后续恢复。
+--mode restore：依据现有恢复配置中的 salt 重新派生，并与存储的 UUID 指纹比对校验。"""
 
 [key_derive.flag.mode]
 description = "--mode 标志说明"

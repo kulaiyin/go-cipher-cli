@@ -50,6 +50,15 @@ func runCLI(t *testing.T, args ...string) (stdout string, exitCode int) {
 // runCLI.
 func runCLIWithInput(t *testing.T, stdin string, env []string, args ...string) (stdout string, exitCode int) {
 	t.Helper()
+	buf, code := runCLIWithInputBuf(t, stdin, env, args...)
+	return buf.String(), code
+}
+
+// runCLIWithInputBuf runs the CLI with the given stdin payload and extra env
+// entries, returning stdout as a *bytes.Buffer so callers that must handle
+// sensitive output can wipe the buffer after use.
+func runCLIWithInputBuf(t *testing.T, stdin string, env []string, args ...string) (out *bytes.Buffer, exitCode int) {
+	t.Helper()
 	if testBinary == "" {
 		t.Fatal("testBinary not built")
 	}
@@ -58,15 +67,13 @@ func runCLIWithInput(t *testing.T, stdin string, env []string, args ...string) (
 	if stdin != "" {
 		cmd.Stdin = strings.NewReader(stdin)
 	}
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	stdout = out.String()
-	if err != nil {
+	out = &bytes.Buffer{}
+	cmd.Stdout = out
+	cmd.Stderr = out
+	if err := cmd.Run(); err != nil {
 		exitCode = 1
 	}
-	return stdout, exitCode
+	return out, exitCode
 }
 
 // Commented out: encrypt/decrypt commands not yet implemented.

@@ -26,6 +26,19 @@ func TestHKDFExpand_GoldenVectors(t *testing.T) {
 	}
 }
 
+func TestHKDFExpandBytes_ParityWithHKDFExpand(t *testing.T) {
+	// Locks the byte equivalence of HKDFExpandBytes against the legacy string
+	// HKDFExpand across the golden vectors.
+	v := testvectors.MustLoad()
+	for _, c := range v.HKDFExpand {
+		want := HKDFExpand(c.PRK, []byte(c.Info), c.Length)
+		got := HKDFExpandBytes([]byte(c.PRK), []byte(c.Info), c.Length)
+		if !bytes.Equal(got, want) {
+			t.Errorf("HKDFExpandBytes(prk=%q, info=%q, L=%d):\n got=%x\nwant=%x", c.PRK, c.Info, c.Length, got, want)
+		}
+	}
+}
+
 func TestHMACSHA3512_GoldenVectors(t *testing.T) {
 	v := testvectors.MustLoad()
 	for _, c := range v.HMACSHA3512 {

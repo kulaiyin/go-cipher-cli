@@ -54,6 +54,32 @@ func TestHMACSHA3512_KnownVector(t *testing.T) {
 	}
 }
 
+func TestHMACHexBytes_ParityWithHMAC(t *testing.T) {
+	// Locks byte equivalence: HMACHexBytes must yield the same hex digest as the
+	// legacy string HMAC for the same raw data/key bytes.
+	cases := []struct {
+		data string
+		alg  string
+		key  string
+	}{
+		{"hello world", "hmac-sha3-512", "k"},
+		{"data", "hmac-sha3-512", ""},
+		{"data", "hmac-sha256", "key"},
+		{"\x00\xff\x10", "sha3-512", "\x01\x02"},
+	}
+	for _, c := range cases {
+		want := HMAC(c.data, c.alg, c.key)
+		got, err := HMACHexBytes([]byte(c.data), c.alg, []byte(c.key))
+		if err != nil {
+			t.Errorf("HMACHexBytes(%q,%q,%q) error: %v", c.data, c.alg, c.key, err)
+			continue
+		}
+		if string(got) != want.Data {
+			t.Errorf("HMACHexBytes(%q,%q,%q) = %q, want %q", c.data, c.alg, c.key, got, want.Data)
+		}
+	}
+}
+
 func TestBase64_RoundTrip(t *testing.T) {
 	in := []byte("hello world こんにちは")
 	enc := Base64Encode(in)

@@ -88,12 +88,12 @@ func TestArgon2_ReturnsHexAndBase64Salt(t *testing.T) {
 		Parallelism: 2,
 		HashLength:  32,
 	})
-	if !res.Success || res.Data == "" {
+	if !res.Success || len(res.Data) == 0 {
 		t.Fatalf("argon2 failed: %+v", res)
 	}
-	// data must be hex
-	if _, err := hex.DecodeString(res.Data); err != nil {
-		t.Errorf("data not hex: %v", err)
+	// data must be valid hex when encoded
+	if _, err := hex.DecodeString(hex.EncodeToString(res.Data)); err != nil {
+		t.Errorf("data not valid: %v", err)
 	}
 	if res.Iterations != 3 || res.HashLength != 32 {
 		t.Errorf("got iters=%d hashLen=%d", res.Iterations, res.HashLength)
@@ -126,8 +126,8 @@ func TestArgon2_StrongPasswordDerivation_MatchesGolden(t *testing.T) {
 		if !res.Success {
 			t.Fatalf("argon2 failed for pw %d: %+v", i, res)
 		}
-		if res.Data != wantHex {
-			t.Errorf("strong-pw[%d] = %s, want %s", i, res.Data, wantHex)
+		if got := hex.EncodeToString(res.Data); got != wantHex {
+			t.Errorf("strong-pw[%d] = %s, want %s", i, got, wantHex)
 		}
 	}
 }

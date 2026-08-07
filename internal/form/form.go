@@ -200,6 +200,18 @@ func (m *Model) Results() []Result {
 	return m.results
 }
 
+// wipeSecrets zeroes the model's in-memory secret buffers (the password input,
+// the confirm buffer, and the cached derived password). The results' Answer
+// slices are intentionally left intact for the caller to wipe.
+func (m *Model) wipeSecrets() {
+	clear(m.input)
+	clear(m.confirm)
+	clear(m.finalPassword)
+	m.input = nil
+	m.confirm = nil
+	m.finalPassword = nil
+}
+
 // Stage returns the current stage.
 func (m *Model) Stage() Stage {
 	return m.stage
@@ -208,12 +220,18 @@ func (m *Model) Stage() Stage {
 // Run is a convenience entry point: it runs the form and returns the
 // results. Prefer it when integrating into other commands; use tui.Run
 // directly only when a custom runtime (e.g. injected test IO) is needed.
+// The form's internal secret buffers (password input, confirm buffer, cached
+// derived password) are zeroed before returning; the returned answers are the
+// caller's to wipe.
 func Run(steps [][]Step, opts ...Option) ([]Result, error) {
 	m, err := tui.Run(New(steps, opts...))
 	if err != nil {
 		return nil, err
 	}
-	return m.(*Model).Results(), nil
+	model := m.(*Model)
+	results := model.Results()
+	model.wipeSecrets()
+	return results, nil
 }
 
 // --- key handling ---

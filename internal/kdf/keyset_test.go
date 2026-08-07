@@ -1,11 +1,14 @@
 package kdf
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"go-cipher-cli/internal/crypto"
 )
 
 // keyDeriveVector mirrors keyderive-vectors.json.
@@ -219,4 +222,165 @@ func truncate(s string) string {
 		return s
 	}
 	return s[:8] + "…" + s[len(s)-8:]
+}
+
+// TestDeriveKeySetBytes_ParityWithDeriveKeySet is the refactor guard: the raw
+// bytes returned by DeriveKeySetBytes must hex-encode to exactly the strings
+// returned by DeriveKeySet, so the split into core + wrappers changed no
+// derivation behaviour. Covers success and the shared metadata (salt/strength).
+func TestDeriveKeySetBytes_ParityWithDeriveKeySet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow Argon2id parity test in -short mode")
+	}
+	v := loadKeyDeriveVectors(t)[0]
+	strRes := DeriveKeySet(v.Input, []byte(v.Password), v.SaltSeed, StrengthBasic)
+	bytesRes := DeriveKeySetBytes(v.Input, []byte(v.Password), v.SaltSeed, StrengthBasic)
+
+	if bytesRes.Success != strRes.Success {
+		t.Fatalf("success mismatch: bytes=%v str=%v", bytesRes.Success, strRes.Success)
+	}
+	if !bytesRes.Success {
+		t.Fatalf("derive failed: %s", bytesRes.Error)
+	}
+	if len(bytesRes.RawKeys) != 3 {
+		t.Fatalf("expected 3 raw keys, got %d", len(bytesRes.RawKeys))
+	}
+	for i, raw := range bytesRes.RawKeys {
+		if hex.EncodeToString(raw) != strRes.Keys[i] {
+			t.Errorf("key %d mismatch\n  bytes-hex: %s\n  str:       %s",
+				i, hex.EncodeToString(raw), strRes.Keys[i])
+		}
+		// Each raw key is 64 bytes (512 bits) — hex-encodes to the 128-char string.
+		if len(raw) != 64 {
+			t.Errorf("raw key %d length = %d, want 64", i, len(raw))
+		}
+	}
+	if hex.EncodeToString(bytesRes.RawUUID) != strRes.UUID {
+		t.Errorf("UUID mismatch\n  bytes-hex: %s\n  str:       %s",
+			hex.EncodeToString(bytesRes.RawUUID), strRes.UUID)
+	}
+	if len(bytesRes.RawUUID) != 16 {
+		t.Errorf("raw UUID length = %d, want 16", len(bytesRes.RawUUID))
+	}
+	if bytesRes.SaltSeed != strRes.SaltSeed {
+		t.Errorf("SaltSeed mismatch: %q vs %q", bytesRes.SaltSeed, strRes.SaltSeed)
+	}
+	if bytesRes.Strength != strRes.Strength {
+		t.Errorf("Strength mismatch: %q vs %q", bytesRes.Strength, strRes.Strength)
+	}
+}
+
+// TestDeriveKeySetBytes_GoldenVector runs the raw-bytes API against the golden
+// vector directly, asserting the hex-encoded raw keys/UUID match the frontend
+// reference. This proves DeriveKeySetBytes is itself byte-compatible with the
+// frontend (not just with DeriveKeySet).
+func TestDeriveKeySetBytes_GoldenVector(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow Argon2id golden-vector test in -short mode")
+	}
+	for _, v := range loadKeyDeriveVectors(t) {
+		t.Run(v.Name, func(t *testing.T) {
+			r := DeriveKeySetBytes(v.Input, []byte(v.Password), v.SaltSeed, Strength(v.Strength))
+			if !r.Success {
+				t.Fatalf("derive failed: %s", r.Error)
+			}
+			want := []string{v.S1, v.S2, v.S3}
+			for i, raw := range r.RawKeys {
+				if hex.EncodeToString(raw) != want[i] {
+					t.Errorf("key %d mismatch\n  want: %s\n  got:  %s", i, want[i], hex.EncodeToString(raw))
+				}
+			}
+			if hex.EncodeToString(r.RawUUID) != v.UUID {
+				t.Errorf("UUID mismatch\n  want: %s\n  got:  %s", v.UUID, hex.EncodeToString(r.RawUUID))
+			}
+		})
+	}
+}
+
+// TestHMACBytes_ParityWithHMAC locks the byte equivalence of the new
+// crypto.HMACBytes against the legacy string crypto.HMAC: both must produce the
+// identical hex digest for the same raw data/key bytes.
+func TestHMACBytes_ParityWithHMAC(t *testing.T) {
+	cases := []struct {
+		name      string
+		data      string
+		algorithm string
+		key       string
+	}{
+		{"sha3-512", "hello world", "hmac-sha3-512", "k"},
+		{"sha3-512 empty key", "data", "hmac-sha3-512", ""},
+		{"sha256", "data", "hmac-sha256", "key"},
+		{"bare name", "data", "sha3-512", "key"},
+		{"binary data", "\x00\xff\x10", "hmac-sha3-512", "\x01\x02"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			str := crypto.HMAC(c.data, c.algorithm, c.key)
+			raw := crypto.HMACBytes([]byte(c.data), c.algorithm, []byte(c.key))
+			if str.Error != raw.Error {
+				t.Errorf("error mismatch: str=%q raw=%q", str.Error, raw.Error)
+			}
+			if str.Data != raw.Data {
+				t.Errorf("digest mismatch\n  str:  %s\n  raw:  %s", str.Data, raw.Data)
+			}
+		})
+	}
+}
+
+// TestUTF8DecodeBytesRaw_ParityWithUTF8DecodeBytes locks the byte equivalence
+// of utf8DecodeBytesRaw against the legacy string utf8DecodeBytes across the
+// golden vectors' saltPassword inputs (which contain illegal UTF-8 sequences).
+func TestUTF8DecodeBytesRaw_ParityWithUTF8DecodeBytes(t *testing.T) {
+	vectors := loadKeyDeriveVectors(t)
+	for _, v := range vectors {
+		rawBytes, err := hex.DecodeString(v.SaltPasswordHex)
+		if err != nil {
+			t.Fatalf("%s: decode saltPasswordHex: %v", v.Name, err)
+		}
+		want := []byte(utf8DecodeBytes(rawBytes))
+		got := utf8DecodeBytesRaw(rawBytes)
+		if !bytes.Equal(got, want) {
+			t.Errorf("%s: parity mismatch\n  want: %s\n  got:  %s",
+				v.Name, hex.EncodeToString(want), hex.EncodeToString(got))
+		}
+	}
+}
+
+// TestDeriveKeySetBytes_CoreWipeableParity is the hard byte-parity guarantee
+// for the wipeable kernel: deriveKeySetCoreWipeable must produce exactly the
+// same keys/UUID as the legacy deriveKeySetCore and the golden vector, so the
+// switch of DeriveKeySetBytes to the wipeable kernel changed no bytes.
+func TestDeriveKeySetBytes_CoreWipeableParity(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow Argon2id parity test in -short mode")
+	}
+	for _, v := range loadKeyDeriveVectors(t) {
+		t.Run(v.Name, func(t *testing.T) {
+			oldRes := deriveKeySetCore(v.Input, []byte(v.Password), v.SaltSeed, Strength(v.Strength))
+			newRes := deriveKeySetCoreWipeable(v.Input, []byte(v.Password), v.SaltSeed, Strength(v.Strength))
+			if !oldRes.Success || !newRes.Success {
+				t.Fatalf("derive failed: old=%q new=%q", oldRes.Error, newRes.Error)
+			}
+			want := []string{v.S1, v.S2, v.S3}
+			for i, raw := range newRes.RawKeys {
+				if hex.EncodeToString(raw) != want[i] {
+					t.Errorf("key %d mismatch vs golden\n  want: %s\n  got:  %s", i, want[i], hex.EncodeToString(raw))
+				}
+				if hex.EncodeToString(raw) != hex.EncodeToString(oldRes.RawKeys[i]) {
+					t.Errorf("key %d mismatch vs legacy kernel\n  legacy: %s\n  wipe:   %s",
+						i, hex.EncodeToString(oldRes.RawKeys[i]), hex.EncodeToString(raw))
+				}
+			}
+			if hex.EncodeToString(newRes.RawUUID) != v.UUID {
+				t.Errorf("UUID mismatch vs golden\n  want: %s\n  got:  %s", v.UUID, hex.EncodeToString(newRes.RawUUID))
+			}
+			if hex.EncodeToString(newRes.RawUUID) != hex.EncodeToString(oldRes.RawUUID) {
+				t.Errorf("UUID mismatch vs legacy kernel")
+			}
+			if newRes.SaltSeed != oldRes.SaltSeed || newRes.Strength != oldRes.Strength {
+				t.Errorf("metadata mismatch: salt=%q/%q strength=%q/%q",
+					newRes.SaltSeed, oldRes.SaltSeed, newRes.Strength, oldRes.Strength)
+			}
+		})
+	}
 }

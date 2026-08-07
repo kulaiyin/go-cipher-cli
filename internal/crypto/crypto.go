@@ -54,6 +54,40 @@ func HMAC(data, algorithm, key string) Result {
 	return Result{Success: true, Data: hex.EncodeToString(m.Sum(nil))}
 }
 
+// HMACBytes is the []byte-input counterpart of HMAC: it computes the same
+// HMAC (same algorithm names, same hex digest) over raw data/key bytes, so
+// callers that hold secrets as wipeable []byte need not materialize a string
+// copy. HMACBytes(data, alg, key).Data == HMAC(string(data), alg, string(key)).Data.
+func HMACBytes(data []byte, algorithm string, key []byte) Result {
+	name := strings.TrimPrefix(algorithm, "hmac-")
+	fn, ok := hashFunc(name)
+	if !ok {
+		return Result{Error: i18n.TWithData("crypto.error.unsupported_hmac", map[string]interface{}{"Algorithm": algorithm})}
+	}
+	m := hmac.New(fn, key)
+	m.Write(data)
+	return Result{Success: true, Data: hex.EncodeToString(m.Sum(nil))}
+}
+
+// HMACHexBytes returns the HMAC digest as the raw bytes of its lowercase hex
+// encoding, so a caller that must zero every intermediate can wipe the returned
+// slice (and the internal digest) instead of holding an immutable string.
+// string(HMACHexBytes(data, alg, key)) == HMACBytes(data, alg, key).Data.
+func HMACHexBytes(data []byte, algorithm string, key []byte) ([]byte, error) {
+	name := strings.TrimPrefix(algorithm, "hmac-")
+	fn, ok := hashFunc(name)
+	if !ok {
+		return nil, fmt.Errorf("%s", i18n.TWithData("crypto.error.unsupported_hmac", map[string]interface{}{"Algorithm": algorithm}))
+	}
+	m := hmac.New(fn, key)
+	m.Write(data)
+	raw := m.Sum(nil)
+	out := make([]byte, hex.EncodedLen(len(raw)))
+	hex.Encode(out, raw)
+	clear(raw)
+	return out, nil
+}
+
 // Base64Encode returns the standard base64 encoding of b.
 func Base64Encode(b []byte) string { return base64.StdEncoding.EncodeToString(b) }
 

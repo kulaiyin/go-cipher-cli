@@ -116,20 +116,23 @@ go-cipher-cli enhance -p "password" -s google             # different salt suffi
 Derive a key directly with Argon2id (default 64 MB / 3 rounds / 1 parallelism, 64-byte key).
 
 ```bash
-# Derive with a random salt (human-readable output with a progress spinner)
-go-cipher-cli argon2id -p "password"
+# Interactive: prompt for the password with echo disabled (never in shell history)
+go-cipher-cli argon2id
 
-# Deterministic derivation with a fixed hex salt
-go-cipher-cli argon2id -p "password" --salt <64-hex-chars>
+# Deterministic derivation with a fixed hex salt (prompted interactively)
+go-cipher-cli argon2id --salt <64-hex-chars>
+
+# Non-interactive: pipe password + salt via --secrets-stdin (line 2: salt hex)
+printf 'password\n<64-hex-chars>\n' | go-cipher-cli argon2id --secrets-stdin
 
 # Tune the parameters (memory is in MB)
-go-cipher-cli argon2id -p "password" --iterations 4 --memory 128 --parallelism 2 --key-length 32
+printf 'password\n' | go-cipher-cli argon2id --secrets-stdin --iterations 4 --memory 128 --parallelism 2 --key-length 32
 
 # Machine-readable output (includes processing_time_ms)
-go-cipher-cli argon2id -p "password" --json
+printf 'password\n' | go-cipher-cli argon2id --secrets-stdin --json
 ```
 
-> While running, `argon2id` shows a spinner with the elapsed time on stderr (suppressed when stdout/stderr are piped or with `--json`); the final output always reports the processing time.
+> The password is never accepted as a command-line argument (to avoid leaking via `ps`/shell history). It is either prompted on a terminal (echo disabled) or read from stdin via `--secrets-stdin`. A piped stdin without `--secrets-stdin` is refused. While running, `argon2id` shows a spinner with the elapsed time on stderr (suppressed when stdout/stderr are piped or with `--json`); the final output always reports the processing time.
 
 ### Diceware passphrase — `diceware`
 

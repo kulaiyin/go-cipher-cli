@@ -153,11 +153,11 @@ other = """Derive a key from a password using Argon2id. The same password + salt
 deterministically derives the same key; the key cannot be reversed to recover
 the password.
 
-The password is taken from -p or, when omitted, prompted with a hidden input on
-a terminal (so it never appears in shell history). Memory is expressed in MB
-(default 64), iterations default to 3, parallelism to 1, and the derived key
-length to 64 bytes. Use --json to get a machine-readable JSON result including
-the processing time."""
+The password is read from a piped JSON object {"salt": "<hex>", "password":
+"<secret>"} when stdin is piped or redirected, or prompted on a terminal with
+echo disabled when stdin is a TTY; a piped run without a password falls back to
+the terminal prompt. Memory is expressed in MB (default 64), iterations default
+to 3, parallelism to 1, and the derived key length to 64 bytes."""
 
 [argon2id.error.derive_failed]
 description = "Error when argon2 derivation fails"
@@ -183,73 +183,21 @@ other = "--parallelism must be > 0"
 description = "Error when --key-length is not positive"
 other = "--key-length must be > 0"
 
-[argon2id.error.json_marshal]
-description = "Error when JSON marshalling fails"
-other = "failed to encode JSON output"
-
-[argon2id.error.secrets_stdin_conflict_password]
-description = "Error when --secrets-stdin is mixed with -p/--password"
-other = "--secrets-stdin is mutually exclusive with -p/--password"
-
-[argon2id.error.secrets_stdin_conflict_salt]
-description = "Error when --secrets-stdin is mixed with --salt"
-other = "--secrets-stdin is mutually exclusive with --salt"
-
-[argon2id.error.json_tty_denied]
-description = "Error when --json is used with stdout on a terminal"
-other = "derived keys are never printed to a terminal: redirect --json stdout to a pipe or file"
-
 [argon2id.progress.deriving]
 description = "Spinner label while argon2 derivation runs"
 other = "deriving with Argon2id"
 
-[argon2id.output.algorithm]
-description = "Algorithm label in output"
-other = "Algorithm: Argon2id ({{.Memory}} MB / {{.Iterations}} rounds / {{.Parallelism}} parallelism)"
+[argon2id.prompt.password]
+description = "Prompt shown before reading the password from a terminal"
+other = "Enter password: "
 
-[argon2id.output.salt_base64]
-description = "Salt base64 label in output"
-other = "Salt (base64): {{.Salt}}"
-
-[argon2id.output.salt_hex]
-description = "Salt hex label in output"
-other = "Salt (hex):    {{.Salt}}"
-
-[argon2id.output.key_hex]
-description = "Key hex label in output"
-other = "Key (hex):    {{.Key}}"
-
-[argon2id.output.key_base64]
-description = "Key base64 label in output"
-other = "Key (base64): {{.Key}}"
-
-[argon2id.output.key_length]
-description = "Key length label in output"
-other = "Key length:   {{.Bits}} bits"
-
-[argon2id.output.processing_time]
-description = "Processing time label in output"
-other = "Processing time: {{.Ms}} ms"
-
-[argon2id.output.mask_hint]
-description = "Hint shown when the text-mode derived key is masked"
-other = "(key masked; use --json with stdout redirected to a pipe or file for the full value)"
-
-[argon2id.flag.password]
-description = "Description for --password flag"
-other = "password to derive from (required; pass it via the command line, no interactive prompt)"
-
-[argon2id.error.password_required]
-description = "Error when -p is not provided"
-other = "no password provided: pass one via -p"
+[argon2id.error.tty_read_failed]
+description = "Error when reading the password from the terminal fails"
+other = "failed to read password from terminal"
 
 [argon2id.flag.salt]
 description = "Description for --salt flag"
 other = "salt as a hex string (default: random 16 bytes)"
-
-[argon2id.flag.secrets_stdin]
-description = "Description for --secrets-stdin flag"
-other = "read password and salt from stdin (line 1: password, line 2: salt hex); exclusive with -p/--salt"
 
 [argon2id.flag.iterations]
 description = "Description for --iterations flag"
@@ -266,10 +214,6 @@ other = "Argon2id parallelism"
 [argon2id.flag.key_length]
 description = "Description for --key-length flag"
 other = "derived key length in bytes"
-
-[argon2id.flag.json]
-description = "Description for --json flag"
-other = "output the result as JSON"
 
 # ==========================================
 # cmd/diceware.go
@@ -363,6 +307,23 @@ tool: argon2id -> HMAC-SHA3-512 -> HKDF -> AES-256-GCM, wrapped in a ZIP bundle
 Passwords map to the web tool's keys[]: strong keys (-k) fill keys[0..2], the
 password1 (-p) fills keys[3], and --extra-password appends an extra password at
 the end (no strength rule)."""
+
+[data_cipher_pipe.short]
+description = "Short description for data-cipher-pipe command"
+other = "Encrypt/decrypt data via interactive input or piped JSON (wipeable secrets)"
+
+[data_cipher_pipe.long]
+description = "Long description for data-cipher-pipe command"
+other = """Encrypt or decrypt data using the same AES-256-GCM pipeline as data-cipher,
+producing web-compatible ZIP bundles. When stdin is a terminal the command
+prompts interactively (secrets collected with echo disabled); otherwise it reads
+a JSON object on stdin carrying mode/inputType/text/file/salt/hint/keys/
+password1/extraPasswords/output.
+
+Secrets (the 3 strong keys, password1, extra password) never enter argv or
+shell history; they are carried as wipeable bytes and zeroed after use. A piped
+run missing a secret falls back to the interactive TTY flow, reusing the
+already-provided fields."""
 
 [data_cipher.flag.mode]
 description = "Description for --mode flag"
@@ -544,6 +505,10 @@ other = "at most 3 strong keys (-k) are allowed"
 description = "Error when a strong key fails the high-strength check"
 other = "key {{.N}} must be high strength (at least 128 hex chars, ≥ 15 distinct chars)"
 
+[data_cipher.error.keys_pipe_required]
+description = "Error when the 3 strong keys are missing from the piped JSON (keys can only be passed via pipe)"
+other = "3 strong keys must be provided via the pipe (keys cannot be entered interactively)"
+
 [data_cipher.error.password1_invalid]
 description = "Error when password1 fails the composite check"
 other = "password1 must be high strength, or contain a letter, a digit and a special char with length ≥ 8"
@@ -571,6 +536,50 @@ other = "encrypt: {{.Err}}"
 [data_cipher.error.decrypt_failed]
 description = "Error when decryption fails"
 other = "decrypt: {{.Err}}"
+
+[key_data_cipher.short]
+description = "Short description of the key-data-cipher command"
+other = "Derive or restore keys, then encrypt/decrypt in one step"
+
+[key_data_cipher.long]
+description = "Long description of the key-data-cipher command"
+other = "Combines key derivation (key-derive-pipe) with data encryption (data-cipher-pipe): restores the 3 strong keys from a recovery config (key-derive.txt) or derives a fresh key set via the question-answer flow, then encrypts or decrypts a bundle. The keys are never entered by hand."
+
+[key_data_cipher.error.config_required]
+description = "Error when decrypt needs a recovery config but none was provided"
+other = "decrypt requires a recovery config (key-derive.txt) to restore the keys"
+
+[key_data_cipher.error.config_not_found]
+description = "Error when the provided recovery config file does not exist"
+other = "recovery config not found: {{.Path}}"
+
+[key_data_cipher.error.input_not_found]
+description = "Error when the decrypt input file does not exist"
+other = "input file not found: {{.Path}}"
+
+[key_data_cipher.error.keys_not_allowed]
+description = "Error when the piped JSON carries external keys/password1, which this command derives/derives in-process"
+other = "keys/password1 must not be passed via the pipe: keys are derived in-process, and password1 is set via the question-answer flow"
+
+[key_data_cipher.output.config_written]
+description = "Message when a freshly generated recovery config is saved"
+other = "new recovery config written to {{.Path}}"
+
+[key_data_cipher.output.config_volatile]
+description = "Reminder to save the freshly generated recovery config, since losing it makes the data undecryptable"
+other = "WARNING: this config is your only way to restore the keys. It now lives in the volatile RAM filesystem and will be erased on shutdown — move it to a permanent location now, or the data can never be decrypted."
+
+[key_data_cipher.stage.derive_keys]
+description = "Heading shown before the question-answer flow that derives the strong keys"
+other = "Step 1/2 — answer the questions to derive your strong keys (key1/key2/key3)."
+
+[key_data_cipher.stage.password1]
+description = "Heading shown before the question-answer flow that derives password1, the encryption password slot"
+other = "Step 2/2 — answer the questions again to set password1, the additional encryption password. This is independent from the key-derivation answers above."
+
+[key_data_cipher.prompt.config_help_encrypt]
+description = "Help text for the optional recovery config prompt in encrypt mode"
+other = "Leave empty to derive a fresh key set, or enter an existing recovery config path to restore your keys."
 
 [data_cipher.error.write_output]
 description = "Error writing output"
@@ -820,6 +829,24 @@ verify the result against the stored UUIDs.
 
 Flags take priority; any missing required value is prompted interactively
 (only when stdin is a terminal). Byte-level compatible with the web tool."""
+
+[key_derive_pipe.short]
+description = "Short description for key-derive-pipe command"
+other = "Derive a key set from interactive input or a piped JSON object (wipeable secrets)"
+
+[key_derive_pipe.long]
+description = "Long description for key-derive-pipe command"
+other = """Derive a key set of three 512-bit keys plus a UUID from input and password.
+When stdin is a terminal the command prompts interactively (the password is
+collected with echo disabled); otherwise it reads a JSON object on stdin
+carrying mode/input/password/salt/hint/strength/config. The password never
+enters argv or shell history, and every secret (password, derived keys,
+intermediates) is carried as wipeable bytes and zeroed after use.
+
+--mode generate: produce a fresh key set and emit a recovery config (to a file
+or stdout) so the same set can be re-derived later.
+--mode restore:  re-derive using the salt from an existing recovery config and
+verify the result against the stored UUID fingerprints."""
 
 [key_derive.flag.mode]
 description = "Description for --mode flag"
