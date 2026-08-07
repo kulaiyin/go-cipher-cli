@@ -234,8 +234,11 @@ func deriveKeySetCoreWipeable(input string, password []byte, saltSeed string, st
 
 	// --- Step 1: derive the two salts from salt_seed (frontend L685-694) ---
 	saltSeedBytes := []byte(saltSeed)
+	defer util.WipeBytes(saltSeedBytes)
 	saltArgon2id := HKDF(saltSeedBytes, []byte{}, []byte("argon2id"), cfg.HashLength)
+	defer util.WipeBytes(saltArgon2id)
 	saltPassword := HKDF(saltSeedBytes, []byte{}, []byte("password-salt"), cfg.HashLength)
+	defer util.WipeBytes(saltPassword)
 
 	// --- Step 2: strengthen the password (frontend L697-704) ---
 	// Frontend quirk #1 ("object coercion") and #2 ("array_buffer_to_string")
@@ -250,13 +253,12 @@ func deriveKeySetCoreWipeable(input string, password []byte, saltSeed string, st
 	hmacKey := utf8DecodeBytesRaw(saltPassword)
 	defer util.WipeBytes(hmacKey)
 
-	hmacRes := crypto.HMACBytes(combined, "hmac-sha3-512", hmacKey)
-	if !hmacRes.Success {
-		result.Error = hmacRes.Error
+	finalSalt, err := crypto.HMACHexBytes(combined, "hmac-sha3-512", hmacKey)
+	if err != nil {
+		result.Error = err.Error()
 		result.ProcessingTime = time.Since(start).Milliseconds()
 		return result
 	}
-	finalSalt := []byte(hmacRes.Data)
 	defer util.WipeBytes(finalSalt)
 
 	// --- Step 3: build the Argon2id input and derive the master key (L708-717) ---
