@@ -6,9 +6,6 @@
 package kdf
 
 import (
-	"encoding/base64"
-	"encoding/hex"
-
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/safety"
 )
@@ -26,8 +23,8 @@ type Argon2Config struct {
 // KDFResult holds the derivation outcome: Success/Data/Error plus echoed params.
 type KDFResult struct {
 	Success        bool
-	Data           string // hex string of the derived key
-	Salt           string // base64 of the salt
+	Data           []byte // derived key bytes
+	Salt           []byte // salt bytes
 	Iterations     int
 	HashLength     int
 	ProcessingTime int64 // milliseconds
@@ -57,8 +54,8 @@ func Argon2(password []byte, cfg Argon2Config) KDFResult {
 	}
 	return KDFResult{
 		Success:        true,
-		Data:           hex.EncodeToString(out),
-		Salt:           base64.StdEncoding.EncodeToString(cfg.Salt),
+		Data:           out,
+		Salt:           cfg.Salt,
 		Iterations:     time,
 		HashLength:     keyLen,
 		ProcessingTime: elapsedMs(start),

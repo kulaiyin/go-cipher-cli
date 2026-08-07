@@ -5,6 +5,7 @@ package password
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"unicode"
@@ -188,7 +189,7 @@ func DeriveNewSalt(originalSalt string) (string, error) {
 	if !res.Success {
 		return "", errors.New(res.Error)
 	}
-	return res.Data, nil
+	return hex.EncodeToString(res.Data), nil
 }
 
 // ComputeFinalPassword produces the web's high-strength password from the

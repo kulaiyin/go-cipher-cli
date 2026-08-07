@@ -193,11 +193,13 @@ func processPasswords(passwords [][]byte, s1 []byte) ([][]byte, error) {
 			if !res.Success {
 				return nil, fmt.Errorf("aesgcm: strengthen: %s", res.Error)
 			}
-			// Decode the argon2 hex digest as if it were base64, then hex-encode the result.
-			quirked, err := base64.StdEncoding.DecodeString(res.Data)
+			// The argon2 result carries the raw key bytes. Re-encode to the hex
+			// digest text, then decode it as if it were base64 (frontend quirk).
+			hexDigest := hex.EncodeToString(res.Data)
+			quirked, err := base64.StdEncoding.DecodeString(hexDigest)
 			if err != nil {
 				// Fall back to the raw bytes of the hex string if base64 decoding fails.
-				quirked = []byte(res.Data)
+				quirked = []byte(hexDigest)
 			}
 			out = append(out, []byte(hex.EncodeToString(quirked)))
 		} else {

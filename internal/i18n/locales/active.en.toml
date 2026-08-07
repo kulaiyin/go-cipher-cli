@@ -154,12 +154,10 @@ deterministically derives the same key; the key cannot be reversed to recover
 the password.
 
 The password is read from stdin (line 1: password, line 2: salt hex) when
---secrets-stdin is given, or prompted with echo disabled when stdin is a
-terminal. stdin is never treated as a password when it is piped or redirected
-without --secrets-stdin, so a stray pipe cannot silently derive from an empty
-password. Memory is expressed in MB (default 64), iterations default to 3,
-parallelism to 1, and the derived key length to 64 bytes. Use --json to get a
-machine-readable JSON result including the processing time."""
+--pipe is given, or prompted on a terminal with echo disabled otherwise;
+piped stdin without --pipe is refused so a stray pipe cannot silently derive
+from an empty password. Memory is expressed in MB (default 64), iterations
+default to 3, parallelism to 1, and the derived key length to 64 bytes."""
 
 [argon2id.error.derive_failed]
 description = "Error when argon2 derivation fails"
@@ -184,18 +182,6 @@ other = "--parallelism must be > 0"
 [argon2id.error.invalid_key_length]
 description = "Error when --key-length is not positive"
 other = "--key-length must be > 0"
-
-[argon2id.error.json_marshal]
-description = "Error when JSON marshalling fails"
-other = "failed to encode JSON output"
-
-[argon2id.error.secrets_stdin_conflict_salt]
-description = "Error when --secrets-stdin is mixed with --salt"
-other = "--secrets-stdin is mutually exclusive with --salt"
-
-[argon2id.error.json_tty_denied]
-description = "Error when --json is used with stdout on a terminal"
-other = "derived keys are never printed to a terminal: redirect --json stdout to a pipe or file"
 
 [argon2id.progress.deriving]
 description = "Spinner label while argon2 derivation runs"
@@ -229,29 +215,29 @@ other = "Key length:   {{.Bits}} bits"
 description = "Processing time label in output"
 other = "Processing time: {{.Ms}} ms"
 
-[argon2id.output.mask_hint]
-description = "Hint shown when the text-mode derived key is masked"
-other = "(key masked; use --json with stdout redirected to a pipe or file for the full value)"
-
 [argon2id.prompt.password]
 description = "Prompt shown before reading the password from a terminal"
 other = "Enter password: "
 
-[argon2id.error.stdin_piped_no_flag]
-description = "Error when stdin is piped/redirected without --secrets-stdin"
-other = "stdin is piped or redirected: use --secrets-stdin to supply the password"
+[argon2id.error.stdin_piped]
+description = "Error when stdin is piped or redirected"
+other = "stdin is piped or redirected: run argon2id in a terminal to enter the password"
 
 [argon2id.error.tty_read_failed]
 description = "Error when reading the password from the terminal fails"
 other = "failed to read password from terminal"
 
+[argon2id.flag.pipe]
+description = "Description for --pipe flag"
+other = "read password and salt from stdin (line 1: password, line 2: salt hex)"
+
+[argon2id.flag.pipe_out]
+description = "Description for --pipe-out flag"
+other = "print salt (line 1) and derived key (line 2) as hex on stdout"
+
 [argon2id.flag.salt]
 description = "Description for --salt flag"
 other = "salt as a hex string (default: random 16 bytes)"
-
-[argon2id.flag.secrets_stdin]
-description = "Description for --secrets-stdin flag"
-other = "read password and salt from stdin (line 1: password, line 2: salt hex); exclusive with --salt"
 
 [argon2id.flag.iterations]
 description = "Description for --iterations flag"
@@ -268,10 +254,6 @@ other = "Argon2id parallelism"
 [argon2id.flag.key_length]
 description = "Description for --key-length flag"
 other = "derived key length in bytes"
-
-[argon2id.flag.json]
-description = "Description for --json flag"
-other = "output the result as JSON"
 
 # ==========================================
 # cmd/diceware.go

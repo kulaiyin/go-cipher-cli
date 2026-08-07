@@ -125,12 +125,12 @@ func DeriveKeySet(input string, password []byte, saltSeed string, strength Stren
 		Parallelism: cfg.Parallelism,
 		HashLength:  cfg.HashLength,
 	})
-	if !masterKey.Success || masterKey.Data == "" {
+	if !masterKey.Success || len(masterKey.Data) == 0 {
 		result.Error = masterKey.Error
 		result.ProcessingTime = time.Since(start).Milliseconds()
 		return result
 	}
-	mainKeyHex := masterKey.Data // hex string; consumed as ASCII bytes below
+	mainKeyHex := safety.BytesToHex(masterKey.Data) // hex string; consumed as ASCII bytes below
 
 	// --- Step 4: domain-separate 4 keys via HKDF (frontend L730-748) ---
 	// Frontend: KeyDerivation.hkdf(mainKey, { salt:"", info:"S1"/"S2"/"S3"/"UUID" })

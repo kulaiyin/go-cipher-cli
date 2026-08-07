@@ -152,11 +152,10 @@ description = "argon2id 命令的详细描述"
 other = """使用 Argon2id 从密码派生密钥。同一组 密码 + 盐 确定性派生出相同密钥，
 无法由密钥反推密码。
 
-指定 --secrets-stdin 时从标准输入读取（第 1 行口令, 第 2 行盐 hex）；标准输入为
-终端时以关闭回显的方式交互式提示口令。标准输入被重定向但未指定 --secrets-stdin 时
-拒绝读取口令，避免管道误接时从空口令静默派生。内存以 MB 为单位（默认 64），迭代默认
-3 次，并行度默认 1，派生密钥长度默认 64 字节。使用 --json 可输出机器可读的 JSON 结果
-（含处理耗时）。"""
+指定 --pipe 时从标准输入读取（第 1 行口令, 第 2 行盐 hex）；否则在终端上以
+关闭回显的方式交互式提示口令。标准输入被重定向但未指定 --pipe 时拒绝读取口令，
+避免管道误接时从空口令静默派生。内存以 MB 为单位（默认 64），迭代默认
+3 次，并行度默认 1，派生密钥长度默认 64 字节。"""
 
 [argon2id.error.derive_failed]
 description = "argon2 派生失败的错误信息"
@@ -181,18 +180,6 @@ other = "--parallelism 必须大于 0"
 [argon2id.error.invalid_key_length]
 description = "--key-length 不是正数的错误信息"
 other = "--key-length 必须大于 0"
-
-[argon2id.error.json_marshal]
-description = "JSON 序列化失败的错误信息"
-other = "JSON 输出编码失败"
-
-[argon2id.error.secrets_stdin_conflict_salt]
-description = "--secrets-stdin 与 --salt 混用的错误信息"
-other = "--secrets-stdin 与 --salt 互斥"
-
-[argon2id.error.json_tty_denied]
-description = "--json 且 stdout 是终端时的错误"
-other = "密钥不会输出到终端: --json 需将 stdout 重定向到管道或文件"
 
 [argon2id.progress.deriving]
 description = "argon2 派生进行中的转圈提示文案"
@@ -226,29 +213,29 @@ other = "密钥长度:      {{.Bits}} 位"
 description = "输出的处理耗时标签"
 other = "处理耗时:      {{.Ms}} ms"
 
-[argon2id.output.mask_hint]
-description = "文本模式掩码显示派生密钥的提示"
-other = "（完整密钥已掩码; 需要完整值时请使用 --json 并将 stdout 重定向到管道或文件）"
-
 [argon2id.prompt.password]
 description = "终端读取口令前显示的提示"
 other = "请输入口令: "
 
-[argon2id.error.stdin_piped_no_flag]
-description = "标准输入被重定向但未指定 --secrets-stdin 时的错误"
-other = "标准输入已被重定向: 请使用 --secrets-stdin 提供口令"
+[argon2id.error.stdin_piped]
+description = "标准输入被重定向时的错误"
+other = "标准输入已被重定向: 请在终端中运行 argon2id 以输入口令"
 
 [argon2id.error.tty_read_failed]
 description = "从终端读取口令失败的错误信息"
 other = "从终端读取口令失败"
 
+[argon2id.flag.pipe]
+description = "--pipe 标志的描述"
+other = "从标准输入读取口令与盐（第 1 行口令, 第 2 行盐 hex）"
+
+[argon2id.flag.pipe_out]
+description = "--pipe-out 标志的描述"
+other = "以 hex 输出盐（第 1 行）与派生密钥（第 2 行）到 stdout"
+
 [argon2id.flag.salt]
 description = "--salt 标志的描述"
 other = "hex 字符串格式的盐（默认随机 16 字节）"
-
-[argon2id.flag.secrets_stdin]
-description = "--secrets-stdin 标志的描述"
-other = "从标准输入读取口令与盐（第 1 行口令, 第 2 行盐 hex; 与 --salt 互斥）"
 
 [argon2id.flag.iterations]
 description = "--iterations 标志的描述"
@@ -265,10 +252,6 @@ other = "Argon2id 并行度"
 [argon2id.flag.key_length]
 description = "--key-length 标志的描述"
 other = "派生密钥长度，单位字节"
-
-[argon2id.flag.json]
-description = "--json 标志的描述"
-other = "以 JSON 格式输出结果"
 
 # ==========================================
 # cmd/diceware.go
