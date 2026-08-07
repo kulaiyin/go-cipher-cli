@@ -494,3 +494,37 @@ func TestEscInInputKeepsSelection(t *testing.T) {
 		t.Fatalf("stage=%d current=%s", m.Stage(), m.currentItem().ID)
 	}
 }
+
+// TestWipeSecrets verifies wipeSecrets zeroes the in-memory secret buffers
+// (password input, confirm buffer, cached derived password) that form.Run
+// leaves behind after the interactive run.
+func TestWipeSecrets(t *testing.T) {
+	input := []byte("user-answer-secret")
+	confirm := []byte("confirm-secret")
+	derived := []byte("derived-password")
+
+	m := New(smallSteps)
+	m.input = input
+	m.confirm = confirm
+	m.finalPassword = derived
+	m.wipeSecrets()
+
+	if m.input != nil || m.confirm != nil || m.finalPassword != nil {
+		t.Fatal("wipeSecrets did not nil the secret buffers")
+	}
+	for _, b := range input {
+		if b != 0 {
+			t.Error("input buffer not zeroed")
+		}
+	}
+	for _, b := range confirm {
+		if b != 0 {
+			t.Error("confirm buffer not zeroed")
+		}
+	}
+	for _, b := range derived {
+		if b != 0 {
+			t.Error("finalPassword buffer not zeroed")
+		}
+	}
+}
