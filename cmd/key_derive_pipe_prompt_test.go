@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/kdf"
 )
 
@@ -78,8 +80,17 @@ func TestRunKeyDerivePipeInteractiveRestore(t *testing.T) {
 		Password: []byte(kdPassword),
 	}
 	defer clear(good.Password)
-	if err := runKeyDerivePipeInteractiveRestore(good); err != nil {
+	out, err := captureStdout(t, func() error { return runKeyDerivePipeInteractiveRestore(good) })
+	if err != nil {
 		t.Fatalf("restore should succeed: %v", err)
+	}
+	// The rebuilt config's masked key rows carry the S1 fingerprint in the
+	// clear; the UUID fingerprint lives only inside the base64 DATA block.
+	if !strings.Contains(out, kdWantS1[:8]) {
+		t.Errorf("restore did not emit the rebuilt recovery config (missing S1 fingerprint):\n%s", out)
+	}
+	if !strings.Contains(out, i18n.T("key_derive.output.restore_success")) {
+		t.Errorf("restore success message missing:\n%s", out)
 	}
 
 	bad := &keyDerivePipeInteractiveState{
@@ -94,4 +105,21 @@ func TestRunKeyDerivePipeInteractiveRestore(t *testing.T) {
 	if err := runKeyDerivePipeInteractiveRestore(bad); err == nil {
 		t.Fatal("restore should fail with the wrong password")
 	}
+}
+
+// captureStdout runs fn with os.Stdout redirected to a pipe and returns what
+// was written to it.
+func captureStdout(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stdout = w
+	defer func() { os.Stdout = old }()
+	runErr := fn()
+	w.Close()
+	data, _ := io.ReadAll(r)
+	return string(data), runErr
 }

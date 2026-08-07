@@ -50,68 +50,96 @@ func runKeyDerivePipeInteractive() error {
 	if err := validation.ValidateKeyDeriveInput(state.Input); err != nil {
 		return err
 	}
+	if state.Hint == "" {
+		state.Hint = firstNChars(state.Input, 10)
+	}
 	if state.Mode == "restore" {
 		return runKeyDerivePipeInteractiveRestore(state)
 	}
 	return runKeyDerivePipeInteractiveGenerate(state)
 }
 
-// collectKeyDerivePipeInteractive runs the interactive prompts in the same
-// order as key-derive's flow: mode -> input -> (QnA | password) -> hint ->
-// strength -> output (generate), or input -> config -> (re-answered QnA |
-// password) (restore).
+// collectKeyDerivePipeInteractive runs the interactive prompts in the exact
+// order of key-derive's flow. generate: mode -> input -> hint -> (QnA |
+// password) -> strength -> output. restore: mode -> config -> input ->
+// (re-answered QnA | password). Prompts, help text, option labels, and
+// defaults reuse key-derive's i18n keys so the two commands look identical.
 func collectKeyDerivePipeInteractive() (*keyDerivePipeInteractiveState, error) {
 	state := &keyDerivePipeInteractiveState{Strength: kdf.StrengthMedium}
 
-	mode, err := param.Select(i18n.T("key_derive_pipe.prompt.mode"), []string{"generate", "restore"}, "generate", "")
+	mode, err := pipeSelectLabeled(
+		i18n.T("key_derive.prompt.mode"),
+		[]labelValue{
+			{i18n.T("key_derive.option.mode.generate"), "generate"},
+			{i18n.T("key_derive.option.mode.restore"), "restore"},
+		},
+		i18n.T("key_derive.option.mode.generate"), "",
+	)
 	if err != nil {
 		return nil, err
 	}
 	state.Mode = mode
 
 	if mode == "generate" {
-		input, err := param.MultiInput(i18n.T("key_derive_pipe.prompt.input"), "")
-		if err != nil {
-			return nil, err
-		}
-		state.Input = input
-		state.Salt = kdf.GenerateSalt(64)
-
-		pw, ids, err := collectPipePasswordQnA(state.Salt)
-		if err != nil {
-			return nil, err
-		}
-		state.Password = pw
-		state.HintIDs = ids
-
-		hint, err := param.Input(i18n.T("key_derive_pipe.prompt.hint"), firstNChars(cleanKeyDeriveText(input), 10), "")
-		if err != nil {
-			return nil, err
-		}
-		state.Hint = hint
-
-		strength, err := param.Select(i18n.T("key_derive_pipe.prompt.strength"), []string{"basic", "medium", "advanced"}, "medium", "")
-		if err != nil {
-			return nil, err
-		}
-		state.Strength = kdf.Strength(strength)
-
-		output, err := param.Input(i18n.T("key_derive_pipe.prompt.output"), "recovery-config.txt", "")
-		if err != nil {
-			return nil, err
-		}
-		state.Output = output
-		return state, nil
+		return collectKeyDerivePipeGenerate(state)
 	}
+	return collectKeyDerivePipeRestore(state)
+}
 
-	// restore
-	input, err := param.MultiInput(i18n.T("key_derive_pipe.prompt.input"), "")
+// collectKeyDerivePipeGenerate prompts generate-mode fields in key-derive's
+// order: input (multi-line + help) -> hint (empty default) -> salt + password
+// (QnA or hidden prompt) -> strength -> output (volatile mntemp default).
+func collectKeyDerivePipeGenerate(state *keyDerivePipeInteractiveState) (*keyDerivePipeInteractiveState, error) {
+	input, err := param.MultiInput(i18n.T("key_derive.prompt.input"), i18n.T("key_derive.prompt.input_help"))
 	if err != nil {
 		return nil, err
 	}
 	state.Input = input
 
-	cfgPath, err := param.Input(i18n.T("key_derive_pipe.prompt.config"), "", "")
+	hint, err := param.Input(i18n.T("key_derive.prompt.hint"), "", i18n.T("key_derive.prompt.hint_help"))
+	if err != nil {
+		return nil, err
+	}
+	state.Hint = hint
+
+	state.Salt = kdf.GenerateSalt(64)
+	pw, ids, err := collectPipePasswordQnA(state.Salt)
+	if err != nil {
+		return nil, err
+	}
+	state.Password = pw
+	state.HintIDs = ids
+
+	strength, err := pipeSelectLabeled(
+		i18n.T("key_derive.prompt.strength"),
+		[]labelValue{
+			{i18n.T("key_derive.option.strength.basic"), "basic"},
+			{i18n.T("key_derive.option.strength.medium"), "medium"},
+			{i18n.T("key_derive.option.strength.advanced"), "advanced"},
+		},
+		i18n.T("key_derive.option.strength.medium"), "",
+	)
+	if err != nil {
+		return nil, err
+	}
+	state.Strength = kdf.Strength(strength)
+
+	def := mntempSaveDefault("key-derive", "recovery-config.txt")
+	if err := inputOutputPath(i18n.T("key_derive.prompt.output"), def, &state.Output); err != nil {
+		return nil, err
+	}
+
+	if err := validatePasswordBytes(state.Password); err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// collectKeyDerivePipeRestore prompts restore-mode fields in key-derive's
+// order: config (help) -> input (multi-line + help) -> password (re-answered
+// QnA when the config stored question IDs, otherwise a hidden prompt).
+func collectKeyDerivePipeRestore(state *keyDerivePipeInteractiveState) (*keyDerivePipeInteractiveState, error) {
+	cfgPath, err := param.Input(i18n.T("key_derive.prompt.config"), "", i18n.T("key_derive.prompt.config_help"))
 	if err != nil {
 		return nil, err
 	}
@@ -130,10 +158,17 @@ func collectKeyDerivePipeInteractive() (*keyDerivePipeInteractiveState, error) {
 		state.Strength = kdf.Strength(cfg.Strength)
 	}
 	if cfg.Hint != "" {
+		state.Hint = cfg.Hint
 		fmt.Fprintln(os.Stderr, i18n.TWithData("key_derive.output.restore_hint", map[string]interface{}{
 			"Hint": cfg.Hint,
 		}))
 	}
+
+	input, err := param.MultiInput(i18n.T("key_derive.prompt.input"), i18n.T("key_derive.prompt.input_help"))
+	if err != nil {
+		return nil, err
+	}
+	state.Input = input
 
 	if len(cfg.HintIDs) > 0 {
 		steps, err := buildRestoreSteps(cfg.HintIDs)
@@ -147,7 +182,7 @@ func collectKeyDerivePipeInteractive() (*keyDerivePipeInteractiveState, error) {
 		state.Password = pw
 		state.HintIDs = cfg.HintIDs
 	} else {
-		pw, err := param.Password(i18n.T("key_derive_pipe.prompt.password"), "")
+		pw, err := param.Password(i18n.T("key_derive.prompt.password"), "")
 		if err != nil {
 			return nil, err
 		}
@@ -160,6 +195,29 @@ func collectKeyDerivePipeInteractive() (*keyDerivePipeInteractiveState, error) {
 	return state, nil
 }
 
+// labelValue pairs a Select display label with its canonical value.
+type labelValue struct {
+	label string
+	value string
+}
+
+// pipeSelectLabeled runs param.Select with localized option labels and maps the
+// chosen label back to its canonical value, matching key-derive's option
+// handling.
+func pipeSelectLabeled(message string, opts []labelValue, defaultLabel string, help string) (string, error) {
+	labels := make([]string, len(opts))
+	labelToValue := make(map[string]string, len(opts))
+	for i, o := range opts {
+		labels[i] = o.label
+		labelToValue[o.label] = o.value
+	}
+	chosen, err := param.Select(message, labels, defaultLabel, help)
+	if err != nil {
+		return "", err
+	}
+	return labelToValue[chosen], nil
+}
+
 // collectPipePasswordQnA collects the generate password: the question-answer
 // high-strength flow by default (password returned as wipeable bytes), or a
 // plain hidden password prompt when declined.
@@ -169,7 +227,7 @@ func collectPipePasswordQnA(salt string) ([]byte, []string, error) {
 		return nil, nil, err
 	}
 	if !useQnA {
-		pw, err := param.Password(i18n.T("key_derive_pipe.prompt.password"), "")
+		pw, err := param.Password(i18n.T("key_derive.prompt.password"), "")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -256,9 +314,11 @@ func runKeyDerivePipeInteractiveGenerate(state *keyDerivePipeInteractiveState) e
 	return nil
 }
 
-// runKeyDerivePipeInteractiveRestore re-derives with the salt from the config
-// and verifies the masked fingerprints of the derived keys against the stored
-// uuids. Nothing sensitive is printed.
+// runKeyDerivePipeInteractiveRestore re-derives with the salt from the config,
+// verifies the masked fingerprints of the derived keys against the stored
+// uuids, and — on success — emits the rebuilt recovery config (preserving the
+// stored uuids/hint_ids) so the keys can be saved again. Nothing sensitive is
+// printed except the masked config.
 func runKeyDerivePipeInteractiveRestore(state *keyDerivePipeInteractiveState) error {
 	result := kdf.DeriveKeySetBytes(state.Input, state.Password, state.Salt, state.Strength)
 	if !result.Success {
@@ -276,6 +336,20 @@ func runKeyDerivePipeInteractiveRestore(state *keyDerivePipeInteractiveState) er
 	if !matched {
 		return fmt.Errorf("%s", i18n.T("key_derive.output.restore_failed"))
 	}
+
+	rc := buildPipeRecoveryConfig(result, state.Hint, state.HintIDs)
+	if len(state.UUIDs) > 0 {
+		rc.UUIDs = state.UUIDs
+	}
+	if len(state.HintIDs) > 0 {
+		rc.HintIDs = state.HintIDs
+	}
+	configText := formatFrontendRecoveryConfigBytes(rc, result.RawKeys, result.RawUUID)
+	defer util.WipeBytes(configText)
+
+	fmt.Println(i18n.T("key_derive.output.config_label"))
+	os.Stdout.Write(configText)
+	fmt.Println()
 	fmt.Println(i18n.T("key_derive.output.restore_success"))
 	return nil
 }

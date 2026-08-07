@@ -776,34 +776,6 @@ bytes 承载并在使用后清零。
 --mode generate：生成全新密钥集并输出恢复配置（写入文件或标准输出），供后续恢复。
 --mode restore：依据现有恢复配置中的 salt 重新派生，并与存储的 UUID 指纹比对校验。"""
 
-[key_derive_pipe.prompt.mode]
-description = "模式选择提示"
-other = "操作模式"
-
-[key_derive_pipe.prompt.input]
-description = "输入文本提示"
-other = "输入文本"
-
-[key_derive_pipe.prompt.password]
-description = "密码提示"
-other = "密码"
-
-[key_derive_pipe.prompt.hint]
-description = "提示语提示"
-other = "提示语（可选）"
-
-[key_derive_pipe.prompt.strength]
-description = "强度等级提示"
-other = "强度等级"
-
-[key_derive_pipe.prompt.output]
-description = "恢复配置输出路径提示"
-other = "恢复配置输出路径（留空则打印到标准输出）"
-
-[key_derive_pipe.prompt.config]
-description = "恢复配置路径提示"
-other = "恢复配置路径"
-
 [key_derive.flag.mode]
 description = "--mode 标志说明"
 other = "操作模式：generate（生成新密钥集）或 restore（依据 --config 校验）"
