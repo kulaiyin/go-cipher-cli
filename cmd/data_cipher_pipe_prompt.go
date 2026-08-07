@@ -1,10 +1,9 @@
 package cmd
 
-// Interactive (TTY) branch of data-cipher-pipe plus the shared secret
-// resolution/validation used by both the TTY and piped flows. When stdin is a
-// terminal the command prompts for mode/input/keys/passwords interactively;
-// when the piped JSON is missing a secret it falls back to the TTY flow and
-// reuses the already-provided fields. All secrets are wipeable []byte.
+// Interactive (TTY) helpers of data-cipher-pipe plus the shared secret
+// resolution/validation used by the piped flow. The 3 strong keys can only be
+// passed via the piped JSON; when stdin is a TTY (no pipe) the command refuses
+// to run. Secrets are wipeable []byte.
 //
 // These are new functions layered on top of the existing data-cipher
 // implementation (aesgcm/container primitives and the shared prompt helpers);
@@ -20,118 +19,25 @@ import (
 
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/param"
-	"go-cipher-cli/internal/safety"
 )
 
-// runDataCipherPipeInteractive is the TTY entry: it collects all inputs (the
-// secrets as wipeable bytes), then dispatches to encrypt/decrypt. Decrypt's
-// secrets are collected after the zip is parsed (its salt and selectedHints
-// come from the bundle).
+// runDataCipherPipeInteractive is the TTY entry. The 3 strong keys can only be
+// passed via the pipe, so a pure-TTY invocation has no key source and fails
+// fast instead of collecting password1 first.
 func runDataCipherPipeInteractive() error {
-	params, err := collectDataCipherPipeInteractive()
-	if err != nil {
-		return err
-	}
-	defer wipeDataCipherPipeSecrets(params)
-	if params.Mode == "encrypt" {
-		return runDataCipherPipeEncrypt(params)
-	}
-	return runDataCipherPipeDecrypt(params)
+	return fmt.Errorf("%s", i18n.T("data_cipher.error.keys_pipe_required"))
 }
 
-// collectDataCipherPipeInteractive prompts in data-cipher's order: mode ->
-// input-type -> content -> hint -> salt -> secrets (encrypt), or mode -> file
-// (decrypt; its secrets are collected after the zip parse).
-func collectDataCipherPipeInteractive() (*dataCipherPipeParams, error) {
-	p := &dataCipherPipeParams{}
-
-	mode, err := selectDataCipherPipeMode()
-	if err != nil {
-		return nil, err
-	}
-	p.Mode = mode
-
-	if mode == "encrypt" {
-		it, err := selectDataCipherPipeInputType()
-		if err != nil {
-			return nil, err
-		}
-		p.InputType = it
-		if it == "text" {
-			text, err := param.MultiInput(i18n.T("data_cipher.prompt.text"), "")
-			if err != nil {
-				return nil, err
-			}
-			p.Text = text
-		} else {
-			path, err := param.Input(i18n.T("data_cipher.prompt.input"), "", "")
-			if err != nil {
-				return nil, err
-			}
-			p.File = path
-		}
-		hint, err := param.MultiInput(i18n.T("data_cipher.prompt.hint"), i18n.T("data_cipher.prompt.hint_help"), param.WithoutRequired())
-		if err != nil {
-			return nil, err
-		}
-		p.Hint = strings.TrimSpace(hint)
-		p.Salt = safety.BytesToHex(safety.GenerateRandomBytes(64))
-		if err := collectDataCipherPipeInteractiveSecrets(p); err != nil {
-			return nil, err
-		}
-	} else {
-		path, err := param.Input(i18n.T("data_cipher.prompt.input"), "", "")
-		if err != nil {
-			return nil, err
-		}
-		p.File = path
-	}
-	return p, nil
-}
-
-// selectDataCipherPipeMode prompts for encrypt/decrypt with localized labels.
-func selectDataCipherPipeMode() (string, error) {
-	return pipeSelectLabeled(i18n.T("data_cipher.prompt.mode"), []labelValue{
-		{i18n.T("data_cipher.option.encrypt"), "encrypt"},
-		{i18n.T("data_cipher.option.decrypt"), "decrypt"},
-	}, "", "")
-}
-
-// selectDataCipherPipeInputType prompts for file/text with localized labels.
-func selectDataCipherPipeInputType() (string, error) {
-	return pipeSelectLabeled(i18n.T("data_cipher.prompt.input_type"), []labelValue{
-		{i18n.T("data_cipher.option.file"), "file"},
-		{i18n.T("data_cipher.option.text"), "text"},
-	}, "", "")
-}
-
-// collectDataCipherPipeInteractiveSecrets collects the encrypt secrets: the 3
-// strong keys, password1 (question-answer or hidden), and one optional extra.
-func collectDataCipherPipeInteractiveSecrets(p *dataCipherPipeParams) error {
-	for i := 0; i < 3; i++ {
-		v, err := param.Password(i18n.TWithData("data_cipher.prompt.key_n", map[string]interface{}{
-			"N": i + 1,
-		}), i18n.T("data_cipher.prompt.key_help"))
-		if err != nil {
-			return err
-		}
-		p.Keys = append(p.Keys, v)
-	}
-	pw, ids, err := collectDataCipherPipePassword1(p.Salt, true, nil)
-	if err != nil {
-		return err
-	}
-	p.Password1 = pw
-	p.HintIDs = ids
-	return collectDataCipherPipeOptionalPasswords(p)
-}
-
-// resolveDataCipherPipePasswords makes sure the 3 strong keys and password1 are
-// present. When the piped JSON carried any of them, they are reused; the
-// missing ones are collected interactively (redirecting to /dev/tty when stdin
-// is the consumed pipe).
+// resolveDataCipherPipePasswords makes sure the 3 strong keys (which can only
+// come from the pipe) and password1 are present. The keys are never collected
+// interactively — a missing key set fails fast. password1 is reused when the
+// piped JSON carried it, otherwise collected interactively (redirecting to
+// /dev/tty when stdin is the consumed pipe).
 func resolveDataCipherPipePasswords(p *dataCipherPipeParams, salt string, allowQnA bool, hintIDs []string) error {
-	if len(p.Keys) >= 3 && len(p.Password1) > 0 {
+	if len(p.Keys) < 3 {
+		return fmt.Errorf("%s", i18n.T("data_cipher.error.keys_pipe_required"))
+	}
+	if len(p.Password1) > 0 {
 		return nil
 	}
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
@@ -144,20 +50,11 @@ func resolveDataCipherPipePasswords(p *dataCipherPipeParams, salt string, allowQ
 	return collectDataCipherPipeMissingSecrets(p, salt, allowQnA, hintIDs)
 }
 
-// collectDataCipherPipeMissingSecrets fills only the missing secrets: any of
-// the 3 strong keys not supplied, password1 when absent, and the optional extra
-// password (collected on a TTY so decrypt matches whatever the encrypt run used;
-// an empty answer means none).
+// collectDataCipherPipeMissingSecrets fills only the missing password1 (the
+// keys are never collected here — they must have come from the pipe) and the
+// optional extra password (collected on a TTY so decrypt matches whatever the
+// encrypt run used; an empty answer means none).
 func collectDataCipherPipeMissingSecrets(p *dataCipherPipeParams, salt string, allowQnA bool, hintIDs []string) error {
-	for i := len(p.Keys); i < 3; i++ {
-		v, err := param.Password(i18n.TWithData("data_cipher.prompt.key_n", map[string]interface{}{
-			"N": i + 1,
-		}), i18n.T("data_cipher.prompt.key_help"))
-		if err != nil {
-			return err
-		}
-		p.Keys = append(p.Keys, v)
-	}
 	if len(p.Password1) == 0 {
 		pw, ids, err := collectDataCipherPipePassword1(salt, allowQnA, hintIDs)
 		if err != nil {
@@ -204,19 +101,11 @@ func collectDataCipherPipeOptionalPasswords(p *dataCipherPipeParams) error {
 	return nil
 }
 
-// collectDataCipherPipePassword1 collects password1: encrypt offers the
-// question-answer high-strength flow (declining falls back to a hidden prompt);
-// decrypt re-answers stored questions or asks for a hidden password.
+// collectDataCipherPipePassword1 collects password1: encrypt always runs the
+// question-answer high-strength flow; decrypt re-answers the stored questions
+// or asks for a hidden password when the bundle stored none.
 func collectDataCipherPipePassword1(salt string, allowQnA bool, hintIDs []string) ([]byte, []string, error) {
-	if allowQnA {
-		useQnA, err := param.Confirm(i18n.T("data_cipher.prompt.use_question_answer"), true)
-		if err != nil {
-			return nil, nil, err
-		}
-		if useQnA {
-			return runQuestionAnswerFlowBytes(salt)
-		}
-	} else if len(hintIDs) > 0 {
+	if len(hintIDs) > 0 {
 		steps, err := buildRestoreSteps(hintIDs)
 		if err != nil {
 			return nil, nil, err
@@ -226,6 +115,9 @@ func collectDataCipherPipePassword1(salt string, allowQnA bool, hintIDs []string
 			return nil, nil, err
 		}
 		return pw, nil, nil
+	}
+	if allowQnA {
+		return runQuestionAnswerFlowBytes(salt)
 	}
 	pw, err := param.Password(i18n.T("data_cipher.prompt.password1"), "")
 	if err != nil {

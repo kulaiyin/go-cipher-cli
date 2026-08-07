@@ -2,9 +2,11 @@ package cmd
 
 // data-cipher-pipe is the argon2id/key-derive-pipe style input layer for
 // data-cipher: the secrets (3 strong keys, password1, extra password) never
-// enter argv or shell history. When stdin is a TTY the command prompts
-// interactively; otherwise it reads a JSON object on stdin carrying the
-// parameters. Every secret is carried as wipeable []byte and zeroed after use.
+// enter argv or shell history. The 3 strong keys can only be passed via a JSON
+// object on stdin; when stdin is a TTY (no pipe) the command refuses to run.
+// password1 and the optional extra password may be prompted interactively when
+// the piped JSON omits them. Every secret is carried as wipeable []byte and
+// zeroed after use.
 //
 // The encryption/decryption pipeline reuses the exact same primitives as
 // data-cipher (aesgcm, container, safety.AssemblePackageKey), so the produced

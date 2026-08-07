@@ -505,6 +505,10 @@ other = "at most 3 strong keys (-k) are allowed"
 description = "Error when a strong key fails the high-strength check"
 other = "key {{.N}} must be high strength (at least 128 hex chars, ≥ 15 distinct chars)"
 
+[data_cipher.error.keys_pipe_required]
+description = "Error when the 3 strong keys are missing from the piped JSON (keys can only be passed via pipe)"
+other = "3 strong keys must be provided via the pipe (keys cannot be entered interactively)"
+
 [data_cipher.error.password1_invalid]
 description = "Error when password1 fails the composite check"
 other = "password1 must be high strength, or contain a letter, a digit and a special char with length ≥ 8"

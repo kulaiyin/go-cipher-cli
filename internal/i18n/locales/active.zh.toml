@@ -501,6 +501,10 @@ other = "强密钥（-k）最多允许 3 个"
 description = "强密钥未通过高强度校验的错误"
 other = "密钥{{.N}}必须为高强度（不少于 128 位十六进制，且字符种类 ≥ 15）"
 
+[data_cipher.error.keys_pipe_required]
+description = "3 个强密钥未通过 pipe 传入的错误信息"
+other = "3 个强密钥必须通过 pipe 传入（不支持交互输入）"
+
 [data_cipher.error.password1_invalid]
 description = "密码1未通过复合校验的错误"
 other = "密码1必须为高强度，或同时包含字母、数字和特殊字符且长度不小于 8 位"

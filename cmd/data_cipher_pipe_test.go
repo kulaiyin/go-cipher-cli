@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go-cipher-cli/internal/util"
@@ -88,6 +89,38 @@ func TestValidateDataCipherPipeSecrets(t *testing.T) {
 	}
 	if err := validateDataCipherPipeSecrets(shortPW); err == nil {
 		t.Fatal("weak password1 accepted")
+	}
+}
+
+// TestDataCipherPipe_KeysPipeRequired: the 3 strong keys can only come from the
+// pipe; a JSON payload without all 3 fails fast with no interactive fallback.
+func TestDataCipherPipe_KeysPipeRequired(t *testing.T) {
+	cases := []struct {
+		name    string
+		payload string
+	}{
+		{
+			name:    "no keys",
+			payload: `{"mode":"encrypt","inputType":"text","text":"hello","password1":"` + dcPassword1 + `"}`,
+		},
+		{
+			name:    "only two keys",
+			payload: `{"mode":"encrypt","inputType":"text","text":"hello","keys":["` + dcKeys[0] + `","` + dcKeys[1] + `"],"password1":"` + dcPassword1 + `"}`,
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			buf, code := runCLIWithInputBuf(t, c.payload, nil, "data-cipher-pipe")
+			out := buf.String()
+			util.WipeBytes(buf.Bytes())
+			if code == 0 {
+				t.Fatalf("expected non-zero exit for %s", c.name)
+			}
+			if !strings.Contains(out, "pipe") {
+				t.Errorf("expected error to mention the pipe, got:\n%s", out)
+			}
+		})
 	}
 }
 
