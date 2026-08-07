@@ -308,6 +308,23 @@ Passwords map to the web tool's keys[]: strong keys (-k) fill keys[0..2], the
 password1 (-p) fills keys[3], and --extra-password appends an extra password at
 the end (no strength rule)."""
 
+[data_cipher_pipe.short]
+description = "Short description for data-cipher-pipe command"
+other = "Encrypt/decrypt data via interactive input or piped JSON (wipeable secrets)"
+
+[data_cipher_pipe.long]
+description = "Long description for data-cipher-pipe command"
+other = """Encrypt or decrypt data using the same AES-256-GCM pipeline as data-cipher,
+producing web-compatible ZIP bundles. When stdin is a terminal the command
+prompts interactively (secrets collected with echo disabled); otherwise it reads
+a JSON object on stdin carrying mode/inputType/text/file/salt/hint/keys/
+password1/extraPasswords/output.
+
+Secrets (the 3 strong keys, password1, extra password) never enter argv or
+shell history; they are carried as wipeable bytes and zeroed after use. A piped
+run missing a secret falls back to the interactive TTY flow, reusing the
+already-provided fields."""
+
 [data_cipher.flag.mode]
 description = "Description for --mode flag"
 other = "operation mode: encrypt or decrypt (required)"

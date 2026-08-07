@@ -306,6 +306,21 @@ argon2id -> HMAC-SHA3-512 -> HKDF -> AES-256-GCM，封装为 ZIP 包
 密码对应 Web 工具的 keys[]：强密钥（-k）填充 keys[0..2]，password1（-p）
 填充 keys[3]，--extra-password 在末尾追加额外密码（无强度要求）。"""
 
+[data_cipher_pipe.short]
+description = "data-cipher-pipe 命令简短描述"
+other = "通过交互输入或管道 JSON 加密/解密数据（敏感信息全程可擦除）"
+
+[data_cipher_pipe.long]
+description = "data-cipher-pipe 命令详细描述"
+other = """使用与 data-cipher 相同的 AES-256-GCM 管道加密或解密数据，产出与 Web 兼容的
+ZIP 包。当标准输入为终端时，命令以交互方式提示（敏感信息以隐藏方式收集）；
+否则从标准输入读取一个 JSON 对象（包含 mode/inputType/text/file/salt/hint/keys/
+password1/extraPasswords/output）。
+
+敏感信息（3 个强密钥、password1、额外密码）永不进入命令行参数或 shell 历史，
+全程以可擦除 bytes 承载并在使用后清零。管道运行缺少敏感信息时，会降级到 TTY
+交互补全，并复用已提供的字段。"""
+
 [data_cipher.flag.mode]
 description = "--mode 标志的描述"
 other = "操作模式：encrypt 或 decrypt（必填）"
