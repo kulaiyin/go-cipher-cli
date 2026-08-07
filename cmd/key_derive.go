@@ -666,12 +666,12 @@ func promptDefaultPassword(promptMsg string, target *string) error {
 }
 
 // finalAnswers extracts the per-step answers from form results, in step order.
-// The answers leave the byte-based TUI layer here: the password derivation
-// below still works on strings, so each []byte answer is decoded to a string.
-func finalAnswers(results []form.Result) []string {
-	answers := make([]string, len(results))
+// The answers stay as UTF-8 bytes so callers can wipe them after the password
+// derivation finishes.
+func finalAnswers(results []form.Result) [][]byte {
+	answers := make([][]byte, len(results))
 	for i, r := range results {
-		answers[i] = string(r.Answer)
+		answers[i] = r.Answer
 	}
 	return answers
 }

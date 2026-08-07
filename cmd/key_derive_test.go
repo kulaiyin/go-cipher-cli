@@ -77,7 +77,7 @@ func TestFinalAnswers(t *testing.T) {
 		{Step: 2, ID: "Q06", Answer: []byte("shanghai")},
 		{Step: 3, ID: "Q23", Answer: []byte("@abc")},
 	}
-	want := []string{"20240101", "shanghai", "@abc"}
+	want := [][]byte{[]byte("20240101"), []byte("shanghai"), []byte("@abc")}
 	if got := finalAnswers(results); !reflect.DeepEqual(got, want) {
 		t.Fatalf("finalAnswers = %v, want %v", got, want)
 	}
@@ -147,7 +147,7 @@ func TestQuestionAnswerPassword(t *testing.T) {
 		t.Skip("argon2 slow in -short")
 	}
 	salt := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	answers := []string{"20240101", "shanghai", "@abc"}
+	answers := [][]byte{[]byte("20240101"), []byte("shanghai"), []byte("@abc")}
 
 	pw1, err := password.ComputeFinalPassword(salt, answers)
 	if err != nil {
@@ -248,7 +248,7 @@ func TestRestoreQuestionAnswerSeedChain(t *testing.T) {
 		t.Skip("argon2 slow in -short")
 	}
 	salt := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	answers := []string{"20240101", "shanghai", "@abc"}
+	answers := [][]byte{[]byte("20240101"), []byte("shanghai"), []byte("@abc")}
 	input := "ThisIsAFixedProbeInputForGoldenVector2026"
 
 	pw, err := password.ComputeFinalPassword(salt, answers)
@@ -314,7 +314,7 @@ func TestConfigFileQuestionAnswerSeedChain(t *testing.T) {
 		t.Fatalf("expected pre-seeded 128-hex salt, got %q (len %d)", p.Salt.Value, len(p.Salt.Value))
 	}
 
-	answers := []string{"20240101", "shanghai", "@abc"}
+	answers := [][]byte{[]byte("20240101"), []byte("shanghai"), []byte("@abc")}
 	pw, err := password.ComputeFinalPassword(p.Salt.Value, answers)
 	if err != nil {
 		t.Fatalf("generate password: %v", err)

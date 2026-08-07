@@ -291,7 +291,7 @@ func TestDataCipher_QuestionAnswerPassword1RoundTrip(t *testing.T) {
 		t.Skip("argon2 slow in -short")
 	}
 	salt := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	pw1, err := password.ComputeFinalPassword(salt, []string{"20240101", "shanghai", "@abc"})
+	pw1, err := password.ComputeFinalPassword(salt, [][]byte{[]byte("20240101"), []byte("shanghai"), []byte("@abc")})
 	if err != nil {
 		t.Fatalf("compute password1: %v", err)
 	}

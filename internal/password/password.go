@@ -4,9 +4,9 @@
 package password
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -28,15 +28,19 @@ const specialChars = `!@#$%^&*(),.?":{}|<>`
 const deterministicCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~`"
 
 // NormalizePassword strips every whitespace character and NFC-normalizes the
-// result, mirroring fusion.ts normalizePassword.
-func NormalizePassword(password string) string {
-	var sb strings.Builder
-	for _, r := range password {
+// result, mirroring fusion.ts normalizePassword. The output is UTF-8 bytes;
+// callers may wipe it after the derivation finishes.
+func NormalizePassword(password []byte) []byte {
+	var sb bytes.Buffer
+	sb.Grow(len(password))
+	for len(password) > 0 {
+		r, size := utf8.DecodeRune(password)
+		password = password[size:]
 		if !unicode.IsSpace(r) {
 			sb.WriteRune(r)
 		}
 	}
-	return norm.NFC.String(sb.String())
+	return norm.NFC.Bytes(sb.Bytes())
 }
 
 // safetyMergeStrings interleaves two strings character by character, then
@@ -71,7 +75,7 @@ func safetyMergeStrings(strA, strB string) string {
 
 // FusePasswords mixes the salt and the normalized passwords into a single
 // string, mirroring fusion.ts fusePasswords.
-func FusePasswords(salt string, passwords []string) string {
+func FusePasswords(salt string, passwords [][]byte) string {
 	lastCharNum := 0
 	if len(salt) > 0 {
 		lastCharNum = hexDigitVal(rune(salt[len(salt)-1]))
@@ -106,7 +110,7 @@ func FusePasswords(salt string, passwords []string) string {
 	combined := ""
 	for segIdx := 0; segIdx < 3; segIdx++ {
 		idx := (remainder + segIdx + 1) % 3
-		combined += safetyMergeStrings(segments[segIdx], passwords[idx])
+		combined += safetyMergeStrings(segments[segIdx], string(passwords[idx]))
 	}
 
 	temp := []rune(combined)
@@ -191,12 +195,13 @@ func DeriveNewSalt(originalSalt string) (string, error) {
 // original salt and the three step passwords: normalize, fuse with the derived
 // salt, HMAC-SHA3-512 keyed by the derived salt, then render a 128-char
 // deterministic string from the ASCII bytes of the HMAC hex digest.
-func ComputeFinalPassword(salt string, passwords []string) (string, error) {
+// The passwords are UTF-8 bytes; the derived password is returned as a string.
+func ComputeFinalPassword(salt string, passwords [][]byte) (string, error) {
 	newSalt, err := DeriveNewSalt(salt)
 	if err != nil {
 		return "", err
 	}
-	normalized := make([]string, len(passwords))
+	normalized := make([][]byte, len(passwords))
 	for i, p := range passwords {
 		normalized[i] = NormalizePassword(p)
 	}

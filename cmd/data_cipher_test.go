@@ -20,7 +20,7 @@ func TestDataCipherQuestionAnswerPassword1Rule(t *testing.T) {
 		t.Skip("argon2 slow in -short")
 	}
 	salt := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	pw, err := password.ComputeFinalPassword(salt, []string{"20240101", "shanghai", "@abc"})
+	pw, err := password.ComputeFinalPassword(salt, [][]byte{[]byte("20240101"), []byte("shanghai"), []byte("@abc")})
 	if err != nil {
 		t.Fatalf("compute: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestDataCipherEncryptStoresSelectedHints(t *testing.T) {
 		t.Skip("argon2 slow in -short")
 	}
 	salt := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	answers := []string{"20240101", "shanghai", "@abc"}
+	answers := [][]byte{[]byte("20240101"), []byte("shanghai"), []byte("@abc")}
 	pw1, err := password.ComputeFinalPassword(salt, answers)
 	if err != nil {
 		t.Fatalf("compute password1: %v", err)

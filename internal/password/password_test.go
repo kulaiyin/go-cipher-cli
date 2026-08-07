@@ -1,6 +1,7 @@
 package password
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -8,17 +9,17 @@ import (
 func TestNormalizePassword(t *testing.T) {
 	cases := []struct {
 		name string
-		in   string
+		in   []byte
 		want string
 	}{
-		{"strips spaces", "  test password  ", "testpassword"},
-		{"empty", "", ""},
-		{"only spaces", "   ", ""},
-		{"cjk", " \u4F60 \u597D \u4E16 \u754C ", "\u4F60\u597D\u4E16\u754C"},
+		{"strips spaces", []byte("  test password  "), "testpassword"},
+		{"empty", []byte{}, ""},
+		{"only spaces", []byte("   "), ""},
+		{"cjk", []byte(" \u4F60 \u597D \u4E16 \u754C "), "\u4F60\u597D\u4E16\u754C"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := NormalizePassword(tc.in); got != tc.want {
+			if got := string(NormalizePassword(tc.in)); got != tc.want {
 				t.Fatalf("NormalizePassword(%q) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
@@ -26,12 +27,12 @@ func TestNormalizePassword(t *testing.T) {
 }
 
 func TestNormalizePasswordUnicodeNFC(t *testing.T) {
-	a := NormalizePassword("caf\u00E9")
-	b := NormalizePassword("cafe\u0301")
-	if a != b {
+	a := NormalizePassword([]byte("caf\u00E9"))
+	b := NormalizePassword([]byte("cafe\u0301"))
+	if !bytes.Equal(a, b) {
 		t.Fatalf("NFC normalization failed: %q vs %q", a, b)
 	}
-	if a != "caf\u00E9" {
+	if string(a) != "caf\u00E9" {
 		t.Fatalf("want caf\u00E9, got %q", a)
 	}
 }
@@ -39,7 +40,7 @@ func TestNormalizePasswordUnicodeNFC(t *testing.T) {
 // TestFusePasswordsGolden uses the exact vectors from the web's
 // password-fusion.test.ts so the Go port is verified byte-level identical.
 func TestFusePasswordsGolden(t *testing.T) {
-	passwords := []string{"123456789", "shanghai", "@"}
+	passwords := [][]byte{[]byte("123456789"), []byte("shanghai"), []byte("@")}
 	cases := []struct {
 		salt string
 		want string
@@ -59,7 +60,7 @@ func TestFusePasswordsGolden(t *testing.T) {
 }
 
 func TestFusePasswordsGoldenCJK(t *testing.T) {
-	passwords := []string{"123456789", "shanghai\u4E0A\u6D77", "@"}
+	passwords := [][]byte{[]byte("123456789"), []byte("shanghai\u4E0A\u6D77"), []byte("@")}
 	cases := []struct {
 		salt string
 		want string
@@ -82,7 +83,7 @@ func TestComputeFinalPasswordGolden(t *testing.T) {
 	// common-tools (noble_argon2id p=1 + fusePasswords + hmac_sha3_512 +
 	// generate_deterministic_string). Byte-level interop guarantee.
 	salt := strings.Repeat("ab", 64)
-	passwords := []string{"20240101", "shanghai\u4E0A\u6D77", "@abc"}
+	passwords := [][]byte{[]byte("20240101"), []byte("shanghai\u4E0A\u6D77"), []byte("@abc")}
 	const want = "NKSVKu<EA/G5M~@*vB?4eP^3JEm}>Gn(s(4/`Xq%ps>_`Na-a&0,&8lStCTSli)m||xq|]EvMv*wFwoTo^|Lhg/$OhaeDwxOs@}X<hs,$GYV|w&;I1He(O.}Eu`Ok#,e"
 	got, err := ComputeFinalPassword(salt, passwords)
 	if err != nil {
@@ -95,7 +96,7 @@ func TestComputeFinalPasswordGolden(t *testing.T) {
 
 func TestComputeFinalPassword(t *testing.T) {
 	salt := strings.Repeat("ab", 64)
-	passwords := []string{"20240101", "shanghai\u4E0A\u6D77", "@abc"}
+	passwords := [][]byte{[]byte("20240101"), []byte("shanghai\u4E0A\u6D77"), []byte("@abc")}
 	p1, err := ComputeFinalPassword(salt, passwords)
 	if err != nil {
 		t.Fatalf("ComputeFinalPassword: %v", err)
