@@ -2,9 +2,7 @@ package util
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 
 	"golang.org/x/term"
@@ -24,16 +22,24 @@ func ReadPasswordTTY(label string) ([]byte, error) {
 	return bytes.TrimSpace(pw), nil
 }
 
-// WriteHexLine writes b as a lowercase hex line plus a newline to w, then
-// wipes the buffer so the encoded bytes never linger. hex.EncodeToString is
-// avoided because its returned string cannot be cleared.
-func WriteHexLine(w io.Writer, b []byte) error {
-	buf := make([]byte, hex.EncodedLen(len(b))+1)
-	hex.Encode(buf[:len(buf)-1], b)
-	buf[len(buf)-1] = '\n'
-	defer WipeBytes(buf)
-	_, err := w.Write(buf)
-	return err
+// ReadPasswordTTYFromDevice prompts on stderr and reads a password from the
+// controlling terminal (/dev/tty) with echo disabled. It must be used when
+// stdin is a pipe so password input still comes from the interactive terminal.
+// The caller is responsible for wiping the returned bytes after use.
+func ReadPasswordTTYFromDevice(label string) ([]byte, error) {
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		return nil, err
+	}
+	defer tty.Close()
+	fmt.Fprint(os.Stderr, label)
+	pw, err := term.ReadPassword(int(tty.Fd()))
+	if err != nil {
+		WipeBytes(pw)
+		return nil, err
+	}
+	fmt.Fprintln(os.Stderr)
+	return bytes.TrimSpace(pw), nil
 }
 
 // WipeBytes zeroes b including its entire backing array.

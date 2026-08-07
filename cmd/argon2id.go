@@ -1,15 +1,16 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/buger/jsonparser"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -24,8 +25,6 @@ var (
 	argon2MemoryMB    int
 	argon2Parallelism int
 	argon2KeyLength   int
-	argon2Pipe        bool
-	argon2PipeOut     bool
 )
 
 var argon2idCmd = &cobra.Command{
@@ -39,27 +38,13 @@ var argon2idCmd = &cobra.Command{
 		}
 
 		// The password enters via one of two mutually exclusive paths:
-		//   - --pipe: line 1 (password) and line 2 (salt hex) arrive on stdin.
-		//   - otherwise: only an interactive terminal is accepted, with echo
-		//     disabled so the password never lands in shell history or argv.
+		//   - stdin is a pipe/redirect: a JSON object {"salt": hex, "password": ...}
+		//     is read from stdin; a missing password falls back to the terminal.
+		//   - stdin is a TTY: prompt with echo disabled so the password never
+		//     lands in shell history or argv.
 		var password []byte
 		var saltHex string
-		if argon2Pipe {
-			lines, err := util.ReadLinesStdin(2)
-			if err != nil {
-				return err
-			}
-			defer util.WipeLines(lines)
-			if len(lines) > 0 {
-				password = lines[0]
-			}
-			if len(lines) > 1 {
-				saltHex = string(lines[1])
-			}
-		} else {
-			if !term.IsTerminal(int(os.Stdin.Fd())) {
-				return fmt.Errorf("%s", i18n.T("argon2id.error.stdin_piped"))
-			}
+		if term.IsTerminal(int(os.Stdin.Fd())) {
 			p, err := util.ReadPasswordTTY(i18n.T("argon2id.prompt.password"))
 			if err != nil {
 				return fmt.Errorf("%s: %w", i18n.T("argon2id.error.tty_read_failed"), err)
@@ -67,6 +52,29 @@ var argon2idCmd = &cobra.Command{
 			defer util.WipeBytes(p)
 			password = p
 			saltHex = argon2Salt
+		} else {
+			data, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				return err
+			}
+			defer util.WipeBytes(data)
+			pw, _, _, _ := jsonparser.Get(data, "password")
+			if len(pw) > 0 {
+				password = pw
+			} else {
+				p, err := util.ReadPasswordTTYFromDevice(i18n.T("argon2id.prompt.password"))
+				if err != nil {
+					return fmt.Errorf("%s: %w", i18n.T("argon2id.error.tty_read_failed"), err)
+				}
+				defer util.WipeBytes(p)
+				password = p
+			}
+			// Salt precedence: JSON salt > --salt > random.
+			if s, _, _, err := jsonparser.Get(data, "salt"); err == nil && len(s) > 0 {
+				saltHex = string(s)
+			} else {
+				saltHex = argon2Salt
+			}
 		}
 
 		// Resolve the salt: an explicit salt value, else a freshly
@@ -111,16 +119,7 @@ var argon2idCmd = &cobra.Command{
 			return fmt.Errorf("%s: %s", i18n.T("argon2id.error.derive_failed"), result.Error)
 		}
 
-		if argon2PipeOut {
-			if err := util.WriteHexLine(os.Stdout, result.Salt); err != nil {
-				return err
-			}
-			if err := util.WriteHexLine(os.Stdout, result.Data); err != nil {
-				return err
-			}
-		} else {
-			emitArgon2Text(result)
-		}
+		emitArgon2JSON(result)
 		util.WipeBytes(result.Data)
 		util.WipeBytes(result.Salt)
 		return nil
@@ -197,31 +196,28 @@ func estimateArgon2Cost(cfg kdf.Argon2Config) float64 {
 	return baseDurationSecs * cost
 }
 
-// emitArgon2Text prints the human-readable output with the derived key in full.
-func emitArgon2Text(r kdf.KDFResult) {
-	fmt.Println(i18n.TWithData("argon2id.output.algorithm", map[string]interface{}{
-		"Memory":      argon2MemoryMB,
-		"Iterations":  r.Iterations,
-		"Parallelism": argon2Parallelism,
-	}))
-	fmt.Println(i18n.TWithData("argon2id.output.salt_base64", map[string]interface{}{
-		"Salt": base64.StdEncoding.EncodeToString(r.Salt),
-	}))
-	fmt.Println(i18n.TWithData("argon2id.output.salt_hex", map[string]interface{}{
-		"Salt": hex.EncodeToString(r.Salt),
-	}))
-	fmt.Println(i18n.TWithData("argon2id.output.key_hex", map[string]interface{}{
-		"Key": hex.EncodeToString(r.Data),
-	}))
-	fmt.Println(i18n.TWithData("argon2id.output.key_base64", map[string]interface{}{
-		"Key": base64.StdEncoding.EncodeToString(r.Data),
-	}))
-	fmt.Println(i18n.TWithData("argon2id.output.key_length", map[string]interface{}{
-		"Bits": len(r.Data) * 8,
-	}))
-	fmt.Println(i18n.TWithData("argon2id.output.processing_time", map[string]interface{}{
-		"Ms": r.ProcessingTime,
-	}))
+// emitArgon2JSON prints the result as a JSON object {"salt": hex, "key": hex}.
+// The JSON is built byte-by-byte into a wipeable buffer (no string copies) and
+// the buffer is wiped right after writing, so the derived key never lingers.
+func emitArgon2JSON(r kdf.KDFResult) {
+	buf := make([]byte, 0, 64+hex.EncodedLen(len(r.Salt))+hex.EncodedLen(len(r.Data)))
+	buf = append(buf, `{"salt":"`...)
+	buf = appendHex(buf, r.Salt)
+	buf = append(buf, `","key":"`...)
+	buf = appendHex(buf, r.Data)
+	buf = append(buf, `"}`...)
+	buf = append(buf, '\n')
+	defer util.WipeBytes(buf)
+	os.Stdout.Write(buf)
+}
+
+// appendHex appends the lowercase hex encoding of b to buf.
+func appendHex(buf []byte, b []byte) []byte {
+	hexLen := hex.EncodedLen(len(b))
+	start := len(buf)
+	buf = append(buf, make([]byte, hexLen)...)
+	hex.Encode(buf[start:start+hexLen], b)
+	return buf
 }
 
 func init() {
@@ -231,10 +227,8 @@ func init() {
 		argon2idCmd.Long = i18n.T("argon2id.long")
 	})
 
-	// The password is only ever read interactively from a terminal with echo
-	// disabled; there is no plaintext password flag.
-	argon2idCmd.Flags().BoolVar(&argon2Pipe, "pipe", false, i18n.T("argon2id.flag.pipe"))
-	argon2idCmd.Flags().BoolVar(&argon2PipeOut, "pipe-out", false, i18n.T("argon2id.flag.pipe_out"))
+	// The password is read interactively from a terminal with echo disabled, or
+	// from a piped JSON object; there is no plaintext password flag.
 	argon2idCmd.Flags().StringVar(&argon2Salt, "salt", "", i18n.T("argon2id.flag.salt"))
 	argon2idCmd.Flags().IntVar(&argon2Iterations, "iterations", 3, i18n.T("argon2id.flag.iterations"))
 	argon2idCmd.Flags().IntVar(&argon2MemoryMB, "memory", 64, i18n.T("argon2id.flag.memory"))

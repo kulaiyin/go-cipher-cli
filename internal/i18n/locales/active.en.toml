@@ -153,11 +153,11 @@ other = """Derive a key from a password using Argon2id. The same password + salt
 deterministically derives the same key; the key cannot be reversed to recover
 the password.
 
-The password is read from stdin (line 1: password, line 2: salt hex) when
---pipe is given, or prompted on a terminal with echo disabled otherwise;
-piped stdin without --pipe is refused so a stray pipe cannot silently derive
-from an empty password. Memory is expressed in MB (default 64), iterations
-default to 3, parallelism to 1, and the derived key length to 64 bytes."""
+The password is read from a piped JSON object {"salt": "<hex>", "password":
+"<secret>"} when stdin is piped or redirected, or prompted on a terminal with
+echo disabled when stdin is a TTY; a piped run without a password falls back to
+the terminal prompt. Memory is expressed in MB (default 64), iterations default
+to 3, parallelism to 1, and the derived key length to 64 bytes."""
 
 [argon2id.error.derive_failed]
 description = "Error when argon2 derivation fails"
@@ -187,53 +187,13 @@ other = "--key-length must be > 0"
 description = "Spinner label while argon2 derivation runs"
 other = "deriving with Argon2id"
 
-[argon2id.output.algorithm]
-description = "Algorithm label in output"
-other = "Algorithm: Argon2id ({{.Memory}} MB / {{.Iterations}} rounds / {{.Parallelism}} parallelism)"
-
-[argon2id.output.salt_base64]
-description = "Salt base64 label in output"
-other = "Salt (base64): {{.Salt}}"
-
-[argon2id.output.salt_hex]
-description = "Salt hex label in output"
-other = "Salt (hex):    {{.Salt}}"
-
-[argon2id.output.key_hex]
-description = "Key hex label in output"
-other = "Key (hex):    {{.Key}}"
-
-[argon2id.output.key_base64]
-description = "Key base64 label in output"
-other = "Key (base64): {{.Key}}"
-
-[argon2id.output.key_length]
-description = "Key length label in output"
-other = "Key length:   {{.Bits}} bits"
-
-[argon2id.output.processing_time]
-description = "Processing time label in output"
-other = "Processing time: {{.Ms}} ms"
-
 [argon2id.prompt.password]
 description = "Prompt shown before reading the password from a terminal"
 other = "Enter password: "
 
-[argon2id.error.stdin_piped]
-description = "Error when stdin is piped or redirected"
-other = "stdin is piped or redirected: run argon2id in a terminal to enter the password"
-
 [argon2id.error.tty_read_failed]
 description = "Error when reading the password from the terminal fails"
 other = "failed to read password from terminal"
-
-[argon2id.flag.pipe]
-description = "Description for --pipe flag"
-other = "read password and salt from stdin (line 1: password, line 2: salt hex)"
-
-[argon2id.flag.pipe_out]
-description = "Description for --pipe-out flag"
-other = "print salt (line 1) and derived key (line 2) as hex on stdout"
 
 [argon2id.flag.salt]
 description = "Description for --salt flag"

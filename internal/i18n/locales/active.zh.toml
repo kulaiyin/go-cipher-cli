@@ -152,10 +152,10 @@ description = "argon2id 命令的详细描述"
 other = """使用 Argon2id 从密码派生密钥。同一组 密码 + 盐 确定性派生出相同密钥，
 无法由密钥反推密码。
 
-指定 --pipe 时从标准输入读取（第 1 行口令, 第 2 行盐 hex）；否则在终端上以
-关闭回显的方式交互式提示口令。标准输入被重定向但未指定 --pipe 时拒绝读取口令，
-避免管道误接时从空口令静默派生。内存以 MB 为单位（默认 64），迭代默认
-3 次，并行度默认 1，派生密钥长度默认 64 字节。"""
+标准输入被管道或重定向时从 JSON 对象读取（{"salt": "<hex>", "password":
+"<secret>"}）；标准输入为终端时以关闭回显的方式交互式提示口令。管道输入缺少
+口令时回退到终端提示。内存以 MB 为单位（默认 64），迭代默认 3 次，并行度默认
+1，派生密钥长度默认 64 字节。"""
 
 [argon2id.error.derive_failed]
 description = "argon2 派生失败的错误信息"
@@ -185,53 +185,13 @@ other = "--key-length 必须大于 0"
 description = "argon2 派生进行中的转圈提示文案"
 other = "正在使用 Argon2id 派生"
 
-[argon2id.output.algorithm]
-description = "输出的算法标签"
-other = "算法:       Argon2id ({{.Memory}} MB / {{.Iterations}} 轮 / {{.Parallelism}} 路并行)"
-
-[argon2id.output.salt_base64]
-description = "输出的盐 base64 标签"
-other = "盐(base64): {{.Salt}}"
-
-[argon2id.output.salt_hex]
-description = "输出的盐 hex 标签"
-other = "盐(hex):    {{.Salt}}"
-
-[argon2id.output.key_hex]
-description = "输出的密钥 hex 标签"
-other = "密钥(hex):     {{.Key}}"
-
-[argon2id.output.key_base64]
-description = "输出的密钥 base64 标签"
-other = "密钥(base64):  {{.Key}}"
-
-[argon2id.output.key_length]
-description = "输出的密钥长度标签"
-other = "密钥长度:      {{.Bits}} 位"
-
-[argon2id.output.processing_time]
-description = "输出的处理耗时标签"
-other = "处理耗时:      {{.Ms}} ms"
-
 [argon2id.prompt.password]
 description = "终端读取口令前显示的提示"
 other = "请输入口令: "
 
-[argon2id.error.stdin_piped]
-description = "标准输入被重定向时的错误"
-other = "标准输入已被重定向: 请在终端中运行 argon2id 以输入口令"
-
 [argon2id.error.tty_read_failed]
 description = "从终端读取口令失败的错误信息"
 other = "从终端读取口令失败"
-
-[argon2id.flag.pipe]
-description = "--pipe 标志的描述"
-other = "从标准输入读取口令与盐（第 1 行口令, 第 2 行盐 hex）"
-
-[argon2id.flag.pipe_out]
-description = "--pipe-out 标志的描述"
-other = "以 hex 输出盐（第 1 行）与派生密钥（第 2 行）到 stdout"
 
 [argon2id.flag.salt]
 description = "--salt 标志的描述"
