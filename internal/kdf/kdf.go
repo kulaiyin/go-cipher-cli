@@ -6,6 +6,8 @@
 package kdf
 
 import (
+	"encoding/hex"
+
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/safety"
 )
@@ -212,4 +214,55 @@ func ValidateKeyRecovery(generatedKey string, uuids []string) bool {
 		}
 	}
 	return false
+}
+
+// ValidateKeyRecoveryBytes is the wipeable counterpart of ValidateKeyRecovery:
+// it computes the same first-8/last-8 hex fingerprint from raw key bytes so a
+// security-sensitive caller never materializes the key's hex string.
+// A raw 64-byte key hex-encodes to 128 chars; the first 8 hex chars come from
+// the first 4 raw bytes and the last 8 from the last 4 raw bytes.
+func ValidateKeyRecoveryBytes(generatedKey []byte, uuids []string) bool {
+	if len(generatedKey) == 0 {
+		return false
+	}
+	prefixBytes := 4
+	if prefixBytes > len(generatedKey) {
+		prefixBytes = len(generatedKey)
+	}
+	suffixStart := len(generatedKey) - 4
+	if suffixStart < 0 {
+		suffixStart = 0
+	}
+	processed := make([]byte, 0, 16)
+	processed = appendKeyHex(processed, generatedKey[:prefixBytes])
+	processed = appendKeyHex(processed, generatedKey[suffixStart:])
+	defer clear(processed)
+	for _, u := range uuids {
+		if bytesEqualString(processed, u) {
+			return true
+		}
+	}
+	return false
+}
+
+// appendKeyHex appends the lowercase hex encoding of src to dst.
+func appendKeyHex(dst, src []byte) []byte {
+	start := len(dst)
+	dst = append(dst, make([]byte, hex.EncodedLen(len(src)))...)
+	hex.Encode(dst[start:], src)
+	return dst
+}
+
+// bytesEqualString reports whether b equals the UTF-8 bytes of s without
+// allocating either a temporary string or byte slice.
+func bytesEqualString(b []byte, s string) bool {
+	if len(b) != len(s) {
+		return false
+	}
+	for i := range b {
+		if b[i] != s[i] {
+			return false
+		}
+	}
+	return true
 }

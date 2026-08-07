@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/kdf"
 	"go-cipher-cli/internal/util"
 	"go-cipher-cli/internal/validation"
@@ -307,12 +308,14 @@ func isASCIISpace(b byte) bool {
 //	  | go-cipher-cli key-derive-pipe
 var keyDerivePipeCmd = &cobra.Command{
 	Use:          "key-derive-pipe",
-	Short:        "Derive a key set from a JSON object on stdin (argon2id-style pipe input)",
-	Long:         "Derive a key set from a JSON object piped on stdin. The JSON carries mode/input/password/salt/hint/strength/config; the password is read as wipeable bytes and wiped after derivation. Output is a JSON object with the derived keys (hex) on stdout.",
+	Short:        "placeholder",
+	Long:         "placeholder",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// stdin is a TTY -> interactive prompt flow (wipeable bytes throughout);
+		// otherwise the piped JSON object flow.
 		if term.IsTerminal(int(os.Stdin.Fd())) {
-			return fmt.Errorf("key-derive-pipe requires input on stdin: pipe a JSON object, e.g. echo '{\"mode\":\"generate\",...}' | go-cipher-cli key-derive-pipe")
+			return runKeyDerivePipeInteractive()
 		}
 		result, err := runKeyDerivePipe()
 		if err != nil {
@@ -368,5 +371,10 @@ func wipeKeySetBytesResult(r kdf.KeySetBytesResult) {
 }
 
 func init() {
+	i18n.MustInit("")
+	refreshCmdDescs = append(refreshCmdDescs, func() {
+		keyDerivePipeCmd.Short = i18n.T("key_derive_pipe.short")
+		keyDerivePipeCmd.Long = i18n.T("key_derive_pipe.long")
+	})
 	rootCmd.AddCommand(keyDerivePipeCmd)
 }

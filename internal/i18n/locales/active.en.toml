@@ -765,6 +765,52 @@ verify the result against the stored UUIDs.
 Flags take priority; any missing required value is prompted interactively
 (only when stdin is a terminal). Byte-level compatible with the web tool."""
 
+[key_derive_pipe.short]
+description = "Short description for key-derive-pipe command"
+other = "Derive a key set from interactive input or a piped JSON object (wipeable secrets)"
+
+[key_derive_pipe.long]
+description = "Long description for key-derive-pipe command"
+other = """Derive a key set of three 512-bit keys plus a UUID from input and password.
+When stdin is a terminal the command prompts interactively (the password is
+collected with echo disabled); otherwise it reads a JSON object on stdin
+carrying mode/input/password/salt/hint/strength/config. The password never
+enters argv or shell history, and every secret (password, derived keys,
+intermediates) is carried as wipeable bytes and zeroed after use.
+
+--mode generate: produce a fresh key set and emit a recovery config (to a file
+or stdout) so the same set can be re-derived later.
+--mode restore:  re-derive using the salt from an existing recovery config and
+verify the result against the stored UUID fingerprints."""
+
+[key_derive_pipe.prompt.mode]
+description = "Mode selection prompt"
+other = "operation mode"
+
+[key_derive_pipe.prompt.input]
+description = "Input text prompt"
+other = "input text"
+
+[key_derive_pipe.prompt.password]
+description = "Password prompt"
+other = "password"
+
+[key_derive_pipe.prompt.hint]
+description = "Hint prompt"
+other = "hint (optional)"
+
+[key_derive_pipe.prompt.strength]
+description = "Strength tier prompt"
+other = "strength tier"
+
+[key_derive_pipe.prompt.output]
+description = "Recovery config output path prompt"
+other = "recovery config output path (empty = print to stdout)"
+
+[key_derive_pipe.prompt.config]
+description = "Recovery config path prompt"
+other = "recovery config path"
+
 [key_derive.flag.mode]
 description = "Description for --mode flag"
 other = "operation mode: generate (new key set) or restore (verify against --config)"

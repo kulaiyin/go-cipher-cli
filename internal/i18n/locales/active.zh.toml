@@ -761,6 +761,49 @@ HKDF(SHA3-512) 域分离（S1/S2/S3/UUID）。
 命令行参数优先；任何缺失的必填项会在交互式下提示输入（仅当 stdin 是终端时）。
 与网页端字节级兼容。"""
 
+[key_derive_pipe.short]
+description = "key-derive-pipe 命令简短描述"
+other = "从交互输入或管道 JSON 对象派生密钥集（敏感信息全程可擦除）"
+
+[key_derive_pipe.long]
+description = "key-derive-pipe 命令详细描述"
+other = """从输入文本与密码派生一组 3 个 512 位密钥外加 UUID。
+当标准输入为终端时，命令以交互方式提示输入（密码以隐藏方式收集）；否则从标准输入
+读取一个 JSON 对象（包含 mode/input/password/salt/hint/strength/config）。密码永不
+进入命令行参数或 shell 历史，且所有敏感信息（密码、派生密钥、中间值）均以可擦除
+bytes 承载并在使用后清零。
+
+--mode generate：生成全新密钥集并输出恢复配置（写入文件或标准输出），供后续恢复。
+--mode restore：依据现有恢复配置中的 salt 重新派生，并与存储的 UUID 指纹比对校验。"""
+
+[key_derive_pipe.prompt.mode]
+description = "模式选择提示"
+other = "操作模式"
+
+[key_derive_pipe.prompt.input]
+description = "输入文本提示"
+other = "输入文本"
+
+[key_derive_pipe.prompt.password]
+description = "密码提示"
+other = "密码"
+
+[key_derive_pipe.prompt.hint]
+description = "提示语提示"
+other = "提示语（可选）"
+
+[key_derive_pipe.prompt.strength]
+description = "强度等级提示"
+other = "强度等级"
+
+[key_derive_pipe.prompt.output]
+description = "恢复配置输出路径提示"
+other = "恢复配置输出路径（留空则打印到标准输出）"
+
+[key_derive_pipe.prompt.config]
+description = "恢复配置路径提示"
+other = "恢复配置路径"
+
 [key_derive.flag.mode]
 description = "--mode 标志说明"
 other = "操作模式：generate（生成新密钥集）或 restore（依据 --config 校验）"

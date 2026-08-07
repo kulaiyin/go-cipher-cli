@@ -136,3 +136,49 @@ func TestDeriveNewSaltFallback(t *testing.T) {
 		t.Fatal("derived salt must be non-empty")
 	}
 }
+
+// TestComputeFinalPasswordBytes_Parity locks byte equivalence: the wipeable
+// bytes variant must produce exactly the string variant's password (and vice
+// versa), and must pass the golden vector.
+func TestComputeFinalPasswordBytes_Parity(t *testing.T) {
+	salt := strings.Repeat("ab", 64)
+	passwords := [][]byte{[]byte("20240101"), []byte("shanghai\u4E0A\u6D77"), []byte("@abc")}
+
+	want, err := ComputeFinalPassword(salt, passwords)
+	if err != nil {
+		t.Fatalf("ComputeFinalPassword: %v", err)
+	}
+	got, err := ComputeFinalPasswordBytes(salt, passwords)
+	if err != nil {
+		t.Fatalf("ComputeFinalPasswordBytes: %v", err)
+	}
+	defer clear(got)
+	if string(got) != want {
+		t.Fatalf("parity mismatch:\n bytes %q\n str   %q", got, want)
+	}
+	if len(got) != 128 {
+		t.Fatalf("want 128 bytes, got %d", len(got))
+	}
+}
+
+// TestFusePasswordsBytes_Parity locks byte equivalence of the bytes fusion
+// against the string FusePasswords across the web golden vectors.
+func TestFusePasswordsBytes_Parity(t *testing.T) {
+	passwords := [][]byte{[]byte("123456789"), []byte("shanghai"), []byte("@")}
+	cases := []string{
+		"a76fdc37b135f1c3",
+		"cb1045ee07414e4e",
+		"b5f6044f2129c682",
+		"857c1eea3013d365",
+		"e98310c3be31e633",
+		"d4520ed6e31706f0",
+	}
+	for _, salt := range cases {
+		want := FusePasswords(salt, passwords)
+		got := fusePasswordsBytes([]byte(salt), passwords)
+		defer clear(got)
+		if string(got) != want {
+			t.Errorf("fuse parity mismatch for salt %q:\n got  %q\n want %q", salt, got, want)
+		}
+	}
+}
