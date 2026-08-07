@@ -89,6 +89,11 @@ var argon2idCmd = &cobra.Command{
 			return fmt.Errorf("%s: %w", i18n.T("argon2id.error.invalid_salt"), err)
 		}
 
+		// The password arrives as a string from the -p flag / stdin protocol
+		// (cobra flags only bind strings); hand the derivation bytes it can use.
+		passwordBytes := []byte(password)
+		defer clear(passwordBytes)
+
 		cfg := kdf.Argon2Config{
 			Salt:        salt,
 			Iterations:  argon2Iterations,
@@ -111,11 +116,11 @@ var argon2idCmd = &cobra.Command{
 				defer wg.Done()
 				runArgon2Progress(done, cfg)
 			}()
-			result = kdf.Argon2(password, cfg)
+			result = kdf.Argon2(passwordBytes, cfg)
 			close(done)
 			wg.Wait()
 		} else {
-			result = kdf.Argon2(password, cfg)
+			result = kdf.Argon2(passwordBytes, cfg)
 		}
 
 		if !result.Success {

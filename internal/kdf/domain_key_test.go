@@ -38,7 +38,7 @@ func TestDeriveSubKeyByDomain_GoldenVectors(t *testing.T) {
 	for _, v := range vectors {
 		label := "password=" + v.Password + " salt_suffix=" + v.SaltSuffix + " domain=" + v.Domain
 		t.Run(label, func(t *testing.T) {
-			got, err := DeriveSubKeyByDomain(v.Password, v.SaltSuffix, v.Domain)
+			got, err := DeriveSubKeyByDomain([]byte(v.Password), v.SaltSuffix, v.Domain)
 			if err != nil {
 				t.Fatalf("derive error: %v", err)
 			}
@@ -66,7 +66,7 @@ func TestDeriveSubKey_Convenience(t *testing.T) {
 		t.Fatal("could not find default-v1 / weakpass / empty suffix vector")
 	}
 
-	result := DeriveSubKey(target.Password, target.SaltSuffix)
+	result := DeriveSubKey([]byte(target.Password), target.SaltSuffix)
 	if !result.Success {
 		t.Fatalf("derive failed: %s", result.Error)
 	}
@@ -79,11 +79,11 @@ func TestDeriveSubKey_Convenience(t *testing.T) {
 }
 
 func TestDeriveSubKeyByDomain_Deterministic(t *testing.T) {
-	a, err := DeriveSubKeyByDomain("deterministic", "salt", "d")
+	a, err := DeriveSubKeyByDomain([]byte("deterministic"), "salt", "d")
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := DeriveSubKeyByDomain("deterministic", "salt", "d")
+	b, err := DeriveSubKeyByDomain([]byte("deterministic"), "salt", "d")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,11 +93,11 @@ func TestDeriveSubKeyByDomain_Deterministic(t *testing.T) {
 }
 
 func TestDeriveSubKeyByDomain_DifferentDomain(t *testing.T) {
-	k1, err := DeriveSubKeyByDomain("pw", "s", "domain-a")
+	k1, err := DeriveSubKeyByDomain([]byte("pw"), "s", "domain-a")
 	if err != nil {
 		t.Fatal(err)
 	}
-	k2, err := DeriveSubKeyByDomain("pw", "s", "domain-b")
+	k2, err := DeriveSubKeyByDomain([]byte("pw"), "s", "domain-b")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,8 +107,8 @@ func TestDeriveSubKeyByDomain_DifferentDomain(t *testing.T) {
 }
 
 func TestDeriveSubKeyByDomain_DifferentSuffix(t *testing.T) {
-	r1 := DeriveSubKey("pw", "suffix-a")
-	r2 := DeriveSubKey("pw", "suffix-b")
+	r1 := DeriveSubKey([]byte("pw"), "suffix-a")
+	r2 := DeriveSubKey([]byte("pw"), "suffix-b")
 	if !r1.Success || !r2.Success {
 		t.Fatalf("derive failed: r1=%v r2=%v", r1.Error, r2.Error)
 	}

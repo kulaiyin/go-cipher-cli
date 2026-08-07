@@ -255,7 +255,7 @@ func TestRestoreQuestionAnswerSeedChain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate password: %v", err)
 	}
-	gen := kdf.DeriveKeySet(input, pw, salt, kdf.StrengthBasic)
+	gen := kdf.DeriveKeySet(input, []byte(pw), salt, kdf.StrengthBasic)
 	if !gen.Success {
 		t.Fatalf("derive: %s", gen.Error)
 	}
@@ -271,7 +271,7 @@ func TestRestoreQuestionAnswerSeedChain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("restore password: %v", err)
 	}
-	res := kdf.DeriveKeySet(input, pw2, rc.Salt, kdf.StrengthBasic)
+	res := kdf.DeriveKeySet(input, []byte(pw2), rc.Salt, kdf.StrengthBasic)
 	if !res.Success {
 		t.Fatalf("restore derive: %s", res.Error)
 	}
@@ -343,7 +343,7 @@ func TestConfigFileQuestionAnswerSeedChain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("restore password: %v", err)
 	}
-	res := kdf.DeriveKeySet(input, pw2, cfg.Salt, kdf.StrengthBasic)
+	res := kdf.DeriveKeySet(input, []byte(pw2), cfg.Salt, kdf.StrengthBasic)
 	if !res.Success {
 		t.Fatalf("restore derive: %s", res.Error)
 	}

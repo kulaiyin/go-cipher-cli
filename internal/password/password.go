@@ -178,7 +178,7 @@ func DeriveNewSalt(originalSalt string) (string, error) {
 	if originalSalt == "" {
 		originalSalt = defaultSalt
 	}
-	res := kdf.Argon2(originalSalt, kdf.Argon2Config{
+	res := kdf.Argon2([]byte(originalSalt), kdf.Argon2Config{
 		Salt:        []byte(originalSalt + ":" + defaultSalt),
 		MemorySize:  32 * 1024,
 		Iterations:  3,

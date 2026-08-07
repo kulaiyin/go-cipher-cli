@@ -102,9 +102,11 @@ func Input(message string, defaultValue string, help string, opts ...PromptOptio
 	return defaultValue, nil
 }
 
-// Password prompts the user for a hidden password and returns it. help, when
-// non-empty, is shown as a hint under the prompt.
-func Password(message string, help string, opts ...PromptOption) (string, error) {
+// Password prompts the user for a hidden password and returns it as UTF-8
+// bytes so callers can wipe it after use. help, when non-empty, is shown as a
+// hint under the prompt. (The underlying huh textinput still buffers a string;
+// this returns a byte copy the caller owns.)
+func Password(message string, help string, opts ...PromptOption) ([]byte, error) {
 	o := applyOptions(opts)
 	var pw string
 	field := huh.NewInput().Title(message).EchoMode(huh.EchoModePassword).Value(&pw)
@@ -115,9 +117,9 @@ func Password(message string, help string, opts ...PromptOption) (string, error)
 		field = field.Validate(v)
 	}
 	if err := runForm(field); err != nil {
-		return "", translateAbort(err)
+		return nil, translateAbort(err)
 	}
-	return pw, nil
+	return []byte(pw), nil
 }
 
 // MultiInput prompts the user for multiple lines of text and returns the

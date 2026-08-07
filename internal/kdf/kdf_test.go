@@ -81,7 +81,7 @@ func TestArgon2_ReturnsHexAndBase64Salt(t *testing.T) {
 	pw := "test-password"
 	saltHex := "00112233445566778899aabbccddeeff"
 	salt, _ := hex.DecodeString(saltHex)
-	res := Argon2(pw, Argon2Config{
+	res := Argon2([]byte(pw), Argon2Config{
 		Salt:        salt,
 		Iterations:  3,
 		MemorySize:  8 * 1024,
@@ -120,7 +120,7 @@ func TestArgon2_StrongPasswordDerivation_MatchesGolden(t *testing.T) {
 	}
 	for i, pw := range g.Passwords {
 		wantHex := g.Argon2RawHex[i]
-		res := Argon2(pw, Argon2Config{
+		res := Argon2([]byte(pw), Argon2Config{
 			Salt: s1, Iterations: 3, MemorySize: 32 * 1024, Parallelism: 2, HashLength: 64,
 		})
 		if !res.Success {

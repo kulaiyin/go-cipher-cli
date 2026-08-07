@@ -41,7 +41,8 @@ const (
 )
 
 // Argon2 derives a key with argon2id and returns the result struct.
-func Argon2(password string, cfg Argon2Config) KDFResult {
+// password is UTF-8 bytes; callers wipe it after the derivation.
+func Argon2(password []byte, cfg Argon2Config) KDFResult {
 	start := nowMs()
 	time := orDefault(cfg.Iterations, defaultIterations)
 	mem := orDefault(cfg.MemorySize, defaultMemoryKiB)
@@ -50,7 +51,7 @@ func Argon2(password string, cfg Argon2Config) KDFResult {
 	if keyLen <= 0 {
 		keyLen = 64
 	}
-	out, err := safety.Argon2id([]byte(password), cfg.Salt, time, mem, par, keyLen)
+	out, err := safety.Argon2id(password, cfg.Salt, time, mem, par, keyLen)
 	if err != nil {
 		return KDFResult{Error: errMsg(err, i18n.T("kdf.error.argon2_failed")), ProcessingTime: elapsedMs(start)}
 	}

@@ -222,7 +222,10 @@ func (f *Field) Prompt(target *string, flagName string) error {
 				if err != nil {
 					return err
 				}
-				*target = input
+				// FieldValues are string-typed (they back cobra flag values); the
+				// password returns as bytes so the byte copy can be wiped.
+				*target = string(input)
+				clear(input)
 			case PromptMultiInput:
 				input, err := MultiInput(promptMsg, f.promptHelp(flagName))
 				if err != nil {

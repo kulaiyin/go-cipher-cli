@@ -19,6 +19,7 @@
 package aesgcm
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
@@ -48,8 +49,9 @@ var (
 var reStrongPasswordHex = regexp.MustCompile(`^[0-9a-fA-F]{128}$`)
 
 // GenerateAesGcmKey derives the AES-256 DEK and the data salt (sdata) from a
-// salt_seed hex string and a password list.
-func GenerateAesGcmKey(salt string, passwords []string) (key, saltOut []byte, err error) {
+// salt_seed hex string and a password list. The passwords are UTF-8 bytes;
+// callers wipe them after the derivation finishes.
+func GenerateAesGcmKey(salt string, passwords [][]byte) (key, saltOut []byte, err error) {
 	valid := getValidPasswords(passwords)
 	saltText := passwordsToSaltText(valid)
 	saltPrk := safety.HMACSHA3512([]byte(saltText), []byte(salt)) // key=salt(hex string ASCII)
@@ -61,15 +63,15 @@ func GenerateAesGcmKey(salt string, passwords []string) (key, saltOut []byte, er
 	if err != nil {
 		return nil, nil, err
 	}
-	sort.Strings(processed)
-	usrStrongKey := strings.Join(processed, ":")
-	prkDek := safety.HMACSHA3512([]byte(usrStrongKey), s3) // key=s3 bytes
+	sort.Slice(processed, func(i, j int) bool { return bytes.Compare(processed[i], processed[j]) < 0 })
+	usrStrongKey := bytes.Join(processed, []byte(":"))
+	prkDek := safety.HMACSHA3512(usrStrongKey, s3) // key=s3 bytes
 	aesDek := safety.HKDFExpand(prkDek, infoAesGcmFinalKey, 32)
 	return aesDek, sdata, nil
 }
 
 // EncryptWithPassword derives the key from salt+passwords and AES-256-GCM encrypts data.
-func EncryptWithPassword(data []byte, salt string, passwords []string) ([]byte, error) {
+func EncryptWithPassword(data []byte, salt string, passwords [][]byte) ([]byte, error) {
 	if len(data) == 0 || len(passwords) == 0 {
 		return nil, errors.New(i18n.T("aesgcm.error.invalid_input"))
 	}
@@ -83,7 +85,7 @@ func EncryptWithPassword(data []byte, salt string, passwords []string) ([]byte, 
 }
 
 // DecryptWithPassword derives the key from salt+passwords and AES-256-GCM decrypts enc.
-func DecryptWithPassword(enc []byte, salt string, passwords []string) ([]byte, error) {
+func DecryptWithPassword(enc []byte, salt string, passwords [][]byte) ([]byte, error) {
 	if len(enc) == 0 || len(passwords) == 0 {
 		return nil, errors.New(i18n.T("aesgcm.error.empty_data"))
 	}
@@ -153,10 +155,10 @@ func GcmDecrypt(enc, key, salt []byte) ([]byte, error) {
 }
 
 // getValidPasswords drops empty-after-trim entries.
-func getValidPasswords(passwords []string) []string {
-	out := make([]string, 0, len(passwords))
+func getValidPasswords(passwords [][]byte) [][]byte {
+	out := make([][]byte, 0, len(passwords))
 	for _, p := range passwords {
-		if strings.TrimSpace(p) != "" {
+		if len(bytes.TrimSpace(p)) > 0 {
 			out = append(out, p)
 		}
 	}
@@ -164,10 +166,10 @@ func getValidPasswords(passwords []string) []string {
 }
 
 // passwordsToSaltText builds the salt text: SHA256 of each pw, sorted and joined by ":".
-func passwordsToSaltText(passwords []string) string {
+func passwordsToSaltText(passwords [][]byte) string {
 	hashed := make([]string, len(passwords))
 	for i, p := range passwords {
-		hashed[i] = safety.SHA256Hex(p)
+		hashed[i] = safety.SHA256Hex(string(p))
 	}
 	sort.Strings(hashed)
 	return strings.Join(hashed, ":")
@@ -175,11 +177,12 @@ func passwordsToSaltText(passwords []string) string {
 
 // processPasswords strengthens weak passwords via argon2id; strong (128-hex)
 // passwords pass through lowercased.
-func processPasswords(passwords []string, s1 []byte) ([]string, error) {
-	out := make([]string, 0, len(passwords))
+func processPasswords(passwords [][]byte, s1 []byte) ([][]byte, error) {
+	out := make([][]byte, 0, len(passwords))
 	for _, p := range passwords {
-		strength := checkPasswordStrength(p)
-		if strength < 8 || !reStrongPasswordHex.MatchString(p) {
+		ps := string(p)
+		strength := checkPasswordStrength(ps)
+		if strength < 8 || !reStrongPasswordHex.MatchString(ps) {
 			res := kdf.Argon2(p, kdf.Argon2Config{
 				Salt:        s1,
 				Iterations:  3,
@@ -196,9 +199,9 @@ func processPasswords(passwords []string, s1 []byte) ([]string, error) {
 				// Fall back to the raw bytes of the hex string if base64 decoding fails.
 				quirked = []byte(res.Data)
 			}
-			out = append(out, hex.EncodeToString(quirked))
+			out = append(out, []byte(hex.EncodeToString(quirked)))
 		} else {
-			out = append(out, strings.ToLower(p))
+			out = append(out, []byte(strings.ToLower(ps)))
 		}
 	}
 	return out, nil

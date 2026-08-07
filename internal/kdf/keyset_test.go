@@ -137,7 +137,7 @@ func TestDeriveKeySet_GoldenVectors(t *testing.T) {
 	vectors := loadKeyDeriveVectors(t)
 	for _, v := range vectors {
 		t.Run(v.Name, func(t *testing.T) {
-			r := DeriveKeySet(v.Input, v.Password, v.SaltSeed, Strength(v.Strength))
+			r := DeriveKeySet(v.Input, []byte(v.Password), v.SaltSeed, Strength(v.Strength))
 			if !r.Success {
 				t.Fatalf("derive failed: %s", r.Error)
 			}
@@ -177,8 +177,8 @@ func TestDeriveKeySet_Deterministic(t *testing.T) {
 		t.Skip("skipping slow Argon2id determinism test in -short mode")
 	}
 	v := loadKeyDeriveVectors(t)[0]
-	r1 := DeriveKeySet(v.Input, v.Password, v.SaltSeed, StrengthBasic)
-	r2 := DeriveKeySet(v.Input, v.Password, v.SaltSeed, StrengthBasic)
+	r1 := DeriveKeySet(v.Input, []byte(v.Password), v.SaltSeed, StrengthBasic)
+	r2 := DeriveKeySet(v.Input, []byte(v.Password), v.SaltSeed, StrengthBasic)
 	if !r1.Success || !r2.Success {
 		t.Fatalf("derive failed: %s / %s", r1.Error, r2.Error)
 	}
@@ -201,7 +201,7 @@ func TestKeySetResult_KeysAreDistinct(t *testing.T) {
 		t.Skip("skipping slow distinctness test in -short mode")
 	}
 	v := loadKeyDeriveVectors(t)[0]
-	r := DeriveKeySet(v.Input, v.Password, v.SaltSeed, StrengthBasic)
+	r := DeriveKeySet(v.Input, []byte(v.Password), v.SaltSeed, StrengthBasic)
 	if !r.Success {
 		t.Fatalf("derive failed: %s", r.Error)
 	}

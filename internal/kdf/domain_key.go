@@ -49,12 +49,12 @@ type DeriveSubKeyResult struct {
 //  2. masterPRK = Argon2id(password, fullSalt, 64MiB/3iter/1par, output=64 bytes)
 //  3. subKey = HKDF-Expand(SHA-256, masterPRK, domainInfo, output=32 bytes)
 //  4. Return hex(subKey)
-func DeriveSubKeyByDomain(userPassword, optionalSaltSuffix, domainInfo string) (string, error) {
+func DeriveSubKeyByDomain(userPassword []byte, optionalSaltSuffix, domainInfo string) (string, error) {
 	fullSalt := DeriveHardcodedSalt + optionalSaltSuffix
 
 	// Phase 1: Argon2id slow function
 	masterPRK, err := safety.Argon2id(
-		[]byte(userPassword),
+		userPassword,
 		[]byte(fullSalt),
 		DeriveArgon2Time,
 		DeriveArgon2Memory,
@@ -72,7 +72,7 @@ func DeriveSubKeyByDomain(userPassword, optionalSaltSuffix, domainInfo string) (
 }
 
 // DeriveSubKey is the convenience wrapper using DefaultDomain.
-func DeriveSubKey(userPassword, optionalSaltSuffix string) DeriveSubKeyResult {
+func DeriveSubKey(userPassword []byte, optionalSaltSuffix string) DeriveSubKeyResult {
 	start := time.Now()
 	subKeyHex, err := DeriveSubKeyByDomain(userPassword, optionalSaltSuffix, DefaultDomain)
 	elapsed := time.Since(start).Milliseconds()

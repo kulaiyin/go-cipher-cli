@@ -78,7 +78,7 @@ type KeySetResult struct {
 //
 // Output: 3 independent 512-bit keys and a 128-bit UUID, all deterministic
 // for the same inputs.
-func DeriveKeySet(input, password, saltSeed string, strength Strength) KeySetResult {
+func DeriveKeySet(input string, password []byte, saltSeed string, strength Strength) KeySetResult {
 	start := time.Now()
 	cfg := StrengthConfigFor(strength)
 	result := KeySetResult{SaltSeed: saltSeed, Strength: normalizedStrength(strength)}
@@ -105,7 +105,7 @@ func DeriveKeySet(input, password, saltSeed string, strength Strength) KeySetRes
 	// the byte-level contract; the Go side must replicate it exactly (the hash is
 	// still computed by the frontend, but its value is discarded here).
 	const objectCoercionLiteral = "[object Object]"
-	combined := password + objectCoercionLiteral
+	combined := string(password) + objectCoercionLiteral
 	_ = crypto.HashText(input, "sha3-512") // computed by frontend (side effect), value unused
 	//
 	// ⚠️ Frontend quirk #2 — "array_buffer_to_string" (KeyDerivationForm.vue:703):
@@ -117,8 +117,8 @@ func DeriveKeySet(input, password, saltSeed string, strength Strength) KeySetRes
 	finalSalt := crypto.HMAC(combined, "hmac-sha3-512", hmacKey).Data
 
 	// --- Step 3: build the Argon2id input and derive the master key (L708-717) ---
-	inputData := input + finalSalt + password
-	masterKey := Argon2(inputData, Argon2Config{
+	inputData := input + finalSalt + string(password)
+	masterKey := Argon2([]byte(inputData), Argon2Config{
 		Salt:        saltArgon2id,
 		Iterations:  cfg.Iterations,
 		MemorySize:  cfg.MemorySize,

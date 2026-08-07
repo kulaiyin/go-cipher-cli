@@ -280,7 +280,7 @@ func runKeyDeriveRestore(p *keyDeriveParams, input, password, hint string, stren
 // deriveAndEmit runs DeriveKeySet and prints/writes the results. In restore
 // mode (stored != nil) it also checks ValidateKeyRecovery against stored UUIDs.
 func deriveAndEmit(p *keyDeriveParams, input, password, salt, hint string, strength kdf.Strength, stored *recoveryConfig) error {
-	result := kdf.DeriveKeySet(input, password, salt, strength)
+	result := kdf.DeriveKeySet(input, []byte(password), salt, strength)
 	if !result.Success {
 		return fmt.Errorf("%s: %s", i18n.T("key_derive.error.derive_failed"), result.Error)
 	}
@@ -661,7 +661,10 @@ func promptDefaultPassword(promptMsg string, target *string) error {
 	if err != nil {
 		return err
 	}
-	*target = input
+	// The target is a string (it backs the cobra -p flag value); copy the
+	// bytes over and wipe the temporary byte buffer.
+	*target = string(input)
+	clear(input)
 	return nil
 }
 

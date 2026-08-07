@@ -27,11 +27,12 @@ var enhanceCmd = &cobra.Command{
 			domain = kdf.DefaultDomain
 		}
 
-		subKeyHex, err := kdf.DeriveSubKeyByDomain(enhancePassword, enhanceSaltSuffix, domain)
+		password := []byte(enhancePassword)
+		defer clear(password)
+		subKeyHex, err := kdf.DeriveSubKeyByDomain(password, enhanceSaltSuffix, domain)
 		if err != nil {
 			return fmt.Errorf("%s: %w", i18n.T("enhance.error.derive_failed"), err)
 		}
-
 		subKeyBytes, _ := hex.DecodeString(subKeyHex)
 
 		fmt.Println(i18n.T("enhance.output.algorithm"))

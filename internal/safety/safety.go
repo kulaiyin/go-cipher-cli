@@ -205,7 +205,7 @@ func IsPassword1Valid(value string) bool {
 // bytes (matching the web tool's UTF-8 encoding of the hex string).
 // This key does NOT participate in AES-GCM encryption; it is only the HMAC
 // key for the integrityHash strong check.
-func AssemblePackageKey(keys []string, saltSeedHex string) ([]byte, error) {
+func AssemblePackageKey(keys [][]byte, saltSeedHex string) ([]byte, error) {
 	if len(keys) < 3 {
 		return nil, fmt.Errorf("%s", i18n.T("safety.error.assemble_keys"))
 	}
@@ -221,8 +221,11 @@ func AssemblePackageKey(keys []string, saltSeedHex string) ([]byte, error) {
 
 // assemblePackagePassword sorts the first three keys and joins the min and max
 // with ":". It matches the web tool's process_assemble_keys.
-func assemblePackagePassword(keys []string) string {
-	firstThree := append([]string{}, keys[:3]...)
-	sort.Strings(firstThree)
-	return firstThree[0] + ":" + firstThree[2]
+func assemblePackagePassword(keys [][]byte) string {
+	firstThree := make([][]byte, 3)
+	copy(firstThree, keys[:3])
+	sort.Slice(firstThree, func(i, j int) bool {
+		return string(firstThree[i]) < string(firstThree[j])
+	})
+	return string(firstThree[0]) + ":" + string(firstThree[2])
 }

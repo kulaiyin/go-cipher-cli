@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -42,7 +43,8 @@ var (
 	dataCipherExtraPassword string
 	// dataCipherPasswords is the resolved full key/password list used by the
 	// encrypt/decrypt pipeline (3 strong keys + password1 + optional extras).
-	dataCipherPasswords    []string
+	// Entries are UTF-8 bytes; wiped after encryption/decryption finishes.
+	dataCipherPasswords    [][]byte
 	dataCipherSalt         string
 	dataCipherHint         string
 	dataCipherOutput       string
@@ -335,6 +337,7 @@ func runEncrypt(in *cipherInput) error {
 	if err := resolvePasswords(true, dataCipherSalt, nil); err != nil {
 		return err
 	}
+	defer wipeDataCipherPasswords()
 	// validateKeys covers the -k/-p/--extra-password flag path (the interactive
 	// path was validated live).
 	if err := validateKeys(); err != nil {
@@ -466,6 +469,7 @@ func runDecrypt(in *cipherInput) error {
 	if err := resolvePasswords(false, parsed.SaltSeed, meta.SelectedHints); err != nil {
 		return err
 	}
+	defer wipeDataCipherPasswords()
 	// validateKeys covers the -k/-p/--extra-password flag path (interactive path
 	// was validated live).
 	// The web tool validates the form before decrypting too; a weak key/password
@@ -546,10 +550,13 @@ func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 		return fmt.Errorf("%s", i18n.T("data_cipher.error.too_many_keys"))
 	}
 
-	resolved := make([]string, 0, 3+1+1)
+	resolved := make([][]byte, 0, 3+1+1)
 
 	// 1. Strong keys (web keys[0..2]) from -k; missing ones prompted in a TTY.
-	resolved = append(resolved, dataCipherKeys...)
+	// The -k flag values are strings (cobra binds only strings); hand bytes over.
+	for _, k := range dataCipherKeys {
+		resolved = append(resolved, []byte(k))
+	}
 	if len(resolved) < 3 {
 		if !isStdinTerminal() {
 			return fmt.Errorf("%s", i18n.T("data_cipher.error.password_required"))
@@ -572,7 +579,7 @@ func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 	// line also collects interactively, but from /dev/tty since the stdin pipe
 	// is already consumed by the protocol.
 	if dataCipherPassword != "" {
-		resolved = append(resolved, dataCipherPassword)
+		resolved = append(resolved, []byte(dataCipherPassword))
 	} else if dataCipherSecretsStdin {
 		pw1, ids, err := promptPassword1FromTTY(salt, allowQnA, hintIDs)
 		if err != nil {
@@ -618,7 +625,8 @@ func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 			if err != nil {
 				return err
 			}
-			if strings.TrimSpace(extra) == "" {
+			if len(bytes.TrimSpace(extra)) == 0 {
+				clear(extra)
 				break
 			}
 			resolved = append(resolved, extra)
@@ -628,11 +636,20 @@ func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 	// 4. --extra-password is appended at the end; the derivation is
 	// order-independent, so its position does not affect the derived key.
 	if dataCipherExtraPassword != "" {
-		resolved = append(resolved, dataCipherExtraPassword)
+		resolved = append(resolved, []byte(dataCipherExtraPassword))
 	}
 
 	dataCipherPasswords = resolved
 	return nil
+}
+
+// wipeDataCipherPasswords zeroes all resolved password bytes so the user's
+// secret material does not linger in memory after encryption/decryption.
+func wipeDataCipherPasswords() {
+	for _, p := range dataCipherPasswords {
+		clear(p)
+	}
+	dataCipherPasswords = nil
 }
 
 // promptPassword1 collects password1 and returns it plus the chosen
@@ -644,33 +661,33 @@ func resolvePasswords(allowQnA bool, salt string, hintIDs []string) error {
 //   - decrypt: when the file's selectedHints are non-empty, password1 is
 //     reproduced by re-answering those questions with the bin's salt_seed
 //     (mirrors key-derive restore); otherwise the plain hidden prompt is used.
-func promptPassword1(salt string, encrypt bool, hintIDs []string) (string, []string, error) {
+func promptPassword1(salt string, encrypt bool, hintIDs []string) ([]byte, []string, error) {
 	if encrypt {
 		useQnA, err := param.Confirm(i18n.T("data_cipher.prompt.use_question_answer"), true)
 		if err != nil {
-			return "", nil, err
+			return nil, nil, err
 		}
 		if useQnA {
 			pw, ids, err := runQuestionAnswerFlow(salt)
 			if err != nil {
-				return "", nil, err
+				return nil, nil, err
 			}
-			return pw, ids, nil
+			return []byte(pw), ids, nil
 		}
 	} else if len(hintIDs) > 0 {
 		steps, err := buildRestoreSteps(hintIDs)
 		if err != nil {
-			return "", nil, err
+			return nil, nil, err
 		}
 		pw, err := runReanswerFlow(steps, salt)
 		if err != nil {
-			return "", nil, err
+			return nil, nil, err
 		}
-		return pw, nil, nil
+		return []byte(pw), nil, nil
 	}
 	pw, err := param.Password(i18n.T("data_cipher.prompt.password1"), "", param.WithValidator(password1Validator))
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 	return pw, nil, nil
 }
@@ -681,10 +698,10 @@ func promptPassword1(salt string, encrypt bool, hintIDs []string) (string, []str
 // on encrypt, reanswer on decrypt) must read from /dev/tty instead. The global
 // os.Stdin/os.Stdout are swapped for the duration because the interactive
 // libraries (param, form) read from the global stdin.
-func promptPassword1FromTTY(salt string, allowQnA bool, hintIDs []string) (string, []string, error) {
+func promptPassword1FromTTY(salt string, allowQnA bool, hintIDs []string) ([]byte, []string, error) {
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {
-		return "", nil, fmt.Errorf("%s", i18n.T("data_cipher.error.password1_tty_required"))
+		return nil, nil, fmt.Errorf("%s", i18n.T("data_cipher.error.password1_tty_required"))
 	}
 	defer tty.Close()
 	oldStdin, oldStdout := os.Stdin, os.Stdout
@@ -758,14 +775,14 @@ func validateKeys() error {
 		return fmt.Errorf("%s", i18n.T("data_cipher.error.password_required"))
 	}
 	for i := 0; i < 3; i++ {
-		v := strings.TrimSpace(dataCipherPasswords[i])
-		if !safety.IsPasswordHighStrength(v) {
+		v := bytes.TrimSpace(dataCipherPasswords[i])
+		if !safety.IsPasswordHighStrength(string(v)) {
 			return fmt.Errorf("%s", i18n.TWithData("data_cipher.error.key_not_high_strength", map[string]interface{}{
 				"N": i + 1,
 			}))
 		}
 	}
-	if !safety.IsPassword1Valid(strings.TrimSpace(dataCipherPasswords[3])) {
+	if !safety.IsPassword1Valid(string(bytes.TrimSpace(dataCipherPasswords[3]))) {
 		return fmt.Errorf("%s", i18n.T("data_cipher.error.password1_invalid"))
 	}
 	return nil

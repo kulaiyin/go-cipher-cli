@@ -8,6 +8,15 @@ import (
 	"go-cipher-cli/internal/testvectors"
 )
 
+// strBytes converts a string slice (e.g. from JSON golden vectors) to bytes.
+func strBytes(strs []string) [][]byte {
+	out := make([][]byte, len(strs))
+	for i, s := range strs {
+		out[i] = []byte(s)
+	}
+	return out
+}
+
 // Tests for the aesgcm package.
 // These tests verify the FULL key-derivation pipeline + AES-256-GCM against the
 // golden vectors — the end-to-end gate.
@@ -19,7 +28,7 @@ func TestGenerateAesGcmKey_FullPipeline_MatchesGolden(t *testing.T) {
 	v := testvectors.MustLoad()
 	g := v.GenerateAesGcmKey
 
-	key, salt, err := GenerateAesGcmKey(g.Salt, g.Passwords)
+	key, salt, err := GenerateAesGcmKey(g.Salt, strBytes(g.Passwords))
 	if err != nil {
 		t.Fatalf("GenerateAesGcmKey error: %v", err)
 	}
@@ -92,7 +101,7 @@ func TestEncryptWithPassword_RoundTrip(t *testing.T) {
 	}
 	v := testvectors.MustLoad()
 	salt := v.GenerateAesGcmKey.Salt
-	passwords := []string{"weakpass", "Str0ng!Pass#2"}
+	passwords := [][]byte{[]byte("weakpass"), []byte("Str0ng!Pass#2")}
 	plaintext := []byte("password-based round trip")
 
 	enc, err := EncryptWithPassword(plaintext, salt, passwords)
@@ -111,7 +120,7 @@ func TestEncryptWithPassword_RoundTrip(t *testing.T) {
 func TestEncryptWithPassword_InvalidInputs(t *testing.T) {
 	salt := "ab"
 	// empty data
-	if _, err := EncryptWithPassword(nil, salt, []string{"p"}); err == nil {
+	if _, err := EncryptWithPassword(nil, salt, [][]byte{[]byte("p")}); err == nil {
 		t.Error("expected error for empty data")
 	}
 	// empty passwords
@@ -127,11 +136,11 @@ func TestGcmDecrypt_WrongPasswordFails(t *testing.T) {
 	v := testvectors.MustLoad()
 	salt := v.GenerateAesGcmKey.Salt
 	plaintext := []byte("tamper detection test")
-	enc, err := EncryptWithPassword(plaintext, salt, []string{"right-password"})
+	enc, err := EncryptWithPassword(plaintext, salt, [][]byte{[]byte("right-password")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := DecryptWithPassword(enc, salt, []string{"wrong-password"}); err == nil {
+	if _, err := DecryptWithPassword(enc, salt, [][]byte{[]byte("wrong-password")}); err == nil {
 		t.Error("expected GCM auth failure for wrong password")
 	}
 }
