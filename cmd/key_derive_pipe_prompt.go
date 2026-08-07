@@ -47,9 +47,6 @@ func runKeyDerivePipeInteractive() error {
 	}
 	defer util.WipeBytes(state.Password)
 	state.Input = cleanKeyDeriveText(state.Input)
-	if err := validation.ValidateKeyDeriveInput(state.Input); err != nil {
-		return err
-	}
 	if state.Hint == "" {
 		state.Hint = firstNChars(state.Input, 10)
 	}
@@ -88,9 +85,10 @@ func collectKeyDerivePipeInteractive() (*keyDerivePipeInteractiveState, error) {
 
 // collectKeyDerivePipeGenerate prompts generate-mode fields in key-derive's
 // order: input (multi-line + help) -> hint (empty default) -> salt + password
-// (QnA or hidden prompt) -> strength -> output (volatile mntemp default).
+// (question-answer flow only, no plain-password fallback) -> strength -> output
+// (volatile mntemp default).
 func collectKeyDerivePipeGenerate(state *keyDerivePipeInteractiveState) (*keyDerivePipeInteractiveState, error) {
-	input, err := param.MultiInput(i18n.T("key_derive.prompt.input"), i18n.T("key_derive.prompt.input_help"))
+	input, err := param.MultiInput(i18n.T("key_derive.prompt.input"), i18n.T("key_derive.prompt.input_help"), param.WithValidator(validation.ValidateKeyDeriveInput))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +101,7 @@ func collectKeyDerivePipeGenerate(state *keyDerivePipeInteractiveState) (*keyDer
 	state.Hint = hint
 
 	state.Salt = kdf.GenerateSalt(64)
-	pw, ids, err := collectPipePasswordQnA(state.Salt)
+	pw, ids, err := runQuestionAnswerFlowBytes(state.Salt)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +162,7 @@ func collectKeyDerivePipeRestore(state *keyDerivePipeInteractiveState) (*keyDeri
 		}))
 	}
 
-	input, err := param.MultiInput(i18n.T("key_derive.prompt.input"), i18n.T("key_derive.prompt.input_help"))
+	input, err := param.MultiInput(i18n.T("key_derive.prompt.input"), i18n.T("key_derive.prompt.input_help"), param.WithValidator(validation.ValidateKeyDeriveInput))
 	if err != nil {
 		return nil, err
 	}
@@ -218,24 +216,6 @@ func pipeSelectLabeled(message string, opts []labelValue, defaultLabel string, h
 	return labelToValue[chosen], nil
 }
 
-// collectPipePasswordQnA collects the generate password: the question-answer
-// high-strength flow by default (password returned as wipeable bytes), or a
-// plain hidden password prompt when declined.
-func collectPipePasswordQnA(salt string) ([]byte, []string, error) {
-	useQnA, err := param.Confirm(i18n.T("key_derive.prompt.use_question_answer"), true)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !useQnA {
-		pw, err := param.Password(i18n.T("key_derive.prompt.password"), "")
-		if err != nil {
-			return nil, nil, err
-		}
-		return pw, nil, nil
-	}
-	return runQuestionAnswerFlowBytes(salt)
-}
-
 // redirectStdinToTTY temporarily replaces os.Stdin with /dev/tty so the
 // interactive prompts (huh/bubbletea read os.Stdin) can run when the real stdin
 // is a consumed pipe. The returned func restores os.Stdin.
@@ -255,7 +235,7 @@ func redirectStdinToTTY() (func(), error) {
 // collectPipeMissingPasswordTTY collects the password interactively when the
 // piped JSON carried none, reusing every already-provided field. The prompt
 // input is redirected to /dev/tty because stdin is the consumed JSON pipe.
-// Generate offers the question-answer choice; restore re-answers stored
+// Generate runs the question-answer flow only; restore re-answers stored
 // questions or asks for a hidden password.
 func collectPipeMissingPasswordTTY(mode, config, salt string) ([]byte, error) {
 	restore, err := redirectStdinToTTY()
@@ -283,7 +263,7 @@ func collectPipeMissingPasswordTTY(mode, config, salt string) ([]byte, error) {
 		}
 		return param.Password(i18n.T("key_derive.prompt.password"), "")
 	}
-	pw, _, err := collectPipePasswordQnA(salt)
+	pw, _, err := runQuestionAnswerFlowBytes(salt)
 	return pw, err
 }
 
@@ -405,8 +385,8 @@ func runKeyDerivePipeInteractiveGenerate(state *keyDerivePipeInteractiveState) e
 // runKeyDerivePipeInteractiveRestore re-derives with the salt from the config,
 // verifies the masked fingerprints of the derived keys against the stored
 // uuids, and — on success — emits the rebuilt recovery config (preserving the
-// stored uuids/hint_ids) so the keys can be saved again. Nothing sensitive is
-// printed except the masked config.
+// stored uuids/hint_ids). No key file is written on restore. Nothing sensitive
+// is printed except the masked config.
 func runKeyDerivePipeInteractiveRestore(state *keyDerivePipeInteractiveState) error {
 	result := kdf.DeriveKeySetBytes(state.Input, state.Password, state.Salt, state.Strength)
 	if !result.Success {
@@ -438,9 +418,6 @@ func runKeyDerivePipeInteractiveRestore(state *keyDerivePipeInteractiveState) er
 	fmt.Println(i18n.T("key_derive.output.config_label"))
 	os.Stdout.Write(configText)
 	fmt.Println()
-	if err := emitKeySetBytesFile(result); err != nil {
-		return err
-	}
 	fmt.Println(i18n.T("key_derive.output.restore_success"))
 	return nil
 }
