@@ -533,6 +533,50 @@ other = "加密失败: {{.Err}}"
 description = "解密失败的错误"
 other = "解密失败: {{.Err}}"
 
+[key_data_cipher.short]
+description = "key-data-cipher 命令的简短描述"
+other = "先派生或恢复密钥，再一步完成加密/解密"
+
+[key_data_cipher.long]
+description = "key-data-cipher 命令的详细描述"
+other = "组合 key-derive-pipe 与 data-cipher-pipe：从恢复配置文件（key-derive.txt）恢复 3 个强密钥，或通过问题-答案流程派生全新密钥，然后对数据包进行加密或解密。密钥无需手工输入。"
+
+[key_data_cipher.error.config_required]
+description = "解密必须提供恢复配置但未提供时的错误"
+other = "解密需要恢复配置文件（key-derive.txt）来恢复密钥"
+
+[key_data_cipher.error.config_not_found]
+description = "提供的恢复配置文件不存在时的错误"
+other = "恢复配置文件不存在: {{.Path}}"
+
+[key_data_cipher.error.input_not_found]
+description = "解密输入文件不存在时的错误"
+other = "输入文件不存在: {{.Path}}"
+
+[key_data_cipher.error.keys_not_allowed]
+description = "当管道 JSON 携带外部密钥/口令时的错误，本命令在进程内派生这些密钥"
+other = "密钥/口令不得通过管道传入：本命令从恢复配置或问答流程在进程内派生它们"
+
+[key_data_cipher.output.config_written]
+description = "新生成的恢复配置已保存时的提示"
+other = "新的恢复配置已写入 {{.Path}}"
+
+[key_data_cipher.output.config_volatile]
+description = "提醒用户保存新生成的恢复配置，丢失后将无法解密"
+other = "警告：此配置是恢复密钥的唯一途径。它现在位于易失内存（RAM）文件系统中，关机即被擦除——请立即将其转移到永久存储位置，否则数据将永远无法解密。"
+
+[key_data_cipher.stage.derive_keys]
+description = "派生强密钥（key1/key2/key3）的问答流程之前显示的标题"
+other = "第 1/2 步 —— 回答问题以派生你的强密钥（key1/key2/key3）。"
+
+[key_data_cipher.stage.password1]
+description = "派生 password1（加密口令槽位）的问答流程之前显示的标题"
+other = "第 2/2 步 —— 再次回答问题以设置 password1，即附加的加密口令。此口令独立于上面派生密钥时的回答。"
+
+[key_data_cipher.prompt.config_help_encrypt]
+description = "加密模式下可选恢复配置输入的帮助文本"
+other = "留空则派生全新密钥；填入已有的恢复配置路径则恢复你的密钥。"
+
 [data_cipher.error.write_output]
 description = "写入输出失败的错误"
 other = "写入输出文件失败: {{.Err}}"

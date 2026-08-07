@@ -537,6 +537,50 @@ other = "encrypt: {{.Err}}"
 description = "Error when decryption fails"
 other = "decrypt: {{.Err}}"
 
+[key_data_cipher.short]
+description = "Short description of the key-data-cipher command"
+other = "Derive or restore keys, then encrypt/decrypt in one step"
+
+[key_data_cipher.long]
+description = "Long description of the key-data-cipher command"
+other = "Combines key derivation (key-derive-pipe) with data encryption (data-cipher-pipe): restores the 3 strong keys from a recovery config (key-derive.txt) or derives a fresh key set via the question-answer flow, then encrypts or decrypts a bundle. The keys are never entered by hand."
+
+[key_data_cipher.error.config_required]
+description = "Error when decrypt needs a recovery config but none was provided"
+other = "decrypt requires a recovery config (key-derive.txt) to restore the keys"
+
+[key_data_cipher.error.config_not_found]
+description = "Error when the provided recovery config file does not exist"
+other = "recovery config not found: {{.Path}}"
+
+[key_data_cipher.error.input_not_found]
+description = "Error when the decrypt input file does not exist"
+other = "input file not found: {{.Path}}"
+
+[key_data_cipher.error.keys_not_allowed]
+description = "Error when the piped JSON carries external keys/passwords, which this command derives in-process"
+other = "keys/passwords must not be passed via the pipe: this command derives them in-process from the recovery config or the question-answer flow"
+
+[key_data_cipher.output.config_written]
+description = "Message when a freshly generated recovery config is saved"
+other = "new recovery config written to {{.Path}}"
+
+[key_data_cipher.output.config_volatile]
+description = "Reminder to save the freshly generated recovery config, since losing it makes the data undecryptable"
+other = "WARNING: this config is your only way to restore the keys. It now lives in the volatile RAM filesystem and will be erased on shutdown — move it to a permanent location now, or the data can never be decrypted."
+
+[key_data_cipher.stage.derive_keys]
+description = "Heading shown before the question-answer flow that derives the strong keys"
+other = "Step 1/2 — answer the questions to derive your strong keys (key1/key2/key3)."
+
+[key_data_cipher.stage.password1]
+description = "Heading shown before the question-answer flow that derives password1, the encryption password slot"
+other = "Step 2/2 — answer the questions again to set password1, the additional encryption password. This is independent from the key-derivation answers above."
+
+[key_data_cipher.prompt.config_help_encrypt]
+description = "Help text for the optional recovery config prompt in encrypt mode"
+other = "Leave empty to derive a fresh key set, or enter an existing recovery config path to restore your keys."
+
 [data_cipher.error.write_output]
 description = "Error writing output"
 other = "write output: {{.Err}}"
