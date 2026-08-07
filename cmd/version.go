@@ -11,7 +11,7 @@ import (
 // version is the CLI's version string. goreleaser overrides it at build time
 // via -ldflags "-X go-cipher-cli/cmd.version={{ .Tag }}", so released binaries
 // report the git tag. The default here covers local `go build`/`go test` runs.
-var version = "v0.8.0"
+var version = "v0.9.0"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
