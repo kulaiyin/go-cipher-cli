@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"io"
 	"os"
 	"path/filepath"
@@ -122,4 +123,37 @@ func captureStdout(t *testing.T, fn func() error) (string, error) {
 	w.Close()
 	data, _ := io.ReadAll(r)
 	return string(data), runErr
+}
+
+func TestWriteKeySetBytesFile(t *testing.T) {
+	rawS1, _ := hex.DecodeString(kdWantS1)
+	rawS2, _ := hex.DecodeString(strings.Repeat("ab", 64))
+	rawS3, _ := hex.DecodeString(strings.Repeat("cd", 64))
+	rawUUID, _ := hex.DecodeString(kdWantUUID)
+	r := kdf.KeySetBytesResult{
+		RawKeys: [][]byte{rawS1, rawS2, rawS3},
+		RawUUID: rawUUID,
+	}
+	path := filepath.Join(t.TempDir(), "keys.txt")
+	if err := writeKeySetBytesFile(path, r); err != nil {
+		t.Fatalf("write keys file: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(data)
+	if !strings.Contains(string(data), kdWantS1) {
+		t.Errorf("keys file missing S1:\n%s", data)
+	}
+	if !strings.Contains(string(data), kdWantUUID) {
+		t.Errorf("keys file missing UUID:\n%s", data)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0o600 {
+		t.Errorf("permissions = %o, want 600", fi.Mode().Perm())
+	}
 }

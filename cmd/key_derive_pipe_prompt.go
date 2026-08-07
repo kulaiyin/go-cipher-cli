@@ -286,9 +286,43 @@ func finalPasswordBytes(salt string) func([]form.Result) []byte {
 	}
 }
 
+// writeKeySetBytesFile writes the derived keys to path with 0600 permissions,
+// building the content byte-by-byte so no full-key string copy is kept after
+// the write.
+func writeKeySetBytesFile(path string, r kdf.KeySetBytesResult) error {
+	buf := make([]byte, 0, 4*4+3*64+16)
+	buf = append(buf, "S1: "...)
+	buf = appendKeyHexBytes(buf, r.RawKeys[0])
+	buf = append(buf, "\nS2: "...)
+	buf = appendKeyHexBytes(buf, r.RawKeys[1])
+	buf = append(buf, "\nS3: "...)
+	buf = appendKeyHexBytes(buf, r.RawKeys[2])
+	buf = append(buf, "\nUUID: "...)
+	buf = appendKeyHexBytes(buf, r.RawUUID)
+	buf = append(buf, '\n')
+	defer clear(buf)
+	return os.WriteFile(path, buf, 0o600)
+}
+
+// emitKeySetBytesFile exports the complete derived keys to a 0600 file in the
+// volatile memory-backed mntemp directory, so an interactive generate/restore
+// can hand the user their keys without printing them to the terminal. The
+// mntemp note warns the file vanishes on shutdown.
+func emitKeySetBytesFile(r kdf.KeySetBytesResult) error {
+	path := mntempSaveDefault("key-derive", "keys.txt")
+	if err := writeKeySetBytesFile(path, r); err != nil {
+		return fmt.Errorf("%s: %w", i18n.T("key_derive.error.write_output_failed"), err)
+	}
+	fmt.Println(i18n.TWithData("key_derive.output.keys_written", map[string]interface{}{
+		"Path": path,
+	}))
+	return nil
+}
+
 // runKeyDerivePipeInteractiveGenerate derives a fresh key set with a random
-// salt and writes the recovery config to the chosen file (0600) or stdout. The
-// rendered config carries only masked key fingerprints, so printing it to the
+// salt and writes the recovery config to the chosen file (0600) or stdout, then
+// exports the complete keys to the volatile memory-backed directory. The
+// rendered config carries only masked fingerprints, so printing it to the
 // terminal does not leak the keys.
 func runKeyDerivePipeInteractiveGenerate(state *keyDerivePipeInteractiveState) error {
 	result := kdf.DeriveKeySetBytes(state.Input, state.Password, state.Salt, state.Strength)
@@ -308,9 +342,12 @@ func runKeyDerivePipeInteractiveGenerate(state *keyDerivePipeInteractiveState) e
 		fmt.Println(i18n.TWithData("key_derive.output.config_written", map[string]interface{}{
 			"Path": state.Output,
 		}))
-		return nil
+	} else {
+		os.Stdout.Write(configText)
 	}
-	os.Stdout.Write(configText)
+	if err := emitKeySetBytesFile(result); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -350,6 +387,9 @@ func runKeyDerivePipeInteractiveRestore(state *keyDerivePipeInteractiveState) er
 	fmt.Println(i18n.T("key_derive.output.config_label"))
 	os.Stdout.Write(configText)
 	fmt.Println()
+	if err := emitKeySetBytesFile(result); err != nil {
+		return err
+	}
 	fmt.Println(i18n.T("key_derive.output.restore_success"))
 	return nil
 }
