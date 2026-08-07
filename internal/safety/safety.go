@@ -34,8 +34,16 @@ import (
 //   - info  = info
 //   - L     = length
 func HKDFExpand(prk string, info []byte, length int) []byte {
-	ikm := []byte(prk)                         // prk is the ASCII bytes of its hex string
-	r := hkdf.New(sha3.New512, ikm, nil, info) // nil salt triggers full HKDF (Extract+Expand)
+	return HKDFExpandBytes([]byte(prk), info, length)
+}
+
+// HKDFExpandBytes is the []byte-input counterpart of HKDFExpand: the prk bytes
+// are used directly as the HKDF ikm, so callers that hold secret PRK material as
+// wipeable []byte (instead of an immutable hex string) can pass it without a
+// string copy and zero it afterwards.
+// HKDFExpandBytes(prk, info, length) == HKDFExpand(string(prk), info, length).
+func HKDFExpandBytes(prk []byte, info []byte, length int) []byte {
+	r := hkdf.New(sha3.New512, prk, nil, info) // nil salt triggers full HKDF (Extract+Expand)
 	out := make([]byte, length)
 	if _, err := io.ReadFull(r, out); err != nil {
 		panic(fmt.Sprintf("safety: hkdf read: %v", err))

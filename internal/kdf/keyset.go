@@ -12,6 +12,7 @@ package kdf
 // #2, used by `enhance`). Do not mix the two.
 
 import (
+	"encoding/hex"
 	"time"
 	"unicode/utf8"
 
@@ -276,14 +277,21 @@ func deriveKeySetCoreWipeable(input string, password []byte, saltSeed string, st
 		result.ProcessingTime = time.Since(start).Milliseconds()
 		return result
 	}
-	mainKeyHex := safety.BytesToHex(masterKey.Data) // hex string; consumed as ASCII bytes below
+	// The frontend consumes the master key as the ASCII bytes of its hex TEXT
+	// (SafetyUtility.hkdf -> toUint8Array(string) -> UTF-8 of the hex string), so
+	// the wipeable kernel carries those hex bytes in a wipeable buffer instead of
+	// an immutable string. Both the raw Argon2 output and the hex buffer are
+	// zeroed before return.
+	mainKeyHexBytes := make([]byte, hex.EncodedLen(len(masterKey.Data)))
+	hex.Encode(mainKeyHexBytes, masterKey.Data)
+	defer util.WipeBytes(mainKeyHexBytes)
 	defer util.WipeBytes(masterKey.Data)
 
 	// --- Step 4: domain-separate 4 keys via HKDF (frontend L730-748) ---
-	rawS1 := safety.HKDFExpand(mainKeyHex, []byte("S1"), cfg.HashLength)
-	rawS2 := safety.HKDFExpand(mainKeyHex, []byte("S2"), cfg.HashLength)
-	rawS3 := safety.HKDFExpand(mainKeyHex, []byte("S3"), cfg.HashLength)
-	rawUUIDFull := safety.HKDFExpand(mainKeyHex, []byte("UUID"), cfg.HashLength)
+	rawS1 := safety.HKDFExpandBytes(mainKeyHexBytes, []byte("S1"), cfg.HashLength)
+	rawS2 := safety.HKDFExpandBytes(mainKeyHexBytes, []byte("S2"), cfg.HashLength)
+	rawS3 := safety.HKDFExpandBytes(mainKeyHexBytes, []byte("S3"), cfg.HashLength)
+	rawUUIDFull := safety.HKDFExpandBytes(mainKeyHexBytes, []byte("UUID"), cfg.HashLength)
 	rawUUID := rawUUIDFull[:16]
 
 	result.Success = true
