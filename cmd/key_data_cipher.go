@@ -127,16 +127,23 @@ func parseKeyDataCipherJSON(data []byte) (keyDataCipherParams, error) {
 }
 
 // validateKeyDataCipherFields runs data-cipher's non-secret field checks
-// (mode, input-type, content) and rejects any external keys/passwords: this
-// command derives the keys in-process, so a piped keys[]/password1/extras
-// would be silently overwritten (and never wiped) — fail fast and wipe the
-// leaked copies instead.
+// (mode, input-type, content) and rejects external keys/password1: this command
+// derives the keys in-process and collects password1 via the question-answer
+// high-strength flow, so a piped keys[]/password1 would be silently overwritten
+// (and never wiped) — fail fast and wipe the leaked copies instead.
+// extraPasswords ARE allowed via the pipe, matching data-cipher-pipe, since they
+// are optional additions (web keys[4..]) that do not override the derived keys.
 func validateKeyDataCipherFields(p *keyDataCipherParams) error {
 	if err := validateDataCipherPipeNonSecretFields(&p.Pipe); err != nil {
 		return err
 	}
-	if len(p.Pipe.Keys) > 0 || len(p.Pipe.Password1) > 0 || len(p.Pipe.Extras) > 0 {
-		wipeDataCipherPipeSecrets(&p.Pipe)
+	if len(p.Pipe.Keys) > 0 || len(p.Pipe.Password1) > 0 {
+		for _, k := range p.Pipe.Keys {
+			util.WipeBytes(k)
+		}
+		util.WipeBytes(p.Pipe.Password1)
+		p.Pipe.Keys = nil
+		p.Pipe.Password1 = nil
 		return fmt.Errorf("%s", i18n.T("key_data_cipher.error.keys_not_allowed"))
 	}
 	return nil

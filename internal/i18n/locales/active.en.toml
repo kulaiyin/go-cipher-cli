@@ -558,8 +558,8 @@ description = "Error when the decrypt input file does not exist"
 other = "input file not found: {{.Path}}"
 
 [key_data_cipher.error.keys_not_allowed]
-description = "Error when the piped JSON carries external keys/passwords, which this command derives in-process"
-other = "keys/passwords must not be passed via the pipe: this command derives them in-process from the recovery config or the question-answer flow"
+description = "Error when the piped JSON carries external keys/password1, which this command derives/derives in-process"
+other = "keys/password1 must not be passed via the pipe: keys are derived in-process, and password1 is set via the question-answer flow"
 
 [key_data_cipher.output.config_written]
 description = "Message when a freshly generated recovery config is saved"

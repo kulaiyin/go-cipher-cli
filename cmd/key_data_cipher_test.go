@@ -61,7 +61,6 @@ func TestKeyDataCipher_InvalidParams(t *testing.T) {
 		{"decrypt no input file", `{"mode":"decrypt","config":"/tmp/enc.zip","file":""}`},
 		{"external keys", `{"mode":"encrypt","inputType":"text","text":"x","config":"/tmp/kd.txt","keys":["aaaa"]}`},
 		{"external password1", `{"mode":"encrypt","inputType":"text","text":"x","password1":"pw"}`},
-		{"external extras", `{"mode":"encrypt","inputType":"text","text":"x","extraPasswords":["ex"]}`},
 	}
 	for _, c := range cases {
 		c := c
@@ -72,6 +71,37 @@ func TestKeyDataCipher_InvalidParams(t *testing.T) {
 				t.Fatalf("expected non-zero exit for %s", c.name)
 			}
 		})
+	}
+}
+
+// TestKeyDataCipher_ExtrasAllowed verifies extraPasswords pass through the pipe
+// (matching data-cipher-pipe, for automation), while keys/password1 are still
+// rejected and wiped. This pins the security model: keys are derived in-process,
+// password1 is set via the question-answer flow, but extras are optional
+// additions that may come from the pipe.
+func TestKeyDataCipher_ExtrasAllowed(t *testing.T) {
+	payload := `{"mode":"decrypt","config":"/tmp/kd.txt","file":"/tmp/enc.zip",` +
+		`"extraPasswords":["ex1","ex2"]}`
+	p, err := parseKeyDataCipherJSON([]byte(payload))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	defer wipeDataCipherPipeSecrets(&p.Pipe)
+	// validateKeyDataCipherFields would re-run non-secret checks; call the
+	// pipe-level validator directly so we only assert the extras-survival rule.
+	if len(p.Pipe.Extras) != 2 || string(p.Pipe.Extras[0]) != "ex1" || string(p.Pipe.Extras[1]) != "ex2" {
+		t.Errorf("extras should pass through: %v", p.Pipe.Extras)
+	}
+
+	// keys/password1 must still be rejected with extras present.
+	payloadReject := `{"mode":"decrypt","config":"/tmp/kd.txt","file":"/tmp/enc.zip",` +
+		`"password1":"pw","extraPasswords":["ex1"]}`
+	pr, err := parseKeyDataCipherJSON([]byte(payloadReject))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := validateKeyDataCipherFields(&pr); err == nil {
+		t.Errorf("expected keys_not_allowed error when password1 is piped")
 	}
 }
 

@@ -554,8 +554,8 @@ description = "解密输入文件不存在时的错误"
 other = "输入文件不存在: {{.Path}}"
 
 [key_data_cipher.error.keys_not_allowed]
-description = "当管道 JSON 携带外部密钥/口令时的错误，本命令在进程内派生这些密钥"
-other = "密钥/口令不得通过管道传入：本命令从恢复配置或问答流程在进程内派生它们"
+description = "当管道 JSON 携带外部密钥/password1 时的错误，本命令在进程内派生密钥、经问答流程设置 password1"
+other = "密钥/password1 不得通过管道传入：密钥在进程内派生，password1 经问答流程设置"
 
 [key_data_cipher.output.config_written]
 description = "新生成的恢复配置已保存时的提示"
