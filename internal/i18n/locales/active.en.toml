@@ -153,11 +153,13 @@ other = """Derive a key from a password using Argon2id. The same password + salt
 deterministically derives the same key; the key cannot be reversed to recover
 the password.
 
-The password is taken from -p or, when omitted, prompted with a hidden input on
-a terminal (so it never appears in shell history). Memory is expressed in MB
-(default 64), iterations default to 3, parallelism to 1, and the derived key
-length to 64 bytes. Use --json to get a machine-readable JSON result including
-the processing time."""
+The password is read from stdin (line 1: password, line 2: salt hex) when
+--secrets-stdin is given, or prompted with echo disabled when stdin is a
+terminal. stdin is never treated as a password when it is piped or redirected
+without --secrets-stdin, so a stray pipe cannot silently derive from an empty
+password. Memory is expressed in MB (default 64), iterations default to 3,
+parallelism to 1, and the derived key length to 64 bytes. Use --json to get a
+machine-readable JSON result including the processing time."""
 
 [argon2id.error.derive_failed]
 description = "Error when argon2 derivation fails"
@@ -186,10 +188,6 @@ other = "--key-length must be > 0"
 [argon2id.error.json_marshal]
 description = "Error when JSON marshalling fails"
 other = "failed to encode JSON output"
-
-[argon2id.error.secrets_stdin_conflict_password]
-description = "Error when --secrets-stdin is mixed with -p/--password"
-other = "--secrets-stdin is mutually exclusive with -p/--password"
 
 [argon2id.error.secrets_stdin_conflict_salt]
 description = "Error when --secrets-stdin is mixed with --salt"
@@ -235,13 +233,17 @@ other = "Processing time: {{.Ms}} ms"
 description = "Hint shown when the text-mode derived key is masked"
 other = "(key masked; use --json with stdout redirected to a pipe or file for the full value)"
 
-[argon2id.flag.password]
-description = "Description for --password flag"
-other = "password to derive from (required; pass it via the command line, no interactive prompt)"
+[argon2id.prompt.password]
+description = "Prompt shown before reading the password from a terminal"
+other = "Enter password: "
 
-[argon2id.error.password_required]
-description = "Error when -p is not provided"
-other = "no password provided: pass one via -p"
+[argon2id.error.stdin_piped_no_flag]
+description = "Error when stdin is piped/redirected without --secrets-stdin"
+other = "stdin is piped or redirected: use --secrets-stdin to supply the password"
+
+[argon2id.error.tty_read_failed]
+description = "Error when reading the password from the terminal fails"
+other = "failed to read password from terminal"
 
 [argon2id.flag.salt]
 description = "Description for --salt flag"
@@ -249,7 +251,7 @@ other = "salt as a hex string (default: random 16 bytes)"
 
 [argon2id.flag.secrets_stdin]
 description = "Description for --secrets-stdin flag"
-other = "read password and salt from stdin (line 1: password, line 2: salt hex); exclusive with -p/--salt"
+other = "read password and salt from stdin (line 1: password, line 2: salt hex); exclusive with --salt"
 
 [argon2id.flag.iterations]
 description = "Description for --iterations flag"

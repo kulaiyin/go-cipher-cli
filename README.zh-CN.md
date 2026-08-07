@@ -116,20 +116,23 @@ go-cipher-cli enhance -p "密码" -s google                      # 不同盐后�
 直接使用 Argon2id 从密码派生密钥（默认 64 MB / 3 轮 / 1 路并行，密钥长度 64 字节）。
 
 ```bash
-# 使用随机盐派生（人类可读输出，带进度转圈）
-go-cipher-cli argon2id -p "密码"
+# 交互式：关闭回显提示输入密码（永不进入 shell 历史）
+go-cipher-cli argon2id
 
-# 使用固定 hex 盐进行确定性派生
-go-cipher-cli argon2id -p "密码" --salt <64位hex>
+# 使用固定 hex 盐进行确定性派生（交互式输入密码）
+go-cipher-cli argon2id --salt <64位hex>
+
+# 非交互式：通过 --secrets-stdin 管道传入密码与盐（第 2 行为盐 hex）
+printf '密码\n<64位hex>\n' | go-cipher-cli argon2id --secrets-stdin
 
 # 自定义参数（内存单位为 MB）
-go-cipher-cli argon2id -p "密码" --iterations 4 --memory 128 --parallelism 2 --key-length 32
+printf '密码\n' | go-cipher-cli argon2id --secrets-stdin --iterations 4 --memory 128 --parallelism 2 --key-length 32
 
 # 机器可读输出（含 processing_time_ms）
-go-cipher-cli argon2id -p "密码" --json
+printf '密码\n' | go-cipher-cli argon2id --secrets-stdin --json
 ```
 
-> 运行期间 `argon2id` 会在 stderr 显示带耗时的进度转圈（stdout/stderr 被重定向或使用 `--json` 时关闭）；最终输出始终包含处理耗时。
+> 密码永不通过命令行参数接收（避免经 `ps`/shell 历史泄漏）。密码要么在终端关闭回显提示输入，要么通过 `--secrets-stdin` 从标准输入读取。标准输入被管道重定向但未指定 `--secrets-stdin` 时拒绝执行。运行期间 `argon2id` 会在 stderr 显示带耗时的进度转圈（stdout/stderr 被重定向或使用 `--json` 时关闭）；最终输出始终包含处理耗时。
 
 ### Diceware 助记口令 — `diceware`
 

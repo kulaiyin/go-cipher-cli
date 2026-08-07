@@ -22,7 +22,6 @@ import (
 )
 
 var (
-	argon2Password     string
 	argon2Salt         string
 	argon2Iterations   int
 	argon2MemoryMB     int
@@ -49,7 +48,7 @@ type argon2JSONOutput struct {
 }
 
 var argon2idCmd = &cobra.Command{
-	Use:          "argon2id -p <password> [flags]",
+	Use:          "argon2id [flags]",
 	Short:        "placeholder",
 	Long:         "placeholder",
 	SilenceUsage: true,
@@ -62,24 +61,34 @@ var argon2idCmd = &cobra.Command{
 		}
 
 		// password is carried as bytes end-to-end so it can be wiped right
-		// after the derivation: the --secrets-stdin protocol returns bytes
-		// directly, while -p (a cobra string flag) is copied into a wipeable
-		// byte slice. The salt is not sensitive and stays a string.
+		// after the derivation. There are three mutually exclusive ways it
+		// enters the pipeline:
+		//   - --secrets-stdin: line 1 is the password, line 2 the salt hex,
+		//     both read straight into wipeable bytes.
+		//   - stdin is a TTY: prompt on stderr and read with echo disabled via
+		//     term.ReadPassword (the password never lands in shell history or
+		//     argv); the salt still comes from --salt.
+		//   - stdin is piped/redirected without --secrets-stdin: refuse, so a
+		//     stray pipe can never silently derive from an empty password.
+		// The salt is not sensitive and stays a string.
 		var password []byte
 		var saltHex string
-		if argon2SecretsStdin {
+		switch {
+		case argon2SecretsStdin:
 			p, s, err := readArgon2Secrets()
 			if err != nil {
 				return err
 			}
 			password, saltHex = p, s
-		} else {
-			p, err := resolveArgon2Password()
+		case term.IsTerminal(int(os.Stdin.Fd())):
+			p, err := readArgon2PasswordTTY()
 			if err != nil {
 				return err
 			}
-			password = []byte(p)
+			password = p
 			saltHex = argon2Salt
+		default:
+			return fmt.Errorf("%s", i18n.T("argon2id.error.stdin_piped_no_flag"))
 		}
 		defer clear(password)
 
@@ -161,14 +170,11 @@ func validateArgon2Flags() error {
 	return nil
 }
 
-// validateArgon2SecretsExclusive rejects --secrets-stdin mixed with -p/--salt
-// so secrets can never fall back to the process argument list.
+// validateArgon2SecretsExclusive rejects --secrets-stdin mixed with --salt so
+// the salt source stays unambiguous (stdin line 2 vs. the flag).
 func validateArgon2SecretsExclusive() error {
 	if !argon2SecretsStdin {
 		return nil
-	}
-	if argon2Password != "" {
-		return fmt.Errorf("%s", i18n.T("argon2id.error.secrets_stdin_conflict_password"))
 	}
 	if argon2Salt != "" {
 		return fmt.Errorf("%s", i18n.T("argon2id.error.secrets_stdin_conflict_salt"))
@@ -307,13 +313,19 @@ func emitArgon2JSON(r kdf.KDFResult, salt []byte) {
 	clear(data)
 }
 
-// resolveArgon2Password returns the derivation password. The password must be
-// supplied via -p; there is no interactive prompt.
-func resolveArgon2Password() (string, error) {
-	if argon2Password == "" {
-		return "", fmt.Errorf("%s", i18n.T("argon2id.error.password_required"))
+// readArgon2PasswordTTY prompts on stderr and reads a password from the
+// terminal with echo disabled via term.ReadPassword. It must only be called
+// when stdin is an interactive TTY. The returned bytes are wiped by the caller
+// after the derivation.
+func readArgon2PasswordTTY() ([]byte, error) {
+	fmt.Fprint(os.Stderr, i18n.T("argon2id.prompt.password"))
+	pw, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", i18n.T("argon2id.error.tty_read_failed"), err)
 	}
-	return argon2Password, nil
+	// Newline so the prompt line is closed before later output/progress.
+	fmt.Fprintln(os.Stderr)
+	return bytes.TrimSpace(pw), nil
 }
 
 func init() {
@@ -323,8 +335,8 @@ func init() {
 		argon2idCmd.Long = i18n.T("argon2id.long")
 	})
 
-	// The password arrives via -p or --secrets-stdin; there is no interactive prompt.
-	argon2idCmd.Flags().StringVarP(&argon2Password, "password", "p", "", i18n.T("argon2id.flag.password"))
+	// The password arrives via --secrets-stdin or an interactive TTY prompt;
+	// there is no plaintext password flag.
 	argon2idCmd.Flags().StringVar(&argon2Salt, "salt", "", i18n.T("argon2id.flag.salt"))
 	argon2idCmd.Flags().BoolVar(&argon2SecretsStdin, "secrets-stdin", false, i18n.T("argon2id.flag.secrets_stdin"))
 	argon2idCmd.Flags().IntVar(&argon2Iterations, "iterations", 3, i18n.T("argon2id.flag.iterations"))

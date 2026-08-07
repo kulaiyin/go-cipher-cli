@@ -144,10 +144,10 @@ func TestArgon2idPipe_SingleLineEOF(t *testing.T) {
 }
 
 func TestArgon2idPipe_SecretsStdinExclusive(t *testing.T) {
+	// --secrets-stdin mixed with --salt must fail: the salt source stays
+	// unambiguous (stdin line 2 vs. the flag).
 	for _, args := range [][]string{
-		{"--secrets-stdin", "-p", pipePassword},
 		{"--secrets-stdin", "--salt", pipeSaltHex},
-		{"--secrets-stdin", "-p", pipePassword, "--salt", pipeSaltHex},
 	} {
 		r := runArgon2Pipe(t, pipePassword+"\n"+pipeSaltHex+"\n", args...)
 		if r.code == 0 {

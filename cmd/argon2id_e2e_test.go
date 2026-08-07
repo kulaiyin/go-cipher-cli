@@ -23,8 +23,11 @@ func TestArgon2idCmd_Text_MaskedGoldenVector(t *testing.T) {
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}
-	out, code := runCLI(t, "argon2id", "-p", a2TestPassword,
-		"--salt", a2TestSaltHex, "--iterations", "2", "--memory", "8", "--key-length", "32")
+	// Fixed password + salt via --secrets-stdin (stdin line 2 supplies the
+	// salt; --salt is mutually exclusive with --secrets-stdin).
+	stdin := a2TestPassword + "\n" + a2TestSaltHex + "\n"
+	out, code := runCLIWithInput(t, stdin, nil, "argon2id", "--secrets-stdin",
+		"--iterations", "2", "--memory", "8", "--key-length", "32")
 	if code != 0 {
 		t.Fatalf("argon2id failed: %s", out)
 	}
@@ -62,8 +65,9 @@ func TestArgon2idCmd_JSON_GoldenVector(t *testing.T) {
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}
-	out, code := runCLI(t, "argon2id", "-p", a2TestPassword, "--json",
-		"--salt", a2TestSaltHex, "--iterations", "2", "--memory", "8", "--key-length", "32")
+	stdin := a2TestPassword + "\n" + a2TestSaltHex + "\n"
+	out, code := runCLIWithInput(t, stdin, nil, "argon2id", "--secrets-stdin", "--json",
+		"--iterations", "2", "--memory", "8", "--key-length", "32")
 	if code != 0 {
 		t.Fatalf("argon2id --json failed: %s", out)
 	}
@@ -115,16 +119,18 @@ func TestArgon2idCmd_RandomSalt_DifferentKeys(t *testing.T) {
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}
-	// Same password, no --salt → each run draws a fresh random salt → different key.
-	out1, code1 := runCLI(t, "argon2id", "-p", a2TestPassword, "--json", "--memory", "8", "--key-length", "32")
-	out2, code2 := runCLI(t, "argon2id", "-p", a2TestPassword, "--json", "--memory", "8", "--key-length", "32")
+	// Same password, only password on stdin (no salt line) → each run draws a
+	// fresh random salt → different key.
+	stdin := a2TestPassword + "\n"
+	out1, code1 := runCLIWithInput(t, stdin, nil, "argon2id", "--secrets-stdin", "--json", "--memory", "8", "--key-length", "32")
+	out2, code2 := runCLIWithInput(t, stdin, nil, "argon2id", "--secrets-stdin", "--json", "--memory", "8", "--key-length", "32")
 	if code1 != 0 || code2 != 0 {
 		t.Fatalf("argon2id failed: out1=%d out2=%d", code1, code2)
 	}
 	key1 := jsonKeyHex(t, out1)
 	key2 := jsonKeyHex(t, out2)
 	if key1 == key2 {
-		t.Fatal("two runs without --salt produced the same key — random salt broken")
+		t.Fatal("two runs without a salt produced the same key — random salt broken")
 	}
 }
 
@@ -133,17 +139,21 @@ func TestArgon2idCmd_Deterministic(t *testing.T) {
 		t.Skip("argon2 slow in -short")
 	}
 	// Same inputs → identical key across runs.
-	out1, _ := runCLI(t, "argon2id", "-p", a2TestPassword, "--salt", a2TestSaltHex, "--json", "--memory", "8", "--key-length", "32")
-	out2, _ := runCLI(t, "argon2id", "-p", a2TestPassword, "--salt", a2TestSaltHex, "--json", "--memory", "8", "--key-length", "32")
+	stdin := a2TestPassword + "\n" + a2TestSaltHex + "\n"
+	out1, _ := runCLIWithInput(t, stdin, nil, "argon2id", "--secrets-stdin", "--json", "--memory", "8", "--key-length", "32")
+	out2, _ := runCLIWithInput(t, stdin, nil, "argon2id", "--secrets-stdin", "--json", "--memory", "8", "--key-length", "32")
 	if jsonKeyHex(t, out1) != jsonKeyHex(t, out2) {
 		t.Fatal("argon2id not deterministic with fixed salt")
 	}
 }
 
-func TestArgon2idCmd_MissingPasswordFails(t *testing.T) {
-	out, code := runCLI(t, "argon2id")
+func TestArgon2idCmd_StdinPipedWithoutFlag(t *testing.T) {
+	// stdin is piped (runCLIWithInput wires a non-nil reader → exec treats
+	// stdin as a pipe, not a TTY) but no --secrets-stdin → must refuse rather
+	// than silently derive from an empty password.
+	out, code := runCLIWithInput(t, a2TestPassword+"\n", nil, "argon2id")
 	if code == 0 {
-		t.Errorf("expected argon2id to fail without -p, output:\n%s", out)
+		t.Errorf("expected argon2id to fail with piped stdin and no --secrets-stdin, output:\n%s", out)
 	}
 }
 
@@ -151,7 +161,13 @@ func TestArgon2idCmd_InvalidSaltFails(t *testing.T) {
 	if testing.Short() {
 		t.Skip("argon2 slow in -short")
 	}
-	out, code := runCLI(t, "argon2id", "-p", a2TestPassword, "--salt", "not-hex!")
+	// Salt via --salt flag (only allowed when stdin is NOT --secrets-stdin);
+	// runCLI leaves stdin nil, which exec treats as a non-TTY pipe, so the
+	// command refuses to read a password. Invalid salt is therefore never
+	// reached from the TTY path, so exercise it through --secrets-stdin by
+	// putting the bad salt on stdin line 2.
+	stdin := a2TestPassword + "\n" + "not-hex!" + "\n"
+	out, code := runCLIWithInput(t, stdin, nil, "argon2id", "--secrets-stdin")
 	if code == 0 {
 		t.Errorf("expected argon2id to fail with invalid salt, output:\n%s", out)
 	}
@@ -159,16 +175,20 @@ func TestArgon2idCmd_InvalidSaltFails(t *testing.T) {
 
 func TestArgon2idCmd_InvalidParamsFail(t *testing.T) {
 	// Non-positive params must be rejected before any derivation work runs.
+	// stdin supplies the password via --secrets-stdin, but the parameter
+	// check fails first so the password is never read.
+	stdin := a2TestPassword + "\n"
 	for _, badArgs := range [][]string{
-		{"-p", a2TestPassword, "--iterations", "0"},
-		{"-p", a2TestPassword, "--memory", "0"},
-		{"-p", a2TestPassword, "--parallelism", "0"},
-		{"-p", a2TestPassword, "--key-length", "0"},
+		{"--iterations", "0"},
+		{"--memory", "0"},
+		{"--parallelism", "0"},
+		{"--key-length", "0"},
 	} {
-		// runCLI takes a flat variadic; prepend the command name explicitly
-		// because Go does not allow mixing a fixed arg with a slice spread.
-		full := append([]string{"argon2id"}, badArgs...)
-		if out, code := runCLI(t, full...); code == 0 {
+		// runCLIWithInput takes a flat variadic; prepend the command name
+		// explicitly because Go does not allow mixing a fixed arg with a
+		// slice spread.
+		full := append([]string{"argon2id", "--secrets-stdin"}, badArgs...)
+		if out, code := runCLIWithInput(t, stdin, nil, full...); code == 0 {
 			t.Errorf("expected failure for %v, output:\n%s", badArgs, out)
 		}
 	}
