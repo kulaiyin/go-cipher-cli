@@ -236,6 +236,57 @@ func collectPipePasswordQnA(salt string) ([]byte, []string, error) {
 	return runQuestionAnswerFlowBytes(salt)
 }
 
+// redirectStdinToTTY temporarily replaces os.Stdin with /dev/tty so the
+// interactive prompts (huh/bubbletea read os.Stdin) can run when the real stdin
+// is a consumed pipe. The returned func restores os.Stdin.
+func redirectStdinToTTY() (func(), error) {
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		return nil, err
+	}
+	orig := os.Stdin
+	os.Stdin = tty
+	return func() {
+		os.Stdin = orig
+		tty.Close()
+	}, nil
+}
+
+// collectPipeMissingPasswordTTY collects the password interactively when the
+// piped JSON carried none, reusing every already-provided field. The prompt
+// input is redirected to /dev/tty because stdin is the consumed JSON pipe.
+// Generate offers the question-answer choice; restore re-answers stored
+// questions or asks for a hidden password.
+func collectPipeMissingPasswordTTY(mode, config, salt string) ([]byte, error) {
+	restore, err := redirectStdinToTTY()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open terminal for password input: %w", err)
+	}
+	defer restore()
+
+	if mode == "restore" {
+		cfg, err := loadRecoveryConfig(config)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", i18n.T("key_derive.error.config_read_failed"), err)
+		}
+		if cfg.Hint != "" {
+			fmt.Fprintln(os.Stderr, i18n.TWithData("key_derive.output.restore_hint", map[string]interface{}{
+				"Hint": cfg.Hint,
+			}))
+		}
+		if len(cfg.HintIDs) > 0 {
+			steps, err := buildRestoreSteps(cfg.HintIDs)
+			if err != nil {
+				return nil, err
+			}
+			return runReanswerFlowBytes(steps, salt)
+		}
+		return param.Password(i18n.T("key_derive.prompt.password"), "")
+	}
+	pw, _, err := collectPipePasswordQnA(salt)
+	return pw, err
+}
+
 // runQuestionAnswerFlowBytes runs the web-style 3-step question-answer form
 // and derives the high-strength password as wipeable bytes (via
 // password.ComputeFinalPasswordBytes), returning it with the chosen question

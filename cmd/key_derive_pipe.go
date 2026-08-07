@@ -64,12 +64,8 @@ func runKeyDerivePipe() (kdf.KeySetBytesResult, error) {
 		return result, err
 	}
 	// stdinData may carry the password in cleartext.
-	defer util.WipeBytes(params.Password)
 	defer util.WipeBytes(stdinData)
-
-	if err := validateKeyDerivePipeParams(params); err != nil {
-		return result, err
-	}
+	defer util.WipeBytes(params.Password)
 
 	salt := params.Salt
 	if salt == "" {
@@ -88,6 +84,21 @@ func runKeyDerivePipe() (kdf.KeySetBytesResult, error) {
 		} else {
 			salt = kdf.GenerateSalt(64)
 		}
+	}
+
+	// The piped JSON carried no password: drop into the interactive TTY flow to
+	// collect it, reusing every already-provided field (mode/input/salt/...).
+	if len(params.Password) == 0 {
+		pw, err := collectPipeMissingPasswordTTY(params.Mode, params.Config, salt)
+		if err != nil {
+			return result, err
+		}
+		params.Password = pw
+		defer util.WipeBytes(params.Password)
+	}
+
+	if err := validatePasswordBytes(params.Password); err != nil {
+		return result, err
 	}
 
 	input := cleanKeyDeriveText(params.Input)
@@ -155,8 +166,8 @@ func resolveKeyDerivePipeParams() (keyDerivePipeParams, []byte, error) {
 }
 
 // resolveKeyDerivePipePassword returns the password as wipeable bytes: verbatim
-// from the JSON "password" field, or — when absent — read from /dev/tty with
-// echo disabled (the stdin pipe is already consumed by the JSON).
+// from the JSON "password" field, or nil when absent — the caller then falls
+// back to the interactive TTY flow to collect it (reusing the piped fields).
 func resolveKeyDerivePipePassword(data []byte) ([]byte, error) {
 	if pw, _, _, err := jsonparser.Get(data, "password"); err == nil && len(pw) > 0 {
 		// Copy into a buffer we own so the caller's WipeBytes zeroes our slice,
@@ -165,11 +176,7 @@ func resolveKeyDerivePipePassword(data []byte) ([]byte, error) {
 		copy(out, pw)
 		return out, nil
 	}
-	p, err := util.ReadPasswordTTYFromDevice("Enter password: ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read password from terminal: %w", err)
-	}
-	return p, nil
+	return nil, nil
 }
 
 // validateKeyDerivePipeNonPasswordFields checks mode/input/salt/config/strength.
@@ -208,18 +215,6 @@ func validateKeyDerivePipeNonPasswordFields(p keyDerivePipeParams) error {
 	case "", kdf.StrengthBasic, kdf.StrengthMedium, kdf.StrengthAdvanced:
 	default:
 		return fmt.Errorf("invalid strength: must be basic, medium, or advanced")
-	}
-	return nil
-}
-
-// validateKeyDerivePipeParams runs the non-password checks plus the password
-// check. The password is validated as bytes (never a string copy).
-func validateKeyDerivePipeParams(p keyDerivePipeParams) error {
-	if err := validateKeyDerivePipeNonPasswordFields(p); err != nil {
-		return err
-	}
-	if err := validatePasswordBytes(p.Password); err != nil {
-		return err
 	}
 	return nil
 }

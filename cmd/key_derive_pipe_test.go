@@ -199,6 +199,18 @@ func TestResolveKeyDerivePipePassword_JSONAsBytes(t *testing.T) {
 	}
 }
 
+// TestResolveKeyDerivePipePassword_Missing: absent password resolves to nil so
+// the caller can fall back to the interactive TTY flow.
+func TestResolveKeyDerivePipePassword_Missing(t *testing.T) {
+	pw, err := resolveKeyDerivePipePassword([]byte(`{"mode":"generate","input":"` + kdInput + `"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if pw != nil {
+		t.Errorf("expected nil password, got %q", pw)
+	}
+}
+
 // TestResolveKeyDerivePipeParams_JSONPrecedence: each JSON field parsed.
 func TestResolveKeyDerivePipeParams_JSONPrecedence(t *testing.T) {
 	payload := `{"mode":"restore","input":"` + kdInput + `","salt":"` + kdSalt + `","hint":"myhint","strength":"advanced","config":"/tmp/c.txt","password":"` + kdPassword + `"}`
