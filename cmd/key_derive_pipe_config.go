@@ -18,7 +18,8 @@ import (
 // buildPipeRecoveryConfig constructs the config from a raw-bytes derivation
 // result. UUIDs carries the masked (first8 + last8) form of each derived key
 // plus the UUID, matching buildRecoveryConfig / the frontend download format.
-// The config carries only fingerprints, never full keys.
+// The config carries only fingerprints, never full keys, and the full UUID hex
+// is never materialized (the masked form is rendered from raw bytes).
 func buildPipeRecoveryConfig(r kdf.KeySetBytesResult, hint string, hintIDs []string) recoveryConfig {
 	uuids := make([]string, 0, len(r.RawKeys)+1)
 	for _, k := range r.RawKeys {
@@ -29,7 +30,6 @@ func buildPipeRecoveryConfig(r kdf.KeySetBytesResult, hint string, hintIDs []str
 		Version:  keyDeriveKeyDriveVersion,
 		Strength: string(r.Strength),
 		Salt:     r.SaltSeed,
-		UUID:     hex.EncodeToString(r.RawUUID),
 		Hint:     hint,
 		HintIDs:  hintIDs,
 		UUIDs:    uuids,
@@ -97,7 +97,11 @@ func formatFrontendRecoveryConfigBytes(cfg recoveryConfig, rawKeys [][]byte, raw
 
 	hint := cfg.Hint
 	if hint == "" && len(rawKeys) > 0 {
-		hint = firstNChars(hex.EncodeToString(rawKeys[0]), 10)
+		n := 5
+		if n > len(rawKeys[0]) {
+			n = len(rawKeys[0])
+		}
+		hint = hex.EncodeToString(rawKeys[0][:n])
 	}
 
 	var b []byte

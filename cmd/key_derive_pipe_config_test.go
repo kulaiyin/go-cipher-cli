@@ -63,3 +63,19 @@ func TestFormatFrontendRecoveryConfigBytes_NoFullKeys(t *testing.T) {
 		t.Errorf("config leaks the full UUID")
 	}
 }
+
+func TestBuildPipeRecoveryConfig_NoFullUUID(t *testing.T) {
+	// buildPipeRecoveryConfig must not materialize the full UUID hex string in
+	// the recoveryConfig struct (the masked form is rendered from raw bytes).
+	rawS1, _ := hex.DecodeString(kdWantS1)
+	rawUUID, _ := hex.DecodeString(kdWantUUID)
+	r := kdf.KeySetBytesResult{
+		RawKeys:  [][]byte{rawS1},
+		RawUUID:  rawUUID,
+		SaltSeed: kdSalt,
+		Strength: kdf.StrengthBasic,
+	}
+	if cfg := buildPipeRecoveryConfig(r, "myhint", nil); cfg.UUID != "" {
+		t.Errorf("buildPipeRecoveryConfig materialized the full UUID: %q", cfg.UUID)
+	}
+}
