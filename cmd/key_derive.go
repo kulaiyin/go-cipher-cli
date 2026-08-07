@@ -577,17 +577,18 @@ func runQuestionAnswerFlow(salt string) (string, []string, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	results, err := form.Run(steps, form.WithFinalPassword(func(results []form.Result) string {
+	results, err := form.Run(steps, form.WithFinalPassword(func(results []form.Result) []byte {
 		pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
 		if err != nil {
-			return ""
+			return nil
 		}
-		return pw
+		return []byte(pw)
 	}))
 	if err != nil {
 		return "", nil, err
 	}
 	pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
+	wipeAnswers(results)
 	if err != nil {
 		return "", nil, err
 	}
@@ -609,17 +610,22 @@ func promptRestoreAnswers(cfg *recoveryConfig, target *string) error {
 // step) without the summary confirmation and computes the high-strength password
 // from the salt. Shared by key-derive restore and data-cipher decrypt.
 func runReanswerFlow(steps [][]form.Step, salt string) (string, error) {
-	results, err := form.Run(steps, form.WithSkipConfirm(), form.WithFinalPassword(func(results []form.Result) string {
+	results, err := form.Run(steps, form.WithSkipConfirm(), form.WithFinalPassword(func(results []form.Result) []byte {
 		pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
 		if err != nil {
-			return ""
+			return nil
 		}
-		return pw
+		return []byte(pw)
 	}))
 	if err != nil {
 		return "", err
 	}
-	return password.ComputeFinalPassword(salt, finalAnswers(results))
+	pw, err := password.ComputeFinalPassword(salt, finalAnswers(results))
+	wipeAnswers(results)
+	if err != nil {
+		return "", err
+	}
+	return pw, nil
 }
 
 // buildRestoreSteps reconstructs one fixed question per step from the stored
@@ -660,12 +666,22 @@ func promptDefaultPassword(promptMsg string, target *string) error {
 }
 
 // finalAnswers extracts the per-step answers from form results, in step order.
+// The answers leave the byte-based TUI layer here: the password derivation
+// below still works on strings, so each []byte answer is decoded to a string.
 func finalAnswers(results []form.Result) []string {
 	answers := make([]string, len(results))
 	for i, r := range results {
-		answers[i] = r.Answer
+		answers[i] = string(r.Answer)
 	}
 	return answers
+}
+
+// wipeAnswers zeroes the raw []byte answers once the derived password has been
+// computed, so the user's secret answer material does not linger in memory.
+func wipeAnswers(results []form.Result) {
+	for i := range results {
+		clear(results[i].Answer)
+	}
 }
 
 // resultIDs extracts the per-step question IDs from form results, in step order.

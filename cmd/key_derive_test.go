@@ -73,9 +73,9 @@ func TestInteractiveSaltAfterModePick(t *testing.T) {
 // finalAnswers must preserve the per-step order of form results.
 func TestFinalAnswers(t *testing.T) {
 	results := []form.Result{
-		{Step: 1, ID: "Q01", Answer: "20240101"},
-		{Step: 2, ID: "Q06", Answer: "shanghai"},
-		{Step: 3, ID: "Q23", Answer: "@abc"},
+		{Step: 1, ID: "Q01", Answer: []byte("20240101")},
+		{Step: 2, ID: "Q06", Answer: []byte("shanghai")},
+		{Step: 3, ID: "Q23", Answer: []byte("@abc")},
 	}
 	want := []string{"20240101", "shanghai", "@abc"}
 	if got := finalAnswers(results); !reflect.DeepEqual(got, want) {
@@ -86,9 +86,9 @@ func TestFinalAnswers(t *testing.T) {
 // resultIDs must preserve the per-step order of form results.
 func TestResultIDs(t *testing.T) {
 	results := []form.Result{
-		{Step: 1, ID: "Q01", Answer: "20240101"},
-		{Step: 2, ID: "Q06", Answer: "shanghai"},
-		{Step: 3, ID: "Q23", Answer: "@abc"},
+		{Step: 1, ID: "Q01", Answer: []byte("20240101")},
+		{Step: 2, ID: "Q06", Answer: []byte("shanghai")},
+		{Step: 3, ID: "Q23", Answer: []byte("@abc")},
 	}
 	want := []string{"Q01", "Q06", "Q23"}
 	if got := resultIDs(results); !reflect.DeepEqual(got, want) {

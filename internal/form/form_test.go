@@ -150,8 +150,11 @@ func TestSkipConfirmSubmitsDirectly(t *testing.T) {
 	if m.Stage() != StageSelect || m.stepIdx != 1 {
 		t.Fatalf("skip confirm: want next step, got stage=%d step=%d", m.Stage(), m.stepIdx)
 	}
-	if len(m.results) != 1 || m.results[0].Answer != "secret" {
+	if len(m.results) != 1 || string(m.results[0].Answer) != "secret" {
 		t.Fatalf("results: want one submitted answer, got %+v", m.results)
+	}
+	if m.input != nil || m.confirm != nil {
+		t.Fatalf("submit must wipe input buffers: input=%q confirm=%q", string(m.input), string(m.confirm))
 	}
 }
 
@@ -243,10 +246,10 @@ func TestResultsAndOverwrite(t *testing.T) {
 	m = drive(t, m, key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter), key(tui.KeyRunes, 'a'), key(tui.KeyEnter))
 	m = drive(t, m, key(tui.KeyDown), key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter), key(tui.KeyRunes, 'b'), key(tui.KeyEnter))
 	results := m.Results()
-	if results[0].ID != "Q01" || results[0].Answer != "a" {
+	if results[0].ID != "Q01" || string(results[0].Answer) != "a" {
 		t.Fatalf("result 0: %+v", results[0])
 	}
-	if results[1].ID != "Q04" || results[1].Answer != "b" {
+	if results[1].ID != "Q04" || string(results[1].Answer) != "b" {
 		t.Fatalf("result 1: %+v", results[1])
 	}
 
@@ -255,7 +258,7 @@ func TestResultsAndOverwrite(t *testing.T) {
 	if len(m.Results()) != 2 {
 		t.Fatalf("want 2 results, got %d", len(m.Results()))
 	}
-	if m.Results()[0].Answer != "z" || m.Results()[1].Answer != "b" {
+	if string(m.Results()[0].Answer) != "z" || string(m.Results()[1].Answer) != "b" {
 		t.Fatalf("overwrite failed: %+v", m.Results())
 	}
 }
@@ -451,8 +454,8 @@ func TestSummaryFinalPassword(t *testing.T) {
 		{{ID: "Q01", Content: "First"}},
 		{{ID: "Q02", Content: "Second"}},
 	}
-	m := New(steps, WithFinalPassword(func(results []Result) string {
-		return strings.ToUpper(results[0].Answer + results[1].Answer)
+	m := New(steps, WithFinalPassword(func(results []Result) []byte {
+		return []byte(strings.ToUpper(string(results[0].Answer) + string(results[1].Answer)))
 	}))
 
 	m = drive(t, m,

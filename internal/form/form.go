@@ -10,10 +10,12 @@
 package form
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"go-cipher-cli/internal/i18n"
 	"go-cipher-cli/internal/tui"
@@ -40,7 +42,7 @@ type Result struct {
 	Step    int    // 1-based step number
 	ID      string // ID of the chosen question
 	Content string // text of the chosen question
-	Answer  string // user input
+	Answer  []byte // user input (UTF-8); callers must wipe it after use
 }
 
 // Stage is the interaction phase of the form.
@@ -76,15 +78,15 @@ type Model struct {
 	cursor    int // cursor within the current page
 	stage     Stage
 	results   []Result
-	input     []rune // password input buffer
-	confirm   []rune // confirm-password buffer
+	input     []byte // password input buffer (UTF-8)
+	confirm   []byte // confirm-password buffer (UTF-8)
 	errMsg    string // validation error shown during input
 	pageSize  int
 	reveal    bool // summary: answers shown in plaintext while r is held
 	revealGen int  // generation of the latest reveal timeout; stale ones ignored
 
-	finalPasswordFn func([]Result) string // optional final-password generator
-	finalPassword   string                // cached result, shown on the summary
+	finalPasswordFn func([]Result) []byte // optional final-password generator
+	finalPassword   []byte                // cached result, shown on the summary
 
 	skipConfirm bool // submit after a single input, skipping the re-type stage
 }
@@ -100,7 +102,7 @@ func WithPageSize(n int) Option {
 // WithFinalPassword sets a generator that derives a final password from the
 // collected answers; when set, the summary screen shows the result (masked,
 // hold r to reveal).
-func WithFinalPassword(fn func([]Result) string) Option {
+func WithFinalPassword(fn func([]Result) []byte) Option {
 	return func(m *Model) { m.finalPasswordFn = fn }
 }
 
@@ -253,18 +255,21 @@ func (m *Model) handleSelectKey(key tui.Key) {
 func (m *Model) handleInputKey(key tui.Key, confirm bool) {
 	switch key.Type {
 	case tui.KeyRunes:
+		buf := &m.input
 		if confirm {
-			m.confirm = append(m.confirm, key.Runes...)
-		} else {
-			m.input = append(m.input, key.Runes...)
+			buf = &m.confirm
+		}
+		for _, r := range key.Runes {
+			*buf = utf8.AppendRune(*buf, r)
 		}
 	case tui.KeyBackspace:
+		buf := &m.input
 		if confirm {
-			if len(m.confirm) > 0 {
-				m.confirm = m.confirm[:len(m.confirm)-1]
-			}
-		} else if len(m.input) > 0 {
-			m.input = m.input[:len(m.input)-1]
+			buf = &m.confirm
+		}
+		if len(*buf) > 0 {
+			_, size := utf8.DecodeLastRune(*buf)
+			*buf = (*buf)[:len(*buf)-size]
 		}
 	case tui.KeyEnter:
 		if confirm {
@@ -277,6 +282,8 @@ func (m *Model) handleInputKey(key tui.Key, confirm bool) {
 			m.stage = StageConfirm
 		}
 	case tui.KeyEsc:
+		clear(m.input)
+		clear(m.confirm)
 		m.input = nil
 		m.confirm = nil
 		m.stage = StageSelect
@@ -291,18 +298,18 @@ func (m *Model) stepInputError() string {
 	if rule == "" {
 		return ""
 	}
-	trimmed := strings.TrimSpace(string(m.input))
+	trimmed := bytes.TrimSpace(m.input)
 	switch rule {
 	case "digit8":
-		if len([]rune(trimmed)) < 8 || !strings.ContainsAny(trimmed, "0123456789") {
+		if utf8.RuneCount(trimmed) < 8 || !bytes.ContainsAny(trimmed, "0123456789") {
 			return i18n.T("form.error.step1_digit8")
 		}
 	case "nonempty":
-		if trimmed == "" {
+		if len(trimmed) == 0 {
 			return i18n.T("form.error.step2_nonempty")
 		}
 	case "special":
-		if !specialCharRe.MatchString(trimmed) {
+		if !specialCharRe.Match(trimmed) {
 			return i18n.T("form.error.step3_special")
 		}
 	}
@@ -312,11 +319,13 @@ func (m *Model) stepInputError() string {
 // confirmPassword submits the answer when the two password entries match;
 // otherwise it resets both buffers and shows a mismatch error.
 func (m *Model) confirmPassword() {
-	if string(m.input) == string(m.confirm) {
+	if bytes.Equal(m.input, m.confirm) {
 		m.submit()
 		return
 	}
 	m.errMsg = i18n.T("form.password_mismatch")
+	clear(m.input)
+	clear(m.confirm)
 	m.input = nil
 	m.confirm = nil
 	m.stage = StageInput
@@ -328,13 +337,16 @@ func (m *Model) submit() {
 		Step:    m.stepIdx + 1,
 		ID:      item.ID,
 		Content: item.Content,
-		Answer:  string(m.input),
+		Answer:  append([]byte(nil), m.input...),
 	}
 	if m.stepIdx < len(m.results) {
+		clear(m.results[m.stepIdx].Answer)
 		m.results[m.stepIdx] = r
 	} else {
 		m.results = append(m.results, r)
 	}
+	clear(m.input)
+	clear(m.confirm)
 	m.input = nil
 	m.confirm = nil
 	m.errMsg = ""
@@ -345,7 +357,8 @@ func (m *Model) submit() {
 		// pending hide timeout from a previous summary cannot fire here.
 		m.reveal = false
 		m.revealGen++
-		m.finalPassword = ""
+		clear(m.finalPassword)
+		m.finalPassword = nil
 		if m.finalPasswordFn != nil {
 			m.finalPassword = m.finalPasswordFn(m.results)
 		}
@@ -440,11 +453,11 @@ func (m *Model) inputView() string {
 }
 
 // mask renders runes as asterisks, hiding the password content.
-func mask(runes []rune) string {
-	if len(runes) == 0 {
+func mask(b []byte) string {
+	if len(b) == 0 {
 		return ""
 	}
-	return strings.Repeat("*", len(runes))
+	return strings.Repeat("*", utf8.RuneCount(b))
 }
 
 func (m *Model) summaryView() string {
@@ -452,16 +465,16 @@ func (m *Model) summaryView() string {
 	fmt.Fprintf(&sb, "%s\n\n", i18n.T("form.summary_title"))
 	fmt.Fprintf(&sb, "%s | %s | %s | %s\n", i18n.T("form.summary_col_step"), i18n.T("form.summary_col_id"), i18n.T("form.summary_col_content"), i18n.T("form.summary_col_answer"))
 	for _, r := range m.results {
-		answer := r.Answer
+		answer := string(r.Answer)
 		if !m.reveal {
-			answer = mask([]rune(r.Answer))
+			answer = mask(r.Answer)
 		}
 		fmt.Fprintf(&sb, "%d | %s | %s | %s\n", r.Step, r.ID, r.Content, answer)
 	}
-	if m.finalPassword != "" {
-		pw := m.finalPassword
+	if m.finalPassword != nil {
+		pw := string(m.finalPassword)
 		if !m.reveal {
-			pw = mask([]rune(m.finalPassword))
+			pw = mask(m.finalPassword)
 		}
 		fmt.Fprintf(&sb, "\n%s: %s\n", i18n.T("form.summary_final_password"), pw)
 	}

@@ -91,7 +91,7 @@ func TestQuestionPoolFullFlow(t *testing.T) {
 	}
 	for i, w := range want {
 		r := results[i]
-		if r.Step != i+1 || r.ID != w.id || r.Answer != w.answer {
+		if r.Step != i+1 || r.ID != w.id || string(r.Answer) != w.answer {
 			t.Fatalf("result %d: got %+v, want step=%s id=%s answer=%s", i, r, w.step, w.id, w.answer)
 		}
 	}
