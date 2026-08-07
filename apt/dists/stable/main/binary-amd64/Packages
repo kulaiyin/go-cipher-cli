@@ -1,0 +1,17 @@
+Package: go-cipher-cli
+Architecture: amd64
+Version: 0.9.0
+Priority: optional
+Section: utils
+Maintainer: kulaiyin <kly0214@163.com>
+Installed-Size: 13576
+Filename: pool/main/g/go-cipher-cli/go-cipher-cli_0.9.0_linux_amd64.deb
+Size: 5324006
+MD5sum: 393c76628fd00a984d36d83dc6d98590
+SHA1: a83b5236ad0f0c6ff5670df3002d0c5ffaa96643
+SHA256: d0f84f1ef070c62ab773a099efd739f7e528d28c0c75a864bc140167eef99e7f
+SHA512: e258ba4729977c59b0a12ce6a85e41c2ca5aa4a8d7cf13e8c92ad60fc1a0d35623da497821c01706e6958d950ba96c335c38ffd63ab9ee161879f8edf994db32
+Homepage: https://github.com/kulaiyin/go-cipher-cli
+Description: A Go-based CLI tool for password-to-key derivation and Diceware passphrase generation.
+Architecture-Variant: amd64v1
+

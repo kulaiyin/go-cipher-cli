@@ -1,0 +1,19 @@
+Architectures: amd64
+Codename: stable
+Components: main
+Date: Fri, 07 Aug 2026 02:09:43 +0000
+Label: go-cipher-cli
+Origin: go-cipher-cli
+Suite: stable
+MD5Sum:
+ d92077240546c57de469419f77ec89be              720 main/binary-amd64/Packages
+ 03309f3db2f4d9e238120797685b15bd              509 main/binary-amd64/Packages.gz
+SHA1:
+ ee9aba233d7a4ae1c1749d4ee40a3b521525e101              720 main/binary-amd64/Packages
+ b9e217e8b9ecdb6d6b80dff47cb28d369a9f4450              509 main/binary-amd64/Packages.gz
+SHA256:
+ 058765ac248254eb6ccd7e2bcd2bb29a36ee3c418c1ea054a7ff01799420cd2b              720 main/binary-amd64/Packages
+ 05a7811d42b849e7134e38ce4ef6ede300cbf96483aa94d66a01d213f0787a81              509 main/binary-amd64/Packages.gz
+SHA512:
+ 142a41ecc44b717c2a7942db952e4d328df93228311f3b36e5a96fff7c88fb56b1ee342a8fc50081f5860fb7a0e9b6f8aa538491427037d74021ef7addfcef98              720 main/binary-amd64/Packages
+ c9ac5fe01c2622f487d6b3cfac5f35417048765cec069e82cc7356e43c968620c6035248da8e25e2d8e61652e86fd639cb9911a4fadb0288c7a2899d4f4ee252              509 main/binary-amd64/Packages.gz
